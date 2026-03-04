@@ -14,14 +14,17 @@ export function HeaderNav() {
   const pathname = usePathname() || "/";
 
   const is = (p: string) => pathname === p;
-  const Item = ({ href, label }: { href: string; label: string }) =>
-    is(href) ? (
-      <span className="font-semibold text-slate-400">{label}</span>
-    ) : (
+
+  const Item = ({ href, label }: { href: string; label: string }) => {
+    // Don't show a link to the current page (no "self link")
+    if (is(href)) return null;
+
+    return (
       <Link className="font-semibold text-slate-900 hover:underline" href={href}>
         {label}
       </Link>
     );
+  };
 
   return (
     <nav className="flex items-center gap-3 text-sm">
@@ -35,4 +38,3 @@ export function HeaderNav() {
 }
 
 export default HeaderNav;
-

@@ -22,7 +22,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-3">
             <div className="flex items-center gap-2">
               <div className="text-sm font-semibold text-slate-900">
-                Pick. Play. <span className="text-base font-extrabold">PwnIt</span>.
+                Pick. Play. <span className="text-lg font-extrabold">PwnIt</span>.
               </div>
 
               <DemoUserSwitcherShell />

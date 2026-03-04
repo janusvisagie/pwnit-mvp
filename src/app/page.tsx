@@ -104,6 +104,7 @@ export default async function HomePage() {
               imageUrl: it.imageUrl ?? null,
               closesAt: it.closesAt ? it.closesAt.toISOString() : null,
               playCostCredits: playCostForPrize(it.prizeValueZAR),
+              gameKey: it.gameKey ?? null,
             }}
           />
         ))}

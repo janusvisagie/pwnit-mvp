@@ -55,7 +55,7 @@ export function WelcomeModal() {
 
           <div className="rounded-2xl border border-slate-200 bg-white p-3">
             <div className="text-xs font-extrabold text-slate-900">2) Play a quick skill game</div>
-            <div className="mt-1 text-sm text-slate-600">Your best time ranks higher.</div>
+            <div className="mt-1 text-sm text-slate-600">Best time ranks higher.</div>
           </div>
 
           <div className="rounded-2xl border border-slate-200 bg-white p-3">
