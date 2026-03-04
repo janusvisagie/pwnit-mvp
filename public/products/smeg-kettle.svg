@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="35%" r="75%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#f8fafc"/>
+    </radialGradient>
+
+    <filter id="softShadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="18" stdDeviation="16" flood-color="#0f172a" flood-opacity="0.18"/>
+    </filter>
+
+    <linearGradient id="ink" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#111827"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="800" fill="url(#bg)"/>
+
+  <!-- stage -->
+  <g opacity="1">
+    <ellipse cx="600" cy="615" rx="260" ry="34" fill="#0f172a" opacity="0.06"/>
+  </g>
+
+  <!-- icon -->
+  <g filter="url(#softShadow)" transform="translate(0,0)">
+    <!-- body -->
+    <path d="M470 300c0-85 69-154 154-154s154 69 154 154v185c0 48-39 87-87 87H557c-48 0-87-39-87-87V300z"
+          fill="none" stroke="url(#ink)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- lid -->
+    <path d="M548 160c0-30 24-54 54-54s54 24 54 54"
+          fill="none" stroke="url(#ink)" stroke-width="28" stroke-linecap="round"/>
+    <!-- handle -->
+    <path d="M778 360h40c56 0 102 46 102 102s-46 102-102 102h-40"
+          fill="none" stroke="url(#ink)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- highlight -->
+    <path d="M540 300c0-55 44-99 99-99" fill="none" stroke="#94a3b8" stroke-width="16" stroke-linecap="round" opacity="0.35"/>
+  </g>
+</svg>

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800">
+<rect width="1200" height="800" fill="#020617"/>
+<rect x="70" y="70" width="1060" height="660" rx="34" fill="#ffffff" opacity="0.08"/>
+
+<rect x="820" y="240" width="280" height="180" rx="20" fill="#2563eb"/>
+<text x="960" y="340" text-anchor="middle" font-family="Verdana" font-size="40" fill="#ffffff" font-weight="bold">R1,000</text>
+</svg>

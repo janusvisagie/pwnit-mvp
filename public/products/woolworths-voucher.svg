@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800">
+<rect width="1200" height="800" fill="#1f2937"/>
+<rect x="70" y="70" width="1060" height="660" rx="34" fill="#ffffff" opacity="0.08"/>
+
+<rect x="820" y="240" width="280" height="180" rx="20" fill="#16a34a"/>
+<text x="960" y="340" text-anchor="middle" font-family="Verdana" font-size="40" fill="#0b1220" font-weight="bold">R1,500</text>
+</svg>
