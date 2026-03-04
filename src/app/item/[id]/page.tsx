@@ -97,12 +97,6 @@ export default async function ItemPage({ params }: { params: { id: string } }) {
             )}
           </div>
         </div>
-
-        <div className="flex items-center gap-3">
-          <Link className="text-sm font-semibold text-slate-900 hover:underline" href="/">
-            Home
-          </Link>
-        </div>
       </div>
 
       {/* Activation progress (single panel) */}

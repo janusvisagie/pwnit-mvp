@@ -60,34 +60,39 @@ export async function getOrCreateDemoUser() {
 
   const today = dayKeyZA();
 
+  // Use upsert to avoid a race where concurrent requests both try to create the demo user.
+  await prisma.user.upsert({
+    where: { email: demoEmail },
+    create: {
+      email: demoEmail,
+      referralCode: "demo",
+      isGuest: true,
+
+      // free credits: start today
+      freeCreditsBalance: DAILY_FREE_CREDITS,
+      lastDailyCreditsDayKey: today,
+    } as any,
+    update: {} as any,
+  });
+
+  // Fetch current row
   let user: any = await prisma.user.findUnique({ where: { email: demoEmail } });
 
-  if (!user) {
-    user = await prisma.user.create({
-      data: {
-        email: demoEmail,
-        referralCode: "demo",
-        isGuest: true,
+  // ✅ Concurrency-safe daily reset:
+  // updateMany with a conditional where makes this idempotent even if multiple requests hit at once.
+  await prisma.user.updateMany({
+    where: {
+      id: user.id,
+      lastDailyCreditsDayKey: { not: today } as any,
+    } as any,
+    data: {
+      freeCreditsBalance: DAILY_FREE_CREDITS,
+      lastDailyCreditsDayKey: today,
+    } as any,
+  });
 
-        // free credits: start today
-        freeCreditsBalance: DAILY_FREE_CREDITS,
-        lastDailyCreditsDayKey: today,
-      } as any,
-    });
-
-    return user;
-  }
-
-  // ✅ NO ROLLOVER: reset free credits to DAILY_FREE_CREDITS on a new day
-  if ((user as any).lastDailyCreditsDayKey !== today) {
-    user = await prisma.user.update({
-      where: { id: user.id },
-      data: {
-        freeCreditsBalance: DAILY_FREE_CREDITS,
-        lastDailyCreditsDayKey: today,
-      } as any,
-    });
-  }
+  // Re-fetch so callers get the updated balances if a reset happened.
+  user = await prisma.user.findUnique({ where: { email: demoEmail } });
 
   return user;
 }

@@ -21,8 +21,7 @@ export default function HowActivationWorksPage() {
       <section className="rounded-2xl border border-slate-200 bg-white p-4">
         <div className="text-sm font-extrabold text-slate-900">2) Activation</div>
         <p className="mt-1 text-sm text-slate-700">
-          Items start in <span className="font-semibold">Open</span>. As people play, the entry counter increases. Once the
-          activation goal is reached, the item becomes <span className="font-semibold">Live</span> and the countdown starts.
+          Items start in <span className="font-semibold">Open</span>. As people play, the entry counter increases. Once the activation goal is reached, the item becomes <span className="font-semibold">Live</span> and the countdown starts. You can still play while the countdown is running to improve your time (and ranking).
         </p>
       </section>
 
