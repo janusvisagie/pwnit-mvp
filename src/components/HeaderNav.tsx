@@ -12,33 +12,27 @@ import { usePathname } from "next/navigation";
  */
 export function HeaderNav() {
   const pathname = usePathname() || "/";
-  const onHome = pathname === "/";
+
+  const is = (p: string) => pathname === p;
+  const Item = ({ href, label }: { href: string; label: string }) =>
+    is(href) ? (
+      <span className="font-semibold text-slate-400">{label}</span>
+    ) : (
+      <Link className="font-semibold text-slate-900 hover:underline" href={href}>
+        {label}
+      </Link>
+    );
 
   return (
     <nav className="flex items-center gap-3 text-sm">
-      {!onHome && (
-        <Link className="font-semibold text-slate-900 hover:underline" href="/">
-          Home
-        </Link>
-      )}
-
-      <Link className="font-semibold text-slate-900 hover:underline" href="/buy-credits">
-        Buy credits
-      </Link>
-
-      <Link className="font-semibold text-slate-900 hover:underline" href="/how-activation-works">
-        How it works
-      </Link>
-
-      <Link className="font-semibold text-slate-900 hover:underline" href="/dashboard">
-        Dashboard
-      </Link>
-
-      <Link className="font-semibold text-slate-900 hover:underline" href="/admin">
-        Admin
-      </Link>
+      <Item href="/" label="Home" />
+      <Item href="/buy-credits" label="Buy credits" />
+      <Item href="/how-activation-works" label="How it works" />
+      <Item href="/dashboard" label="Dashboard" />
+      <Item href="/admin" label="Admin" />
     </nav>
   );
 }
 
 export default HeaderNav;
+
