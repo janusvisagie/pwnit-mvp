@@ -151,7 +151,6 @@ export default async function ItemLeaderboardPage({ params }: { params: { id: st
           ) : (
             <div className="space-y-2">
               <div className="text-sm font-extrabold text-slate-900">Didn’t win? Buy it by paying the difference.</div>
-              <div className="text-xs text-slate-600">Same “Buy Now” action as the item page.</div>
               <BuyNowButton itemId={itemId} />
             </div>
           )}

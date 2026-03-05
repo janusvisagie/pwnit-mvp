@@ -119,7 +119,6 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
         {showEndsIn ? (
           <div className="absolute left-3 bottom-3">
             <div className="flex items-center gap-2 rounded-full bg-white/90 px-3 py-1 text-xs font-semibold text-slate-900 shadow ring-1 ring-slate-200/70 backdrop-blur">
-              <span className="font-semibold text-slate-600">Ends in</span>
               <CountdownChip state={item.state} closesAt={item.closesAt ?? null} />
             </div>
           </div>
@@ -127,8 +126,8 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
 
         {/* Diagonal banner for closed/published */}
         {closed ? (
-          <div className="pointer-events-none absolute inset-0">
-            <div className="absolute -left-14 top-8 w-[260px] -rotate-12 bg-slate-900/90 px-4 py-2 text-center text-xs font-extrabold text-white shadow">
+          <div className="pointer-events-none absolute left-0 top-0 w-full">
+            <div className="w-full bg-slate-900/90 px-3 py-2 text-center text-xs font-extrabold text-white shadow">
               Item already won • New item loading
             </div>
           </div>

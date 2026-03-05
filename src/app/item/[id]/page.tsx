@@ -86,16 +86,14 @@ export default async function ItemPage({ params }: { params: { id: string } }) {
               Cost: <span className="text-slate-900">{playCost}</span> {playCost === 1 ? "credit" : "credits"} / play
             </span>
 
-            {/* ✅ Include “Ends in” wording on item page */}
-            {item.state === "ACTIVATED" && closesAtIso ? (
-              <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 ring-1 ring-slate-200">
-                <span className="text-slate-600">Ends in</span>
-                <CountdownChip state={item.state} closesAt={closesAtIso} />
-              </span>
-            ) : (
-              <CountdownChip state={item.state} closesAt={closesAtIso} />
-            )}
+            <CountdownChip state={item.state} closesAt={closesAtIso} />
           </div>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <Link className="text-sm font-semibold text-slate-900 hover:underline" href="/">
+            Home
+          </Link>
         </div>
       </div>
 

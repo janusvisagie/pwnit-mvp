@@ -1,7 +1,7 @@
 // src/components/CountdownChip.tsx
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type Props = {
   state?: string | null;
@@ -25,6 +25,7 @@ export function CountdownChip({ state, closesAt }: Props) {
   }, [closesAt]);
 
   const [nowMs, setNowMs] = useState<number>(() => Date.now());
+  const didRefresh = useRef(false);
 
   // Tick only when we have a valid target.
   useEffect(() => {
@@ -39,15 +40,28 @@ export function CountdownChip({ state, closesAt }: Props) {
 
   const remaining = targetMs - nowMs;
   if (remaining <= 0) {
+    // Avoid “Ending…” getting stuck: once we hit zero, refresh once so server-rendered
+    // pages can transition to CLOSED/PUBLISHED.
+    if (!didRefresh.current) {
+      didRefresh.current = true;
+      setTimeout(() => {
+        try {
+          window.location.reload();
+        } catch {
+          /* no-op */
+        }
+      }, 600);
+    }
     return (
       <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-extrabold text-slate-900 ring-1 ring-slate-200">
-        Ending…
+        Closed
       </span>
     );
   }
 
   return (
     <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-extrabold tabular-nums text-slate-900 ring-1 ring-slate-200">
+      <span className="mr-1 text-slate-600">Ends in</span>
       {formatMs(remaining)}
     </span>
   );

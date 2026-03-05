@@ -58,9 +58,9 @@ export default async function PlayPage({ params }: { params: { itemId: string } 
 
   const playCost = playCostForPrize(item.prizeValueZAR);
 
-  const free = Number((me as any).freeCreditsBalance ?? 0);
-  const paid = Number((me as any).paidCreditsBalance ?? 0);
-  const creditsTotal = free + paid;
+  const creditsTotal =
+    Number((me as any).freeCreditsBalance ?? 0) +
+    Number((me as any).paidCreditsBalance ?? 0);
 
   return (
     <main className="mx-auto max-w-3xl space-y-3 p-4">
@@ -77,9 +77,6 @@ export default async function PlayPage({ params }: { params: { itemId: string } 
         </div>
 
         <div className="flex items-center gap-3">
-          <Link className="text-sm font-semibold text-slate-900 hover:underline" href="/">
-            Home
-          </Link>
           <Link className="text-sm font-semibold text-slate-900 hover:underline" href={`/item/${item.id}`}>
             Item
           </Link>
@@ -91,11 +88,6 @@ export default async function PlayPage({ params }: { params: { itemId: string } 
 
       <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         <GameHost itemId={item.id} gameKey={(item.gameKey as any) ?? "precision-timer"} playCost={playCost} credits={creditsTotal} />
-      </div>
-
-      <div className="text-xs text-slate-600">
-        Credits: <span className="font-semibold text-slate-900">{creditsTotal}</span>{" "}
-        <span className="text-slate-500">(free {free} + paid {paid})</span>
       </div>
     </main>
   );

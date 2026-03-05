@@ -2,8 +2,10 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 export function AliasEditor({ initialAlias }: { initialAlias: string }) {
+  const router = useRouter();
   const [alias, setAlias] = useState(initialAlias || "");
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -20,6 +22,7 @@ export function AliasEditor({ initialAlias }: { initialAlias: string }) {
       const j = await res.json().catch(() => ({}));
       if (!res.ok || !j?.ok) throw new Error(j?.error || "Failed");
       setMsg("Saved");
+      router.refresh();
     } catch (e: any) {
       setMsg(e?.message || "Error");
     } finally {
