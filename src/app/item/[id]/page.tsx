@@ -62,6 +62,10 @@ export default async function ItemPage({ params }: { params: { id: string } }) {
 
   // activation progress today
   const todayEntries = await prisma.attempt.count({ where: { itemId: item.id, dayKey } });
+  const totalPaidAgg = await prisma.attempt.aggregate({ where: { itemId: item.id, dayKey }, _sum: { paidUsed: true } });
+  const totalPaidToday = Number((totalPaidAgg as any)._sum?.paidUsed ?? 0);
+  const activationGoalCredits = item.prizeValueZAR; // 1 credit = R1 in MVP
+
 
   // winners today (if closed/published)
   const winners = await prisma.winner.findMany({
@@ -70,6 +74,15 @@ export default async function ItemPage({ params }: { params: { id: string } }) {
     select: { userId: true },
   });
   const meWon = winners.some((w) => w.userId === me.id);
+
+  // Discount is item-specific and day-specific: 100% of paid credits spent on THIS item TODAY (capped to item value).
+  const paidAgg = await prisma.attempt.aggregate({
+    where: { itemId: item.id, dayKey, userId: me.id },
+    _sum: { paidUsed: true },
+  });
+  const paidSpentToday = Number((paidAgg as any)._sum?.paidUsed ?? 0);
+  const discountZAR = Math.min(item.prizeValueZAR, Math.max(0, paidSpentToday));
+  const dueZAR = Math.max(0, item.prizeValueZAR - discountZAR);
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-6">
@@ -150,22 +163,23 @@ export default async function ItemPage({ params }: { params: { id: string } }) {
         </div>
       </div>
 
-      {/* Buy-if-you-didn't-win */}
-      {(item.state === "CLOSED" || item.state === "PUBLISHED") ? (
-        <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-4">
-          <div className="text-sm font-extrabold text-slate-900">
-            {meWon ? "You won — no need to buy." : "Results available."}
+              {/* Buy now (always available) */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-4">
+          <div className="text-sm font-extrabold text-slate-900">Didn’t win? Buy it by paying the difference.</div>
+          <div className="mt-1 text-sm text-slate-600">
+            Your <span className="font-semibold text-slate-900">discount today</span> is{" "}
+            <span className="font-semibold text-slate-900">{formatZAR(discountZAR)}</span> (100% of paid credits spent on this item today, capped to the item value).
+            {" "}You pay the difference: <span className="font-semibold text-slate-900">{formatZAR(dueZAR)}</span>.
           </div>
+
           <div className="mt-3">
-            <Link
-              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-900"
-              href={`/item/${item.id}/leaderboard`}
-            >
-              View results
-            </Link>
+            {item.state === "PUBLISHED" && meWon ? (
+              <div className="text-sm font-semibold text-emerald-700">You won — no need to buy.</div>
+            ) : (
+              <BuyNowButton itemId={item.id} />
+            )}
           </div>
         </div>
-      ) : null}
 
       {/* Buy now (available anytime) */}
       <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-4">

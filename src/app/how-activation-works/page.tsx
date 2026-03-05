@@ -7,7 +7,7 @@ export default function HowActivationWorksPage() {
       <header className="space-y-1">
         <h1 className="text-2xl font-extrabold text-slate-900">How it works</h1>
         <p className="text-sm text-slate-600">
-          A simple MVP explanation of activation, scoring, results, and the “buy the difference” option.
+          A simple MVP explanation of activation, scoring, results, winner payout, and the “buy the difference” option.
         </p>
       </header>
 

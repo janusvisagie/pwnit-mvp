@@ -6,6 +6,7 @@ import { AutoRefreshActivated } from "@/components/AutoRefreshActivated";
 import { settleItemWinners } from "@/lib/settle";
 import { ItemCard } from "@/components/ItemCard";
 import { playCostForPrize } from "@/lib/playCost";
+import { itemPriceCredits } from "@/lib/pricing";
 import { WelcomeModal } from "@/components/WelcomeModal";
 
 export default async function HomePage() {
@@ -26,6 +27,14 @@ export default async function HomePage() {
   });
   const entryMap = new Map(counts.map((c) => [c.itemId, c._count._all]));
 
+  const paidCounts = await prisma.attempt.groupBy({
+    by: ["itemId"],
+    where: { dayKey },
+    _sum: { paidUsed: true },
+  });
+  const paidMap = new Map(paidCounts.map((c) => [c.itemId, Number((c as any)._sum?.paidUsed ?? 0)]));
+
+
   const winnerCounts = await prisma.winner.groupBy({
     by: ["itemId"],
     _count: { _all: true },
@@ -36,7 +45,12 @@ export default async function HomePage() {
   for (const item of items) {
     const totalToday = entryMap.get(item.id) ?? 0;
 
-    if (item.state === "OPEN" && totalToday >= item.activationGoalEntries) {
+    const paidToday = paidMap.get(item.id) ?? 0;
+    const activationGoalCredits = itemPriceCredits(item.prizeValueZAR);
+
+    // Activation rule (portfolio-safe MVP): only activate once total PAID credits spent today
+    // on this item can cover the prize value (winner gets the item without paying).
+    if (item.state === "OPEN" && paidToday >= activationGoalCredits) {
       const closes = new Date(now.getTime() + item.countdownMinutes * 60_000);
       await prisma.item.update({
         where: { id: item.id },
@@ -101,6 +115,8 @@ export default async function HomePage() {
               state: it.state as any,
               activationGoalEntries: it.activationGoalEntries,
               totalEntriesToday: entryMap.get(it.id) ?? 0,
+              paidCreditsToday: paidMap.get(it.id) ?? 0,
+              activationGoalCredits: itemPriceCredits(it.prizeValueZAR),
               imageUrl: it.imageUrl ?? null,
               closesAt: it.closesAt ? it.closesAt.toISOString() : null,
               countdownMinutes: (it as any).countdownMinutes ?? 5,

@@ -36,6 +36,17 @@ export default async function ItemLeaderboardPage({ params }: { params: { id: st
     select: { userId: true, rank: true, scoreMs: true, alias: true },
   });
   const meWon = winners.some((w) => w.userId === me.id);
+
+  const paidAgg = await prisma.attempt.aggregate({
+    where: { itemId, dayKey, userId: me.id },
+    _sum: { paidUsed: true },
+  });
+  const paidSpentToday = Number((paidAgg as any)._sum?.paidUsed ?? 0);
+  const discountZAR = Math.min(item.prizeValueZAR, Math.max(0, paidSpentToday));
+  const dueZAR = Math.max(0, item.prizeValueZAR - discountZAR);
+  function formatZAR(v: number) {
+    return `R${Number(v || 0).toLocaleString("en-ZA")}`;
+  }
   const topWinner = winners.find((w) => w.rank === 1) ?? null;
 
   // Live leaderboard (today): best per user
@@ -150,24 +161,21 @@ export default async function ItemLeaderboardPage({ params }: { params: { id: st
         </div>
       </div>
 
-      {(item.state === "CLOSED" || item.state === "PUBLISHED") ? (
-        <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-4">
-          {meWon ? (
-            <div className="text-sm font-extrabold text-slate-900">
-              You’re a winner — no need to buy.
-            </div>
+            <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-4">
+        <div className="text-sm font-extrabold text-slate-900">Didn’t win? Buy it by paying the difference.</div>
+        <div className="mt-1 text-sm text-slate-600">
+          Your <span className="font-semibold text-slate-900">discount today</span> is{" "}
+          <span className="font-semibold text-slate-900">{formatZAR(discountZAR)}</span>.
+          {" "}You pay: <span className="font-semibold text-slate-900">{formatZAR(dueZAR)}</span>.
+        </div>
+        <div className="mt-3">
+          {item.state === "PUBLISHED" && meWon ? (
+            <div className="text-sm font-semibold text-emerald-700">You won — no need to buy.</div>
           ) : (
-            <>
-              <div className="text-sm font-extrabold text-slate-900">
-                Didn’t win? Buy it by paying the difference.
-              </div>
-              <div className="mt-3">
-                <BuyNowButton itemId={item.id} />
-              </div>
-            </>
+            <BuyNowButton itemId={itemId} />
           )}
         </div>
-      ) : null}
+      </div>
     
 
       {/* Buy now (available anytime) */}

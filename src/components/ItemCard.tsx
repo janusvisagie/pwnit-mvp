@@ -12,6 +12,9 @@ export type ItemCardModel = {
   state: string;
   activationGoalEntries: number;
   totalEntriesToday: number;
+  // New activation metric (preferred): paid credits spent today vs item value
+  paidCreditsToday?: number;
+  activationGoalCredits?: number;
   imageUrl: string | null;
   closesAt?: string | null;
   countdownMinutes?: number;
@@ -59,7 +62,9 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
     return () => window.clearInterval(t);
   }, [item.state, item.closesAt]);
 
-  const pct = progressPct(item.totalEntriesToday, item.activationGoalEntries);
+  const paidToday = typeof item.paidCreditsToday === "number" ? item.paidCreditsToday : null;
+  const goalCredits = typeof item.activationGoalCredits === "number" ? item.activationGoalCredits : null;
+  const pct = paidToday != null && goalCredits != null ? progressPct(paidToday, goalCredits) : progressPct(item.totalEntriesToday, item.activationGoalEntries);
   const remaining = Math.max(
     0,
     (item.activationGoalEntries || 0) - (item.totalEntriesToday || 0)
@@ -184,20 +189,23 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
             {pct}%
           </span>
           <div className="text-xs font-semibold text-slate-700">
-            {item.totalEntriesToday}/{item.activationGoalEntries} entries{" "}
-            {item.state === "OPEN" && remaining > 0 ? (
-              <span className="text-slate-500">({remaining} to go)</span>
-            ) : null}
-          </div>
-        </div>
-
-        <div className="mt-2 flex items-center justify-end">
-          {showCost ? (
-            <span className="text-xs font-semibold text-slate-700">
-              {item.playCostCredits}{" "}
-              {item.playCostCredits === 1 ? "credit" : "credits"}/play
+            {paidToday != null && goalCredits != null ? (
+            <span>
+              <span className="font-semibold text-slate-900">Paid today:</span>{" "}
+              <span className="font-semibold">{formatZAR(paidToday)}</span> / {formatZAR(goalCredits)}
+              <span className="ml-2 text-slate-500">(activation)</span>
             </span>
-          ) : null}
+          ) : (
+            <span>
+              {item.totalEntriesToday}/{item.activationGoalEntries} entries{" "}
+              {item.state === "OPEN" && remaining > 0 ? `(${remaining} to go)` : null}
+            </span>
+          )}
+          {showCost ? (
+            <span className="text-slate-600">
+              {item.playCostCredits} {item.playCostCredits === 1 ? "credit" : "credits"}/play
+            </span>
+          ) : null
         </div>
       </div>
     </Link>

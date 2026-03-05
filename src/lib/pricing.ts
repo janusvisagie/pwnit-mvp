@@ -11,11 +11,12 @@ export function tierKeyFromTierNumber(tier: number): TierKey {
   return "PWN_MAX";
 }
 
-// ✅ Higher tier => higher discount on “money already spent”
-export function discountPctForTierKey(k: TierKey): number {
-  if (k === "PWN_LITE") return 50;
-  if (k === "PWN_PLUS") return 75;
-  return 100; // PWN_MAX
+// Discount model (MVP):
+// - Discount is item-specific AND day-specific
+// - Discount = 100% of PAID credits you spent playing this item today
+// - Discount is capped to the item price (so it can never exceed item value)
+export function discountPctForTierKey(_: TierKey): number {
+  return 100;
 }
 
 export function itemPriceCredits(prizeValueZAR: number): number {
@@ -23,14 +24,14 @@ export function itemPriceCredits(prizeValueZAR: number): number {
 }
 
 /**
- * Discount is based on credits already spent playing THIS item.
+ * Discount is based on PAID credits already spent playing THIS item TODAY.
  * discountCredits = spentCredits * discountPct
  * finalPay = price - min(price, discountCredits)
  */
 export function buyPriceAfterSpend(params: {
   prizeValueZAR: number;
   tierNumber: number;
-  spentCredits: number;
+  spentCredits: number; // interpreted as paid credits spent today on this item
 }) {
   const price = itemPriceCredits(params.prizeValueZAR);
   const tierKey = tierKeyFromTierNumber(params.tierNumber);
