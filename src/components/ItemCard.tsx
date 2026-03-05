@@ -2,7 +2,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CountdownChip } from "@/components/CountdownChip";
 
 export type ItemCardModel = {
@@ -14,6 +14,7 @@ export type ItemCardModel = {
   totalEntriesToday: number;
   imageUrl: string | null;
   closesAt?: string | null;
+  countdownMinutes?: number;
   playCostCredits?: number;
   gameKey?: string | null;
 };
@@ -49,6 +50,14 @@ function gameLabel(k?: string | null) {
 
 export function ItemCard({ item }: { item: ItemCardModel }) {
   const [imgOk, setImgOk] = useState(true);
+  const [tick, setTick] = useState(0);
+
+  // Lightweight ticker so the countdown bar can animate smoothly.
+  useEffect(() => {
+    if (item.state !== "ACTIVATED" || !item.closesAt) return;
+    const t = window.setInterval(() => setTick((x) => x + 1), 250);
+    return () => window.clearInterval(t);
+  }, [item.state, item.closesAt]);
 
   const pct = progressPct(item.totalEntriesToday, item.activationGoalEntries);
   const remaining = Math.max(
@@ -81,6 +90,16 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
 
   const showCost = typeof item.playCostCredits === "number";
   const gLabel = gameLabel(item.gameKey);
+
+  const countdownPct = useMemo(() => {
+    if (!showEndsIn) return null;
+    const totalMs = Math.max(1, Number(item.countdownMinutes ?? 5) * 60_000);
+    const endMs = Date.parse(item.closesAt as string);
+    if (!Number.isFinite(endMs)) return null;
+    const remainingMs = Math.max(0, endMs - Date.now());
+    return Math.max(0, Math.min(100, Math.round((remainingMs / totalMs) * 100)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showEndsIn, item.closesAt, item.countdownMinutes, tick]);
 
   return (
     <Link
@@ -120,6 +139,16 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
           <div className="absolute bottom-3 left-3 inline-flex items-center gap-2 rounded-full bg-white/90 px-2 py-1 text-xs font-semibold text-slate-700">
             <span>Ends in</span>
             <CountdownChip state={item.state} closesAtIso={item.closesAt ?? null} labelWhenClosed="Closed" />
+          </div>
+        ) : null}
+
+        {/* Animated countdown progress bar (only when live) */}
+        {showEndsIn && typeof countdownPct === "number" ? (
+          <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/60">
+            <div
+              className="h-1 bg-slate-900 transition-[width] duration-200"
+              style={{ width: `${countdownPct}%` }}
+            />
           </div>
         ) : null}
 

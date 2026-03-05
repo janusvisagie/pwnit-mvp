@@ -5,6 +5,7 @@ import { dayKeyZA } from "@/lib/time";
 import { getOrCreateDemoUser } from "@/lib/auth";
 import { AliasEditor } from "@/components/AliasEditor";
 import { BuyNowButton } from "@/components/BuyNowButton";
+import { ConfettiBurst } from "@/components/ConfettiBurst";
 
 export const dynamic = "force-dynamic";
 
@@ -35,6 +36,7 @@ export default async function ItemLeaderboardPage({ params }: { params: { id: st
     select: { userId: true, rank: true, scoreMs: true, alias: true },
   });
   const meWon = winners.some((w) => w.userId === me.id);
+  const topWinner = winners.find((w) => w.rank === 1) ?? null;
 
   // Live leaderboard (today): best per user
   const best = await prisma.attempt.groupBy({
@@ -78,6 +80,7 @@ export default async function ItemLeaderboardPage({ params }: { params: { id: st
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-6">
+      {meWon && (item.state === "CLOSED" || item.state === "PUBLISHED") ? <ConfettiBurst /> : null}
       <h1 className="text-2xl font-extrabold text-slate-900">{item.title}</h1>
       <div className="mt-1 text-sm font-semibold text-slate-700">
         Live leaderboard • {dayKey}
@@ -95,6 +98,21 @@ export default async function ItemLeaderboardPage({ params }: { params: { id: st
       <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-4">
         <AliasEditor initialAlias={String((me as any).alias ?? "")} />
       </div>
+
+      {(item.state === "CLOSED" || item.state === "PUBLISHED") && topWinner ? (
+        <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-4">
+          <div className="text-sm font-extrabold text-slate-900">Winner</div>
+          <div className="mt-2 flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-3">
+            <div className="text-sm font-semibold text-slate-900">
+              #{topWinner.rank} {topWinner.alias || "Anonymous"}
+              {topWinner.userId === me.id ? (
+                <span className="ml-2 rounded-full bg-slate-900 px-2 py-0.5 text-xs font-extrabold text-white">YOU</span>
+              ) : null}
+            </div>
+            <div className="text-sm font-extrabold text-slate-900">{topWinner.scoreMs} ms</div>
+          </div>
+        </div>
+      ) : null}
 
       <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-4">
         <div className="text-sm font-extrabold text-slate-900">Live scores (best per player)</div>
@@ -115,7 +133,11 @@ export default async function ItemLeaderboardPage({ params }: { params: { id: st
             rows.map((r) => (
               <div
                 key={r.userId}
-                className="grid grid-cols-[80px_1fr_120px] border-t border-slate-200 px-3 py-2 text-sm text-slate-800"
+                className={
+                  "grid grid-cols-[80px_1fr_120px] border-t border-slate-200 px-3 py-2 text-sm text-slate-800 " +
+                  (r.rank === 1 ? "bg-slate-50" : "") +
+                  (r.isMe ? " ring-1 ring-slate-900/10" : "")
+                }
               >
                 <div className="font-semibold">#{r.rank}</div>
                 <div className="font-semibold">

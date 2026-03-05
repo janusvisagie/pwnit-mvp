@@ -103,6 +103,7 @@ export default async function HomePage() {
               totalEntriesToday: entryMap.get(it.id) ?? 0,
               imageUrl: it.imageUrl ?? null,
               closesAt: it.closesAt ? it.closesAt.toISOString() : null,
+              countdownMinutes: (it as any).countdownMinutes ?? 5,
               playCostCredits: playCostForPrize(it.prizeValueZAR),
               gameKey: it.gameKey ?? null,
             }}
