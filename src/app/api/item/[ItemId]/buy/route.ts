@@ -1,4 +1,4 @@
-// src/app/api/item/[itemId]/buy/route.ts
+// src/app/api/item/[ItemId]/buy/route.ts
 export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
@@ -8,13 +8,13 @@ import { getOrCreateDemoUser } from "@/lib/auth";
 import { buyPriceAfterSpend, tierLabel } from "@/lib/pricing";
 
 /**
- * GET  -> return a pricing quote (no deduction)
+ * GET -> return a pricing quote (no deduction)
  * POST -> perform the purchase (deduct paid credits + record purchase)
  */
-
 function getParamItemId(params: any) {
   // ✅ accept either /api/item/[itemId]/buy or /api/item/[id]/buy
-  const raw = params?.itemId ?? params?.id ?? "";
+  // Also accept the legacy folder casing: [ItemId]
+  const raw = params?.itemId ?? params?.ItemId ?? params?.id ?? "";
   return String(raw || "").trim();
 }
 
@@ -28,6 +28,7 @@ async function buildQuote(itemId: string) {
   const now = new Date();
   const countdownOver = item.closesAt ? now > item.closesAt : false;
   const settled = item.state === "PUBLISHED" || item.state === "CLOSED" || countdownOver;
+
   if (!settled) return { ok: false as const, status: 400, error: "Not available to buy yet" };
 
   const iWon = await prisma.winner.findFirst({
@@ -62,11 +63,7 @@ async function buildQuote(itemId: string) {
     me,
     dayKey,
     price,
-    balances: {
-      paid: paidBal,
-      free: freeBal,
-      total: paidBal + freeBal,
-    },
+    balances: { paid: paidBal, free: freeBal, total: paidBal + freeBal },
   };
 }
 

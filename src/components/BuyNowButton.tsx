@@ -15,7 +15,7 @@ export function BuyNowButton({
 }) {
   const router = useRouter();
   const params = useParams() as any;
-  const resolvedItemId = itemId || params?.id || params?.itemId;
+  const resolvedItemId = itemId || params?.id || params?.itemId || params?.ItemId;
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 

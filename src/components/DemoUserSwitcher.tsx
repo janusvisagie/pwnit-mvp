@@ -17,6 +17,11 @@ export function DemoUserSwitcher({ current }: { current: string }) {
       body: JSON.stringify({ demoKey }),
     });
 
+    // Important: switching demo users does not change the URL,
+    // so client components (like CreditsPill) need an explicit signal.
+    window.dispatchEvent(new Event("pwnit:userChanged"));
+    window.dispatchEvent(new Event("pwnit:credits"));
+
     router.refresh();
   }
 
@@ -35,3 +40,5 @@ export function DemoUserSwitcher({ current }: { current: string }) {
     </div>
   );
 }
+
+export default DemoUserSwitcher;

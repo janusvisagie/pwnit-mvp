@@ -43,12 +43,28 @@ export function CreditsPill(props?: { free?: number; paid?: number }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [usingProps, pathname]);
 
-  // Refresh when game play or buy triggers a credits change
+  // Refresh when game play / buy / demo-user switch triggers a credits change
   useEffect(() => {
     if (usingProps) return;
+
     const handler = () => refresh();
+
+    // Credits updated (play, buy, etc.)
     window.addEventListener("pwnit:credits", handler as any);
-    return () => window.removeEventListener("pwnit:credits", handler as any);
+
+    // Demo user switched (cookie changes, but route may not change)
+    window.addEventListener("pwnit:userChanged", handler as any);
+
+    // Coming back to the tab: re-check balance
+    window.addEventListener("focus", handler as any);
+    document.addEventListener("visibilitychange", handler as any);
+
+    return () => {
+      window.removeEventListener("pwnit:credits", handler as any);
+      window.removeEventListener("pwnit:userChanged", handler as any);
+      window.removeEventListener("focus", handler as any);
+      document.removeEventListener("visibilitychange", handler as any);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [usingProps]);
 
