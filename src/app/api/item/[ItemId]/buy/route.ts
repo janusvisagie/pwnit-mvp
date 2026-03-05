@@ -10,15 +10,15 @@ import { tierLabel } from "@/lib/pricing";
 /**
  * Buy Now pricing rule (MVP):
  * - Item price is its prizeValueZAR (1 credit = R1 for now).
- * - Voucher/discount is 50% of the PAID credits you spent playing (today, on this item).
- * - Amount due = max(0, itemPrice - voucher)
+ * - Discount is 50% of the PAID credits you spent playing (today, on this item).
+ * - Amount due = max(0, itemPrice - discount)
  *
  * GET  -> return a quote (no deduction)
- * POST -> perform the purchase (deduct paid credits + record purchase)
+ * POST -> perform the purchase
+ *   - mode "full": pay 100% of amount due via cash top-up (no credits deducted)
+ *   - mode "mix":  use available paid credits up to amount due, and top-up the rest via cash
  */
 function getParamItemId(params: any) {
-  // Accept either /api/item/[itemId]/buy or /api/item/[id]/buy
-  // Also accept the legacy folder casing: [ItemId]
   const raw = params?.itemId ?? params?.ItemId ?? params?.id ?? "";
   return String(raw || "").trim();
 }
@@ -52,8 +52,8 @@ async function buildQuote(itemId: string) {
   const spentFreeCredits = Number(spentAgg._sum.freeUsed ?? 0);
 
   const itemPriceCredits = Number(item.prizeValueZAR ?? 0);
-  const voucherCredits = Math.max(0, Math.floor(spentPaidCredits * 0.5));
-  const amountDueCredits = Math.max(0, itemPriceCredits - voucherCredits);
+  const discountCredits = Math.max(0, Math.floor(spentPaidCredits * 0.5));
+  const amountDueCredits = Math.max(0, itemPriceCredits - discountCredits);
 
   const fresh = await prisma.user.findUnique({
     where: { id: me.id },
@@ -63,7 +63,7 @@ async function buildQuote(itemId: string) {
   const freeBal = Number((fresh as any)?.freeCreditsBalance ?? 0);
 
   const outstandingPaidNeeded = Math.max(0, amountDueCredits - paidBal);
-  const discountPct = itemPriceCredits > 0 ? Math.min(100, Math.round((voucherCredits / itemPriceCredits) * 100)) : 0;
+  const discountPct = itemPriceCredits > 0 ? Math.min(100, Math.round((discountCredits / itemPriceCredits) * 100)) : 0;
 
   return {
     ok: true as const,
@@ -77,7 +77,7 @@ async function buildQuote(itemId: string) {
       spentCredits,
       spentPaidCredits,
       spentFreeCredits,
-      voucherCredits,
+      discountCredits,
       amountDueCredits,
       outstandingPaidNeeded,
       discountPct,
@@ -99,47 +99,49 @@ export async function GET(_: Request, ctx: { params: any }) {
     priceCredits: q.pricing.itemPriceCredits,
     spentCredits: q.pricing.spentCredits,
     spentPaidCredits: q.pricing.spentPaidCredits,
-    voucherCredits: q.pricing.voucherCredits,
-    discountAppliedCredits: q.pricing.voucherCredits,
+    discountCredits: q.pricing.discountCredits,
+    voucherCredits: q.pricing.discountCredits, // backwards compat
+    discountAppliedCredits: q.pricing.discountCredits,
     discountPct: q.pricing.discountPct,
-    payCredits: q.pricing.amountDueCredits,
     amountDueCredits: q.pricing.amountDueCredits,
+    payCredits: q.pricing.amountDueCredits,
     outstandingPaidNeeded: q.pricing.outstandingPaidNeeded,
     balances: q.balances,
   });
 }
 
-export async function POST(_: Request, ctx: { params: any }) {
+export async function POST(req: Request, ctx: { params: any }) {
   try {
     const itemId = getParamItemId(ctx?.params);
     if (!itemId) return NextResponse.json({ ok: false, error: "Missing itemId" }, { status: 400 });
+
+    const body = (await req.json().catch(() => null)) as any;
+    const mode = String(body?.mode || "mix").toLowerCase();
+    const allowCreditUse = mode !== "full";
 
     const q = await buildQuote(itemId);
     if (!q.ok) return NextResponse.json({ ok: false, error: q.error }, { status: q.status });
 
     const result = await prisma.$transaction(async (tx) => {
-      const fresh = await tx.user.findUnique({ where: { id: q.me.id } });
-      const paidBal = Number(fresh?.paidCreditsBalance ?? 0);
-
-      if (paidBal < q.pricing.amountDueCredits) {
-        return {
-          ok: false as const,
-          error: "Not enough paid credits",
-          outstandingPaidNeeded: Math.max(0, q.pricing.amountDueCredits - paidBal),
-        };
-      }
-
-      // Re-check purchase inside the tx to avoid races
       const alreadyBought = await tx.itemPurchase.findFirst({
         where: { itemId, dayKey: q.dayKey, userId: q.me.id },
         select: { id: true },
       });
       if (alreadyBought) return { ok: false as const, error: "Already purchased." };
 
-      await tx.user.update({
-        where: { id: q.me.id },
-        data: { paidCreditsBalance: paidBal - q.pricing.amountDueCredits },
-      });
+      const fresh = await tx.user.findUnique({ where: { id: q.me.id } });
+      const paidBal = Number(fresh?.paidCreditsBalance ?? 0);
+
+      const amountDue = q.pricing.amountDueCredits;
+      const paidUsedNow = allowCreditUse ? min(paidBal, amountDue) : 0;
+      const cashTopUp = max(0, amountDue - paidUsedNow);
+
+      if (paidUsedNow > 0) {
+        await tx.user.update({
+          where: { id: q.me.id },
+          data: { paidCreditsBalance: paidBal - paidUsedNow },
+        });
+      }
 
       await tx.itemPurchase.create({
         data: {
@@ -149,13 +151,18 @@ export async function POST(_: Request, ctx: { params: any }) {
           priceCredits: q.pricing.itemPriceCredits,
           spentCredits: q.pricing.spentCredits,
           discountPct: q.pricing.discountPct,
-          discountCredits: q.pricing.voucherCredits,
+          discountCredits: q.pricing.discountCredits,
           payCredits: q.pricing.amountDueCredits,
           tierKey: q.pricing.tierKey,
         } as any,
       });
 
-      return { ok: true as const, newBalance: paidBal - q.pricing.amountDueCredits };
+      return {
+        ok: true as const,
+        newPaidBalance: paidBal - paidUsedNow,
+        paidUsedNow,
+        cashTopUp,
+      };
     });
 
     if (!result.ok) {
@@ -163,9 +170,10 @@ export async function POST(_: Request, ctx: { params: any }) {
         {
           ok: false,
           error: result.error,
-          outstandingPaidNeeded: (result as any).outstandingPaidNeeded ?? q.pricing.outstandingPaidNeeded,
           priceCredits: q.pricing.itemPriceCredits,
-          voucherCredits: q.pricing.voucherCredits,
+          discountCredits: q.pricing.discountCredits,
+          voucherCredits: q.pricing.discountCredits,
+          amountDueCredits: q.pricing.amountDueCredits,
           payCredits: q.pricing.amountDueCredits,
         },
         { status: 400 }
@@ -178,14 +186,24 @@ export async function POST(_: Request, ctx: { params: any }) {
       priceCredits: q.pricing.itemPriceCredits,
       spentCredits: q.pricing.spentCredits,
       spentPaidCredits: q.pricing.spentPaidCredits,
-      voucherCredits: q.pricing.voucherCredits,
-      discountAppliedCredits: q.pricing.voucherCredits,
+      discountCredits: q.pricing.discountCredits,
+      voucherCredits: q.pricing.discountCredits,
+      discountAppliedCredits: q.pricing.discountCredits,
       discountPct: q.pricing.discountPct,
-      payCredits: q.pricing.amountDueCredits,
       amountDueCredits: q.pricing.amountDueCredits,
-      newBalance: result.newBalance,
+      payCredits: q.pricing.amountDueCredits,
+      paidUsedNow: result.paidUsedNow,
+      cashTopUp: result.cashTopUp,
+      newPaidBalance: result.newPaidBalance,
     });
   } catch (e: any) {
     return NextResponse.json({ ok: false, error: e?.message || "Server error" }, { status: 500 });
   }
+}
+
+function min(a: number, b: number) {
+  return a < b ? a : b;
+}
+function max(a: number, b: number) {
+  return a > b ? a : b;
 }

@@ -168,6 +168,24 @@ export default async function ItemLeaderboardPage({ params }: { params: { id: st
           )}
         </div>
       ) : null}
-    </div>
+    
+
+      {/* Buy now (available anytime) */}
+      <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-4">
+        {meWon && (item.state === "CLOSED" || item.state === "PUBLISHED") ? (
+          <div className="text-sm font-extrabold text-slate-900">You’re a winner — no need to buy.</div>
+        ) : (
+          <>
+            <div className="text-sm font-extrabold text-slate-900">Buy now (optional)</div>
+            <div className="mt-1 text-sm text-slate-700">
+              Your <span className="font-semibold">discount</span> is <span className="font-semibold">50%</span> of the paid credits you’ve used playing this item today.
+            </div>
+            <div className="mt-3">
+              <BuyNowButton itemId={item.id} />
+            </div>
+          </>
+        )}
+      </div>
+</div>
   );
 }

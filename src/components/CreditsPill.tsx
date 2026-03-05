@@ -4,11 +4,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
 
+function formatZAR(v: number) {
+  return `R${Number(v || 0).toLocaleString("en-ZA")}`;
+}
+
 /**
  * Small, resilient credits badge for the header.
  * - If you pass balances as props, it uses them.
  * - Otherwise it fetches /api/me and listens for events to refresh.
- * - On item-related routes it also shows the "Voucher" (50% of paid credits spent on that item today).
+ * - On item-related routes it also shows the "Discount" (50% of paid credits spent on that item today).
  */
 export function CreditsPill(props?: { free?: number; paid?: number }) {
   const pathname = usePathname();
@@ -22,7 +26,7 @@ export function CreditsPill(props?: { free?: number; paid?: number }) {
     typeof props?.paid === "number" ? props!.paid : null
   );
 
-  const [voucher, setVoucher] = useState<number | null>(null);
+  const [discount, setDiscount] = useState<number | null>(null);
   const [amountDue, setAmountDue] = useState<number | null>(null);
 
   const itemIdFromPath = useMemo(() => {
@@ -46,9 +50,9 @@ export function CreditsPill(props?: { free?: number; paid?: number }) {
     }
   }
 
-  async function refreshVoucher(currentItemId: string | null) {
+  async function refreshDiscount(currentItemId: string | null) {
     if (!currentItemId) {
-      setVoucher(null);
+      setDiscount(null);
       setAmountDue(null);
       return;
     }
@@ -60,36 +64,33 @@ export function CreditsPill(props?: { free?: number; paid?: number }) {
       });
       const data: any = await res.json().catch(() => null);
       if (!res.ok || !data?.ok) {
-        // No voucher display if quote isn't available (winner / already bought / etc.)
-        setVoucher(null);
+        setDiscount(null);
         setAmountDue(null);
         return;
       }
-      const v = Number(data?.voucherCredits ?? data?.discountAppliedCredits);
+      const v = Number(data?.discountCredits ?? data?.discountAppliedCredits ?? data?.voucherCredits);
       const d = Number(data?.amountDueCredits ?? data?.payCredits);
-      setVoucher(Number.isFinite(v) ? v : null);
+      setDiscount(Number.isFinite(v) ? v : null);
       setAmountDue(Number.isFinite(d) ? d : null);
     } catch {
-      setVoucher(null);
+      setDiscount(null);
       setAmountDue(null);
     }
   }
 
-  // Initial load + refresh on route change (only when not controlled by props)
   useEffect(() => {
     if (usingProps) return;
     refreshBalance();
-    refreshVoucher(itemIdFromPath);
+    refreshDiscount(itemIdFromPath);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [usingProps, pathname]);
 
-  // Refresh when game play / buy / demo-user switch triggers a credits change
   useEffect(() => {
     if (usingProps) return;
 
     const handler = () => {
       refreshBalance();
-      refreshVoucher(itemIdFromPath);
+      refreshDiscount(itemIdFromPath);
     };
 
     window.addEventListener("pwnit:credits", handler as any);
@@ -118,11 +119,11 @@ export function CreditsPill(props?: { free?: number; paid?: number }) {
     return parts.join(" • ");
   }, [f, p]);
 
-  const voucherText = useMemo(() => {
-    if (voucher == null) return null;
-    if (amountDue == null) return `Voucher ${voucher}`;
-    return `Voucher ${voucher} • Due ${amountDue}`;
-  }, [voucher, amountDue]);
+  const discountText = useMemo(() => {
+    if (discount == null) return null;
+    if (amountDue == null) return `Discount ${formatZAR(discount)}`;
+    return `Discount ${formatZAR(discount)} • Due ${formatZAR(amountDue)}`;
+  }, [discount, amountDue]);
 
   return (
     <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-900 shadow-sm">
@@ -132,9 +133,9 @@ export function CreditsPill(props?: { free?: number; paid?: number }) {
       </span>
       <span className="text-slate-600">{details}</span>
 
-      {voucherText ? (
+      {discountText ? (
         <span className="ml-2 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-slate-700">
-          {voucherText}
+          {discountText}
         </span>
       ) : null}
     </span>
