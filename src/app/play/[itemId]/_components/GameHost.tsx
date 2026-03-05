@@ -21,7 +21,10 @@ type GameKey =
   | "stop-zero"
   | "tap-pattern";
 
-const GAME_REGISTRY: Record<GameKey, { title: string; Component: any }> = {
+const GAME_REGISTRY: Record<
+  GameKey,
+  { title: string; Component: React.ComponentType<any> }
+> = {
   "precision-timer": { title: "Precision Timer", Component: PrecisionTimerGame },
   "rhythm-hold": { title: "Rhythm Hold", Component: RhythmHoldGame },
   "tap-speed": { title: "Tap Speed", Component: TapSpeedGame },
@@ -35,65 +38,56 @@ type Props = {
   itemId: string;
   gameKey: GameKey;
   playCost: number;
-  credits: number; // TOTAL credits (free + paid)
+  credits: number; // TOTAL credits (free + paid) - used for gating only, not displayed
 };
 
 function ConfettiOverlay({ show }: { show: boolean }) {
   if (!show) return null;
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden">
-      <style>{`
-        @keyframes pwnit-fall {
-          0% { transform: translateY(-20px) rotate(0deg); opacity: 0; }
-          10% { opacity: 1; }
-          100% { transform: translateY(280px) rotate(360deg); opacity: 0; }
-        }
-      `}</style>
       {Array.from({ length: 24 }).map((_, i) => {
         const left = (i * 100) / 24;
         const delay = (i % 6) * 0.05;
         const size = 6 + (i % 4) * 2;
         return (
-          <span
+          <div
             key={i}
+            className="absolute top-0 animate-[pwnit_confetti_1.2s_ease-out_forwards] rounded-full bg-slate-900/20"
             style={{
-              position: "absolute",
               left: `${left}%`,
-              top: 0,
-              width: size,
-              height: size,
-              borderRadius: 2,
-              background: i % 2 === 0 ? "#0f172a" : "#94a3b8",
-              animation: `pwnit-fall 0.9s ease-in ${delay}s 1`,
+              width: `${size}px`,
+              height: `${size}px`,
+              animationDelay: `${delay}s`,
             }}
           />
         );
       })}
+      <style jsx global>{`
+        @keyframes pwnit_confetti {
+          0% {
+            transform: translateY(-10px);
+            opacity: 1;
+          }
+          100% {
+            transform: translateY(340px);
+            opacity: 0;
+          }
+        }
+      `}</style>
     </div>
   );
 }
 
 export default function GameHost({ itemId, gameKey, playCost, credits }: Props) {
   const router = useRouter();
-
   const canPay = credits >= playCost;
 
-  // If they can't pay, we force practice on.
+  // If they can't pay, force practice on.
   const [practiceMode, setPracticeMode] = useState(!canPay);
-
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<{ scoreMs: number } | null>(null);
   const [errMsg, setErrMsg] = useState<string | null>(null);
-
-  const [status, setStatus] = useState<null | {
-    myRank: number;
-    totalPlayers: number;
-    cutoffPct: number;
-    cutoffRank: number;
-    state: "WINNING" | "ALMOST" | "PLAYING";
-  }>(null);
-
-  const disabled = submitting;
+  const [status, setStatus] = useState<any>(null);
 
   const entry = GAME_REGISTRY[gameKey] ?? GAME_REGISTRY["precision-timer"];
   const Game = useMemo(() => entry.Component, [entry.Component]);
@@ -107,7 +101,7 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
       return;
     }
 
-    // Only show the “not enough credits” error WHEN attempting another submission.
+    // Only show the “not enough credits” error WHEN attempting submission.
     if (credits < playCost) {
       setErrMsg("Not enough credits to submit. Practice mode only.");
       return;
@@ -146,7 +140,9 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
         state: (data.status || "PLAYING") as any,
       });
 
+      // Refresh server components + tell header credits pill to re-fetch
       router.refresh();
+      window.dispatchEvent(new Event("pwnit:credits"));
     } catch (e: any) {
       setErrMsg(e?.message || "Submit failed");
     } finally {
@@ -155,92 +151,81 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
   }
 
   return (
-    <div className="space-y-4">
-      {/* Header row */}
-      <div className="flex items-center justify-between gap-3">
+    <div className="relative">
+      <ConfettiOverlay show={!!status && status.state === "WINNING"} />
+
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <div className="text-sm font-semibold text-slate-900">{entry.title}</div>
 
-        <div className="flex items-center gap-3">
-          <div className="text-xs font-semibold text-slate-700">
-            Cost: <span className="text-slate-900">{playCost}</span> • You have{" "}
-            <span className="text-slate-900">{credits}</span>
-          </div>
+        <div className="flex items-center gap-2 text-xs text-slate-700">
+          <span className="rounded-full border border-slate-200 bg-white px-2 py-1">
+            Cost: {playCost}
+          </span>
 
-          <label className="inline-flex items-center gap-2 text-xs font-semibold text-slate-700">
+          <label className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-2 py-1">
             <input
               type="checkbox"
-              checked={practiceMode || !canPay}
+              checked={practiceMode}
               onChange={(e) => setPracticeMode(e.target.checked)}
               className="h-4 w-4 rounded border-slate-300"
               disabled={!canPay}
             />
-            Practice (no score)
+            Practice
           </label>
         </div>
       </div>
 
-      {/* Only show the warning if they truly cannot pay */}
       {!canPay ? (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          <div className="font-semibold">Not enough credits to submit a score.</div>
-          <div className="mt-1 text-xs text-amber-800">Practice is enabled until you buy more credits.</div>
+        <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+          Not enough credits to submit a score. Practice is enabled until you buy more credits.
         </div>
       ) : null}
 
-      {/* Result chip */}
       {result ? (
-        <div className="text-xs text-slate-600">
-          {practiceMode ? "Practice result" : "Submitted"} • Score{" "}
-          <span className="font-semibold text-slate-900">{result.scoreMs}ms</span>
+        <div className="mb-3 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800">
+          {practiceMode ? "Practice result" : "Submitted"} • Score {result.scoreMs}ms
         </div>
       ) : null}
 
-      {/* Psychology status */}
       {status ? (
-        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm">
-          <div className="font-semibold text-slate-900">
-            Live standing: #{status.myRank} / {status.totalPlayers}
-          </div>
-          <div className="mt-1 text-xs text-slate-600">
+        <div className="mb-3 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800">
+          Live standing: #{status.myRank} / {status.totalPlayers}
+          <div className="mt-1 text-slate-600">
             Winners right now: Top {status.cutoffPct}% (#{status.cutoffRank} cutoff)
           </div>
-
           {status.state === "WINNING" ? (
-            <div className="mt-2 text-sm font-semibold text-slate-900">🎉 You’re currently in the winning zone.</div>
+            <div className="mt-1 font-semibold text-slate-900">
+              You’re currently in the winning zone.
+            </div>
           ) : status.state === "ALMOST" ? (
-            <div className="mt-2 text-sm font-semibold text-slate-900">😮 Almost won — you’re right on the edge. Try again.</div>
+            <div className="mt-1 font-semibold text-slate-900">
+              Almost won — you’re right on the edge. Try again.
+            </div>
           ) : null}
         </div>
       ) : null}
 
       {errMsg ? (
-        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+        <div className="mb-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-900">
           <div className="font-semibold">Couldn’t submit your score</div>
-          <div className="mt-1 text-xs text-rose-700">{errMsg}</div>
+          <div className="mt-1">{errMsg}</div>
         </div>
       ) : null}
 
-      {/* Game surface */}
-      <div className="relative rounded-2xl border border-slate-200 bg-slate-50 p-4">
-        <ConfettiOverlay show={!practiceMode && status?.state === "WINNING"} />
-        <Game disabled={disabled} onFinish={(r: any) => submitAttempt({ scoreMs: r.scoreMs, meta: r.meta })} />
+      <div className="rounded-2xl border border-slate-200 bg-white p-3">
+        <Game onResult={(r: any) => submitAttempt({ scoreMs: r.scoreMs, meta: r.meta })} />
       </div>
 
-      {/* Actions */}
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="mt-3 flex flex-wrap gap-2">
         <button
-          className={[
-            "inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold",
-            submitting ? "bg-slate-200 text-slate-500" : "bg-slate-900 text-white hover:bg-slate-800",
-          ].join(" ")}
+          className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-900 hover:bg-slate-50 disabled:opacity-50"
           onClick={() => router.push(`/item/${itemId}/leaderboard`)}
           disabled={submitting}
         >
           View leaderboard
         </button>
-
         <button
-          className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-slate-50"
+          className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-900 hover:bg-slate-50 disabled:opacity-50"
           onClick={() => router.push(`/item/${itemId}`)}
           disabled={submitting}
         >

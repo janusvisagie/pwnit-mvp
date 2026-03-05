@@ -36,6 +36,7 @@ export function BuyNowButton({
 
       setMsg(`Purchased! Paid ${data.payCredits} credits. New balance: ${data.newBalance}.`);
       router.refresh();
+      window.dispatchEvent(new Event("pwnit:credits"));
     } catch (e: any) {
       setMsg(e?.message || "Could not buy");
     } finally {
@@ -44,25 +45,20 @@ export function BuyNowButton({
   }
 
   return (
-    <div className="space-y-2">
+    <div className={className}>
       <button
-        type="button"
         onClick={onBuy}
         disabled={busy}
-        className={
-          className ??
-          [
-            "inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-extrabold",
-            busy ? "bg-slate-200 text-slate-500" : "bg-slate-900 text-white hover:bg-slate-800",
-          ].join(" ")
-        }
+        className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-extrabold text-white hover:bg-slate-800 disabled:opacity-50"
       >
         {children ?? (busy ? "Buying…" : "Buy Now")}
       </button>
 
       {msg ? (
-        <div className="text-xs font-semibold text-slate-700">{msg}</div>
+        <div className="mt-2 text-xs font-semibold text-slate-700">{msg}</div>
       ) : null}
     </div>
   );
 }
+
+export default BuyNowButton;

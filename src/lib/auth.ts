@@ -3,14 +3,11 @@ import { prisma } from "@/lib/db";
 import { dayKeyZA } from "@/lib/time";
 import { cookies, headers } from "next/headers";
 
-export const DAILY_FREE_CREDITS = 50;
+export const DAILY_FREE_CREDITS = 5;
 
 /**
- * IMPORTANT:
- * Your DemoUserSwitcher / DemoSessionBootstrap must store the selected demo user in a cookie.
+ * Demo user is selected via cookie.
  * This helper tries several cookie keys to avoid mismatch.
- *
- * If your switcher uses a different cookie name, add it to COOKIE_KEYS below.
  */
 const COOKIE_KEYS = [
   "pwnit_demo", // recommended
@@ -23,13 +20,12 @@ const COOKIE_KEYS = [
 
 function normalizeDemoId(raw: string | null | undefined) {
   const s = String(raw ?? "").trim().toLowerCase();
-  // allow demo1..demo99 etc
   const m = s.match(/^demo\d+$/);
   return m ? m[0] : null;
 }
 
 function getDemoIdFromRequest(): string {
-  // 1) Cookie (most common)
+  // 1) Cookie
   try {
     const jar = cookies();
     for (const key of COOKIE_KEYS) {
@@ -41,7 +37,7 @@ function getDemoIdFromRequest(): string {
     // ignore
   }
 
-  // 2) Header fallback (useful for debugging / tests)
+  // 2) Header fallback
   try {
     const h = headers();
     const id = normalizeDemoId(h.get("x-demo-user"));
@@ -54,45 +50,53 @@ function getDemoIdFromRequest(): string {
   return "demo1";
 }
 
+/**
+ * Concurrency-safe daily free-credit reset:
+ * - If the day rolled over, we reset exactly once using an atomic updateMany guard.
+ * - This prevents multiple parallel requests from resetting (or racing) at the same time.
+ */
 export async function getOrCreateDemoUser() {
   const demoId = getDemoIdFromRequest();
   const demoEmail = `${demoId}@maketiyours.local`;
-
   const today = dayKeyZA();
 
-  // Use upsert to avoid a race where concurrent requests both try to create the demo user.
-  await prisma.user.upsert({
-    where: { email: demoEmail },
-    create: {
-      email: demoEmail,
-      referralCode: "demo",
-      isGuest: true,
-
-      // free credits: start today
-      freeCreditsBalance: DAILY_FREE_CREDITS,
-      lastDailyCreditsDayKey: today,
-    } as any,
-    update: {} as any,
-  });
-
-  // Fetch current row
   let user: any = await prisma.user.findUnique({ where: { email: demoEmail } });
 
-  // ✅ Concurrency-safe daily reset:
-  // updateMany with a conditional where makes this idempotent even if multiple requests hit at once.
-  await prisma.user.updateMany({
-    where: {
-      id: user.id,
-      lastDailyCreditsDayKey: { not: today } as any,
-    } as any,
-    data: {
-      freeCreditsBalance: DAILY_FREE_CREDITS,
-      lastDailyCreditsDayKey: today,
-    } as any,
-  });
+  if (!user) {
+    user = await prisma.user.create({
+      data: {
+        email: demoEmail,
+        referralCode: "demo",
+        isGuest: true,
+        freeCreditsBalance: DAILY_FREE_CREDITS,
+        lastDailyCreditsDayKey: today,
+      } as any,
+    });
+    return user;
+  }
 
-  // Re-fetch so callers get the updated balances if a reset happened.
-  user = await prisma.user.findUnique({ where: { email: demoEmail } });
+  // Reset free credits once per day (atomic guard)
+  const lastKey = String((user as any).lastDailyCreditsDayKey ?? "");
+  if (lastKey !== today) {
+    const res = await prisma.user.updateMany({
+      where: {
+        id: user.id,
+        // only update if still on an older day
+        NOT: { lastDailyCreditsDayKey: today as any },
+      } as any,
+      data: {
+        freeCreditsBalance: DAILY_FREE_CREDITS,
+        lastDailyCreditsDayKey: today,
+      } as any,
+    });
+
+    if (res.count > 0) {
+      user = await prisma.user.findUnique({ where: { id: user.id } });
+    } else {
+      // someone else already updated; re-read to keep response consistent
+      user = await prisma.user.findUnique({ where: { id: user.id } });
+    }
+  }
 
   return user;
 }

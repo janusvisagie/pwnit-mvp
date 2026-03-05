@@ -2,10 +2,14 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 
 type Props = {
   state?: string | null;
   closesAt?: string | null;
+  closesAtIso?: string | null;
+  /** What to show when countdown hits zero */
+  labelWhenClosed?: string;
 };
 
 function formatMs(ms: number) {
@@ -17,52 +21,58 @@ function formatMs(ms: number) {
   return `${mm}:${ss}`;
 }
 
-export function CountdownChip({ state, closesAt }: Props) {
+export function CountdownChip({
+  state,
+  closesAt,
+  closesAtIso,
+  labelWhenClosed = "Closed",
+}: Props) {
+  const router = useRouter();
+  const refreshedRef = useRef(false);
+
+  const iso = closesAtIso ?? closesAt ?? null;
+
   const targetMs = useMemo(() => {
-    if (!closesAt) return null;
-    const t = Date.parse(closesAt);
+    if (!iso) return null;
+    const t = Date.parse(iso);
     return Number.isFinite(t) ? t : null;
-  }, [closesAt]);
+  }, [iso]);
 
-  const [nowMs, setNowMs] = useState<number>(() => Date.now());
-  const didRefresh = useRef(false);
+  const [nowMs, setNowMs] = useState(() => Date.now());
 
-  // Tick only when we have a valid target.
   useEffect(() => {
     if (!targetMs) return;
     const id = setInterval(() => setNowMs(Date.now()), 250);
     return () => clearInterval(id);
   }, [targetMs]);
 
-  // Hide countdown unless live.
-  const isLive = (state || "").toUpperCase() === "ACTIVATED";
+  // If caller provides state, only show when live.
+  const hasState = typeof state === "string" && state.length > 0;
+  const isLive = !hasState || (state || "").toUpperCase() === "ACTIVATED";
+
   if (!isLive || !targetMs) return null;
 
   const remaining = targetMs - nowMs;
+
   if (remaining <= 0) {
-    // Avoid “Ending…” getting stuck: once we hit zero, refresh once so server-rendered
-    // pages can transition to CLOSED/PUBLISHED.
-    if (!didRefresh.current) {
-      didRefresh.current = true;
-      setTimeout(() => {
-        try {
-          window.location.reload();
-        } catch {
-          /* no-op */
-        }
-      }, 600);
+    // Refresh once to allow the server-rendered pages to transition state.
+    if (!refreshedRef.current) {
+      refreshedRef.current = true;
+      // small delay ensures UI paints first
+      setTimeout(() => router.refresh(), 150);
     }
     return (
-      <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-extrabold text-slate-900 ring-1 ring-slate-200">
-        Closed
+      <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-700">
+        {labelWhenClosed}
       </span>
     );
   }
 
   return (
-    <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-extrabold tabular-nums text-slate-900 ring-1 ring-slate-200">
-      <span className="mr-1 text-slate-600">Ends in</span>
+    <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-700">
       {formatMs(remaining)}
     </span>
   );
 }
+
+export default CountdownChip;
