@@ -153,30 +153,17 @@ export default async function ItemPage({ params }: { params: { id: string } }) {
       {/* Buy-if-you-didn't-win */}
       {(item.state === "CLOSED" || item.state === "PUBLISHED") ? (
         <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-4">
-          {meWon ? (
-            <>
-              <div className="text-sm font-extrabold text-slate-900">
-                You won — no need to buy.
-              </div>
-              <div className="mt-3">
-                <Link
-                  className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-900"
-                  href={`/item/${item.id}/leaderboard`}
-                >
-                  View results
-                </Link>
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="text-sm font-extrabold text-slate-900">
-                Didn’t win? Buy it by paying the difference.
-              </div>
-              <div className="mt-3">
-                <BuyNowButton itemId={item.id} />
-              </div>
-            </>
-          )}
+          <div className="text-sm font-extrabold text-slate-900">
+            {meWon ? "You won — no need to buy." : "Results available."}
+          </div>
+          <div className="mt-3">
+            <Link
+              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-900"
+              href={`/item/${item.id}/leaderboard`}
+            >
+              View results
+            </Link>
+          </div>
         </div>
       ) : null}
 
@@ -196,9 +183,9 @@ export default async function ItemPage({ params }: { params: { id: string } }) {
           </>
         ) : (
           <>
-            <div className="text-sm font-extrabold text-slate-900">Buy now (optional)</div>
+            <div className="text-sm font-extrabold text-slate-900">Didn’t win? Buy it by paying the difference.</div>
             <div className="mt-1 text-sm text-slate-700">
-              You can buy the item anytime. Your <span className="font-semibold">discount</span> is{' '}
+              You can buy the item anytime by paying the difference. Your <span className="font-semibold">discount</span> is{' '}
               <span className="font-semibold">50%</span> of the paid credits you’ve used playing this item today.
             </div>
             <div className="mt-3">
