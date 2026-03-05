@@ -2,23 +2,25 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 
 export function BuyNowButton({
   itemId,
   className,
   children,
 }: {
-  itemId: string;
+  itemId?: string;
   className?: string;
   children?: React.ReactNode;
 }) {
   const router = useRouter();
+  const params = useParams() as any;
+  const resolvedItemId = itemId || params?.id || params?.itemId;
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
   async function onBuy() {
-    if (!itemId) {
+    if (!resolvedItemId) {
       setMsg("Missing itemId");
       return;
     }
@@ -26,7 +28,7 @@ export function BuyNowButton({
     setMsg(null);
 
     try {
-      const res = await fetch(`/api/item/${itemId}/buy`, { method: "POST" });
+      const res = await fetch(`/api/item/${resolvedItemId}/buy`, { method: "POST" });
       const data = await res.json().catch(() => null);
 
       if (!res.ok || !data?.ok) {

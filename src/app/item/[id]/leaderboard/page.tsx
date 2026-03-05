@@ -69,7 +69,7 @@ export default async function ItemLeaderboardPage({ params }: { params: { id: st
     .map((b, idx) => ({
       rank: idx + 1,
       userId: b.userId,
-      alias: aliasMap.get(b.userId) ?? "Anonymous",
+      alias: (b.userId === me.id ? ((me as any).alias?.trim() || aliasMap.get(b.userId)) : aliasMap.get(b.userId)) ?? "Anonymous",
       scoreMs: (b as any)._min.scoreMs as number,
       isMe: b.userId === me.id,
     }));

@@ -2,9 +2,17 @@
 
 import { useState } from "react";
 
-export default function TapSpeedGame({ onFinish, disabled }: any) {
-  const [phase, setPhase] = useState<"idle"|"wait"|"go">("idle");
-  const [start, setStart] = useState<number>(0);
+export default function TapSpeedGame(props: any) {
+  const { onFinish, onResult, disabled } = props ?? {};
+  const finish =
+    typeof onFinish === "function"
+      ? onFinish
+      : typeof onResult === "function"
+        ? onResult
+        : null;
+
+  const [phase, setPhase] = useState<"idle" | "wait" | "go">("idle");
+  const [start, setStart] = useState(0);
 
   function begin() {
     if (disabled) return;
@@ -19,31 +27,38 @@ export default function TapSpeedGame({ onFinish, disabled }: any) {
   function tap() {
     if (phase !== "go") return;
     const ms = Date.now() - start;
-    onFinish({ scoreMs: ms });
+    if (finish) finish({ scoreMs: ms });
     setPhase("idle");
   }
 
   return (
-    <div className="space-y-3 text-center">
-      <div className="font-semibold">Tap when it turns green</div>
+    <div className="space-y-3">
+      <div className="text-sm font-extrabold text-slate-900">Tap Speed</div>
+      <div className="text-xs text-slate-700">Tap as soon as it turns green. Lower ms is better.</div>
 
-      {phase === "idle" && (
-        <button className="rounded-xl bg-slate-900 px-6 py-3 text-white font-bold"
-          onClick={begin}>Start</button>
-      )}
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 text-center">
+        {phase === "idle" && (
+          <button
+            className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-extrabold text-white disabled:opacity-50"
+            onClick={begin}
+            disabled={!!disabled}
+          >
+            Start
+          </button>
+        )}
 
-      {phase === "wait" && (
-        <div className="h-16 bg-red-400 rounded-xl flex items-center justify-center text-white font-bold">
-          Wait…
-        </div>
-      )}
+        {phase === "wait" && <div className="text-sm font-semibold text-slate-700">Wait…</div>}
 
-      {phase === "go" && (
-        <button onClick={tap}
-          className="h-16 w-full bg-green-500 rounded-xl text-white font-bold">
-          TAP NOW
-        </button>
-      )}
+        {phase === "go" && (
+          <button
+            className="w-full rounded-xl bg-green-600 px-4 py-3 text-sm font-extrabold text-white disabled:opacity-50"
+            onClick={tap}
+            disabled={!!disabled}
+          >
+            TAP NOW
+          </button>
+        )}
+      </div>
     </div>
   );
 }

@@ -213,7 +213,7 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
       ) : null}
 
       <div className="rounded-2xl border border-slate-200 bg-white p-3">
-        <Game onResult={(r: any) => submitAttempt({ scoreMs: r.scoreMs, meta: r.meta })} />
+        <Game onFinish={(r: any) => submitAttempt({ scoreMs: r.scoreMs, meta: r.meta })} onResult={(r: any) => submitAttempt({ scoreMs: r.scoreMs, meta: r.meta })} disabled={submitting} />
       </div>
 
       <div className="mt-3 flex flex-wrap gap-2">

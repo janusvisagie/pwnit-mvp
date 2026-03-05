@@ -23,7 +23,7 @@ export function CreditsPill(props?: { free?: number; paid?: number }) {
 
   async function refresh() {
     try {
-      const res = await fetch("/api/me", { method: "GET" });
+      const res = await fetch("/api/me", { method: "GET", cache: "no-store" });
       if (!res.ok) return;
       const data: any = await res.json().catch(() => null);
       if (!data) return;

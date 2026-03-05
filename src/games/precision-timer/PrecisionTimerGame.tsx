@@ -3,12 +3,20 @@
 import { useEffect, useRef, useState } from "react";
 import type { GameProps } from "../types";
 
-export default function PrecisionTimerGame({ onFinish, disabled }: GameProps) {
-  const TARGET_MS = 3000;
+export default function PrecisionTimerGame(props: GameProps & { onResult?: any }) {
+  const { onFinish, disabled } = props as any;
+  const onResult = (props as any)?.onResult;
 
+  const finish =
+    typeof onFinish === "function"
+      ? onFinish
+      : typeof onResult === "function"
+        ? onResult
+        : null;
+
+  const TARGET_MS = 3000;
   const [running, setRunning] = useState(false);
   const [elapsed, setElapsed] = useState(0);
-
   const startAt = useRef<number | null>(null);
   const raf = useRef<number | null>(null);
 
@@ -38,49 +46,42 @@ export default function PrecisionTimerGame({ onFinish, disabled }: GameProps) {
     const ms = Date.now() - startAt.current;
     setRunning(false);
     const error = Math.abs(ms - TARGET_MS);
-    onFinish({ scoreMs: error, meta: { stoppedAtMs: ms, targetMs: TARGET_MS } });
+    if (finish) finish({ scoreMs: error, meta: { stoppedAtMs: ms, targetMs: TARGET_MS } });
   };
 
   return (
-    <div className="grid gap-3">
+    <div className="space-y-3">
       <div className="text-sm font-extrabold text-slate-900">Precision Timer</div>
-      <div className="text-xs text-slate-600">
-        Stop at exactly <span className="font-semibold text-slate-900">{(TARGET_MS / 1000).toFixed(3)}s</span>.
-        Score = error in ms (lower is better).
+      <div className="text-xs text-slate-700">
+        Stop at exactly {(TARGET_MS / 1000).toFixed(3)}s. Score = error in ms (lower is better).
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white px-4 py-5 text-center">
-        <div className="text-4xl font-extrabold tabular-nums text-slate-900">
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 text-center">
+        <div className="text-4xl font-black tabular-nums text-slate-900">
           {(elapsed / 1000).toFixed(3)}s
         </div>
-        <div className="mt-1 text-[11px] font-semibold text-slate-500">
+        <div className="mt-1 text-xs font-semibold text-slate-600">
           Target: {(TARGET_MS / 1000).toFixed(3)}s
         </div>
       </div>
 
-      <div className="flex gap-2">
-        {!running ? (
-          <button
-            onClick={start}
-            disabled={disabled}
-            className={[
-              "inline-flex flex-1 items-center justify-center rounded-xl px-4 py-3 text-sm font-extrabold",
-              disabled
-                ? "bg-slate-200 text-slate-500"
-                : "bg-slate-900 text-white hover:bg-slate-800 active:scale-[0.99]",
-            ].join(" ")}
-          >
-            Start
-          </button>
-        ) : (
-          <button
-            onClick={stop}
-            className="inline-flex flex-1 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-extrabold text-slate-900 hover:bg-slate-50 active:scale-[0.99]"
-          >
-            Stop
-          </button>
-        )}
-      </div>
+      {!running ? (
+        <button
+          className="w-full rounded-xl bg-slate-900 px-4 py-2 text-sm font-extrabold text-white disabled:opacity-50"
+          onClick={start}
+          disabled={!!disabled}
+        >
+          Start
+        </button>
+      ) : (
+        <button
+          className="w-full rounded-xl bg-slate-900 px-4 py-2 text-sm font-extrabold text-white disabled:opacity-50"
+          onClick={stop}
+          disabled={!!disabled}
+        >
+          Stop
+        </button>
+      )}
     </div>
   );
 }
