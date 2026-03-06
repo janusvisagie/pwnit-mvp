@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" fill="none">
+  <rect width="800" height="600" rx="40" fill="#F8FAFC"/>
+  <path d="M250 310V250C250 167 317 100 400 100C483 100 550 167 550 250V310" stroke="#0F172A" stroke-width="34" stroke-linecap="round"/>
+  <rect x="218" y="285" width="84" height="160" rx="34" fill="#111827"/>
+  <rect x="498" y="285" width="84" height="160" rx="34" fill="#111827"/>
+  <rect x="242" y="310" width="36" height="110" rx="16" fill="#334155"/>
+  <rect x="522" y="310" width="36" height="110" rx="16" fill="#334155"/>
+  <text x="400" y="520" text-anchor="middle" fill="#334155" font-size="40" font-family="Arial" font-weight="700">HEADPHONES</text>
+</svg>

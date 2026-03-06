@@ -2,18 +2,16 @@ export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { dayKeyZA } from "@/lib/time";
 import { getOrCreateDemoUser } from "@/lib/auth";
-import { buyPriceAfterSpend, tierLabel } from "@/lib/pricing";
+import { buyPriceAfterSpend } from "@/lib/pricing";
 
 function getParamItemId(params: any) {
-  const raw = params?.ItemId ?? params?.itemId ?? params?.id ?? "";
+  const raw = params?.itemId ?? params?.ItemId ?? params?.id ?? "";
   return String(raw || "").trim();
 }
 
 async function buildQuote(itemId: string) {
   const me = await getOrCreateDemoUser();
-  const dayKey = dayKeyZA();
 
   const item = await prisma.item.findUnique({ where: { id: itemId } });
   if (!item) return { ok: false as const, status: 404, error: "Item not found" };
@@ -22,18 +20,17 @@ async function buildQuote(itemId: string) {
     where: { itemId, userId: me.id },
     select: { id: true },
   });
-  if (iWon) return { ok: false as const, status: 400, error: "You’re a winner — no need to buy." };
+  if (iWon) return { ok: false as const, status: 400, error: "You won this item — no need to buy." };
 
   const agg = await prisma.attempt.aggregate({
     where: { itemId, userId: me.id },
     _sum: { paidUsed: true },
   });
-  const spentCredits = Number(agg._sum.paidUsed ?? 0);
+  const spentPaidCredits = Number(agg._sum.paidUsed ?? 0);
 
   const price = buyPriceAfterSpend({
     prizeValueZAR: item.prizeValueZAR,
-    tierNumber: item.tier,
-    spentCredits,
+    spentPaidCredits,
   });
 
   const fresh = await prisma.user.findUnique({
@@ -48,7 +45,6 @@ async function buildQuote(itemId: string) {
     status: 200,
     item,
     me,
-    dayKey,
     price,
     balances: {
       paid: paidBal,
@@ -67,10 +63,8 @@ export async function GET(_: Request, ctx: { params: any }) {
 
   return NextResponse.json({
     ok: true,
-    tier: tierLabel(q.price.tierKey),
-    discountPct: q.price.discountPct,
     priceCredits: q.price.priceCredits,
-    spentCredits: q.price.spentCredits,
+    spentPaidCredits: q.price.spentPaidCredits,
     discountAppliedCredits: q.price.appliedDiscount,
     payCredits: q.price.payCredits,
     balances: q.balances,
@@ -87,40 +81,40 @@ export async function POST(_: Request, ctx: { params: any }) {
 
     const result = await prisma.$transaction(async (tx) => {
       const fresh = await tx.user.findUnique({ where: { id: q.me.id } });
-      const bal = Number(fresh?.paidCreditsBalance ?? 0);
+      const paidBal = Number(fresh?.paidCreditsBalance ?? 0);
 
-      if (bal < q.price.payCredits) return { ok: false as const, error: "Not enough paid credits" };
+      if (paidBal < q.price.payCredits) {
+        return { ok: false as const, error: `Not enough paid credits. You still need R${q.price.payCredits}.` };
+      }
 
       await tx.user.update({
         where: { id: q.me.id },
-        data: { paidCreditsBalance: bal - q.price.payCredits },
+        data: { paidCreditsBalance: paidBal - q.price.payCredits },
       });
 
       await tx.itemPurchase.create({
         data: {
           itemId,
           userId: q.me.id,
-          dayKey: q.dayKey,
+          dayKey: new Date().toISOString().slice(0, 10),
           priceCredits: q.price.priceCredits,
-          spentCredits: q.price.spentCredits,
-          discountPct: q.price.discountPct,
+          spentCredits: q.price.spentPaidCredits,
+          discountPct: 100,
           discountCredits: q.price.appliedDiscount,
           payCredits: q.price.payCredits,
-          tierKey: q.price.tierKey,
+          tierKey: "DIRECT_BUY",
         } as any,
       });
 
-      return { ok: true as const, newBalance: bal - q.price.payCredits };
+      return { ok: true as const, newBalance: paidBal - q.price.payCredits };
     });
 
     if (!result.ok) return NextResponse.json({ ok: false, error: result.error }, { status: 400 });
 
     return NextResponse.json({
       ok: true,
-      tier: tierLabel(q.price.tierKey),
-      discountPct: q.price.discountPct,
       priceCredits: q.price.priceCredits,
-      spentCredits: q.price.spentCredits,
+      spentPaidCredits: q.price.spentPaidCredits,
       discountAppliedCredits: q.price.appliedDiscount,
       payCredits: q.price.payCredits,
       newBalance: result.newBalance,

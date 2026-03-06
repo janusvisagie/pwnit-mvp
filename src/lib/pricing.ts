@@ -1,44 +1,28 @@
-export type TierKey = "PWN_STANDARD";
-
 export const ZAR_PER_CREDIT = 1;
 
-export function tierKeyFromTierNumber(_tier: number): TierKey {
-  return "PWN_STANDARD";
-}
-
-export function discountPctForTierKey(_k: TierKey): number {
-  return 100;
-}
-
-export function itemPriceCredits(prizeValueZAR: number): number {
+export function itemPriceCredits(prizeValueZAR: number) {
   return Math.max(0, Math.ceil((prizeValueZAR || 0) / ZAR_PER_CREDIT));
 }
 
+/**
+ * MVP rule:
+ * - Discount is 100% of PAID credits already spent playing THIS item
+ * - Discount can never exceed the item price
+ */
 export function buyPriceAfterSpend(params: {
   prizeValueZAR: number;
-  tierNumber: number;
-  spentCredits: number;
+  spentPaidCredits: number;
 }) {
   const price = itemPriceCredits(params.prizeValueZAR);
-  const tierKey = tierKeyFromTierNumber(params.tierNumber);
-  const discountPct = discountPctForTierKey(tierKey);
-
-  const spent = Math.max(0, Math.floor(params.spentCredits || 0));
-  const discountCredits = spent;
-  const appliedDiscount = Math.min(price, discountCredits);
+  const spentPaidCredits = Math.max(0, Math.floor(params.spentPaidCredits || 0));
+  const appliedDiscount = Math.min(price, spentPaidCredits);
   const payCredits = Math.max(0, price - appliedDiscount);
 
   return {
-    tierKey,
-    discountPct,
     priceCredits: price,
-    spentCredits: spent,
-    discountCredits,
+    spentPaidCredits,
+    discountPct: 100,
     appliedDiscount,
     payCredits,
   };
-}
-
-export function tierLabel(_k: TierKey) {
-  return "Standard";
 }

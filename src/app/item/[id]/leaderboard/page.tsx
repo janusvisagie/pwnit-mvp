@@ -29,6 +29,7 @@ export default async function ItemLeaderboardPage({ params }: { params: { id: st
     take: 200,
     select: { userId: true, rank: true, scoreMs: true, alias: true },
   });
+
   const meWon = winners.some((w) => w.userId === me.id);
 
   const best = await prisma.attempt.groupBy({
@@ -50,9 +51,7 @@ export default async function ItemLeaderboardPage({ params }: { params: { id: st
       })
     : [];
 
-  const aliasMap = new Map(
-    users.map((u) => [u.id, (u.alias && u.alias.trim()) || (u.email?.split("@")[0] ?? "Anonymous")])
-  );
+  const aliasMap = new Map(users.map((u) => [u.id, (u.alias && u.alias.trim()) || (u.email?.split("@")[0] ?? "Anonymous")]));
 
   const rows = best
     .filter((b) => typeof b._min.scoreMs === "number")
@@ -63,8 +62,6 @@ export default async function ItemLeaderboardPage({ params }: { params: { id: st
       scoreMs: b._min.scoreMs as number,
       isMe: b.userId === me.id,
     }));
-
-  const totalPlayers = rows.length;
 
   return (
     <main className="mx-auto max-w-3xl space-y-4 p-4">
@@ -81,9 +78,11 @@ export default async function ItemLeaderboardPage({ params }: { params: { id: st
           <Link className="text-sm font-semibold text-slate-900 hover:underline" href={`/item/${itemId}`}>
             ← Item
           </Link>
-          <Link className="inline-flex items-center justify-center rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-extrabold text-white shadow-sm hover:bg-slate-800" href={`/play/${itemId}`}>
-            Play
-          </Link>
+          {(item.state === "OPEN" || item.state === "ACTIVATED") ? (
+            <Link className="inline-flex items-center justify-center rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-extrabold text-white shadow-sm hover:bg-slate-800" href={`/play/${itemId}`}>
+              Play
+            </Link>
+          ) : null}
         </div>
       </div>
 
@@ -92,7 +91,7 @@ export default async function ItemLeaderboardPage({ params }: { params: { id: st
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
         <div className="border-b border-slate-200 bg-slate-50 px-4 py-3">
           <div className="font-extrabold">Live scores (best per player)</div>
-          <div className="text-xs text-slate-600">Lower ms is better • Players: <span className="font-semibold text-slate-900">{totalPlayers}</span></div>
+          <div className="text-xs text-slate-600">Lower ms is better • Players: <span className="font-semibold text-slate-900">{rows.length}</span></div>
         </div>
 
         <div className="grid grid-cols-[80px_1fr_110px] px-4 py-2 text-xs font-bold text-slate-600">
@@ -105,36 +104,29 @@ export default async function ItemLeaderboardPage({ params }: { params: { id: st
           <div className="px-4 py-4 text-sm text-slate-600">No scores yet.</div>
         ) : (
           rows.map((r) => (
-            <div
-              key={r.userId}
-              className={[
-                "grid grid-cols-[80px_1fr_110px] items-center border-t border-slate-100 px-4 py-3",
-                r.rank === 1 ? "bg-amber-50" : "",
-                r.isMe ? "ring-inset ring-1 ring-slate-200" : "",
-              ].join(" ")}
-            >
+            <div key={r.userId} className={["grid grid-cols-[80px_1fr_110px] items-center border-t border-slate-100 px-4 py-3", r.isMe ? "bg-slate-50" : ""].join(" ")}>
               <div className="font-semibold">#{r.rank}</div>
-              <div className="font-semibold text-slate-900">
-                {r.alias}
-                {r.isMe ? <span className="ml-2 rounded-full bg-slate-900 px-2 py-0.5 text-[11px] font-extrabold text-white">YOU</span> : null}
-                {r.rank === 1 ? <span className="ml-2 rounded-full bg-amber-300 px-2 py-0.5 text-[11px] font-extrabold text-slate-900">WINNING</span> : null}
-              </div>
+              <div className="font-semibold text-slate-900">{r.alias}{r.isMe ? <span className="ml-2 rounded-full bg-slate-900 px-2 py-0.5 text-[11px] font-extrabold text-white">YOU</span> : null}</div>
               <div className="text-right font-semibold tabular-nums">{r.scoreMs}</div>
             </div>
           ))
         )}
       </section>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-4">
-        {meWon ? (
-          <div className="text-sm font-semibold text-slate-900">🎉 You&apos;re a winner — no need to buy.</div>
-        ) : (
-          <div className="space-y-2">
-            <div className="text-sm font-extrabold text-slate-900">Didn&apos;t win? Buy it by paying the difference.</div>
+      {meWon ? (
+        <section className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+          <div className="text-sm font-semibold text-emerald-900">🎉 You won this item. No purchase needed.</div>
+        </section>
+      ) : (
+        <section className="rounded-2xl border border-slate-200 bg-white p-4">
+          <div className="text-sm font-extrabold text-slate-900">Didn’t win?</div>
+          <div className="mt-1 text-sm text-slate-600">Buy it by paying the difference.</div>
+          <div className="mt-2 text-xs text-slate-600">Your paid credits spent playing this item count as your discount.</div>
+          <div className="mt-3">
             <BuyNowButton itemId={itemId} />
           </div>
-        )}
-      </section>
+        </section>
+      )}
     </main>
   );
 }

@@ -35,7 +35,7 @@ function minutesLeft(closesAtIso?: string | null) {
 }
 
 function gameLabel(k?: string | null) {
-  if (!k) return null;
+  if (!k) return "Skill game";
   if (k === "precision-timer") return "Precision Timer";
   if (k === "rhythm-hold") return "Rhythm Hold";
   if (k === "tap-speed") return "Tap Speed";
@@ -46,109 +46,92 @@ function gameLabel(k?: string | null) {
   return k;
 }
 
+function statusLabel(state: string, pct: number, remaining: number, closesAt?: string | null) {
+  if (state === "PUBLISHED" || state === "CLOSED") return "Closed";
+  if (state === "ACTIVATED") return "Live now";
+  const mins = minutesLeft(closesAt);
+  if (mins != null && mins <= 3) return "Ending soon";
+  if (remaining <= 1) return "Almost live";
+  if (pct >= 67) return "Going live soon";
+  return "Open";
+}
+
 export function ItemCard({ item }: { item: ItemCardModel }) {
   const [imgOk, setImgOk] = useState(true);
 
   const pct = progressPct(item.totalEntriesToday, item.activationGoalEntries);
   const remaining = Math.max(0, (item.activationGoalEntries || 0) - (item.totalEntriesToday || 0));
-  const showEndsIn = item.state === "ACTIVATED" && !!item.closesAt;
   const closed = item.state === "CLOSED" || item.state === "PUBLISHED";
   const deepLink = item.state === "PUBLISHED" ? `/item/${item.id}/leaderboard` : `/item/${item.id}`;
-
-  const hot = useMemo(() => {
-    if (closed) return false;
-    if (item.state === "ACTIVATED") return true;
-    if (item.state === "OPEN" && pct >= 67) return true;
-    if (item.state === "OPEN" && remaining <= 1) return true;
-
-    const mins = minutesLeft(item.closesAt);
-    if (item.state === "ACTIVATED" && mins != null && mins <= 3) return true;
-
-    return false;
-  }, [item.state, pct, remaining, item.closesAt, closed]);
-
-  const urgencyText = useMemo(() => {
-    if (closed) return "Results available";
-    if (item.state === "ACTIVATED") return "Live now";
-    if (item.state === "OPEN" && remaining > 0 && remaining <= 1) return `Only ${remaining} more play to go`;
-    if (item.state === "OPEN" && pct >= 67) return "Almost live";
-    return null;
-  }, [item.state, remaining, pct, closed]);
-
+  const showEndsIn = item.state === "ACTIVATED" && !!item.closesAt;
+  const status = useMemo(() => statusLabel(item.state, pct, remaining, item.closesAt), [item.state, pct, remaining, item.closesAt]);
   const gLabel = gameLabel(item.gameKey);
 
   return (
     <Link
       href={deepLink}
-      className="group relative flex flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+      className="group relative overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg"
     >
-      <div className="relative flex h-[180px] items-center justify-center overflow-hidden bg-slate-50 p-4">
+      <div className="relative aspect-[4/3] overflow-hidden bg-gradient-to-br from-slate-100 to-white">
         {item.imageUrl && imgOk ? (
+          // eslint-disable-next-line @next/next/no-img-element
           <img
             src={item.imageUrl}
             alt={item.title}
-            className="max-h-full max-w-full object-contain transition duration-300 group-hover:scale-[1.03]"
+            className="h-full w-full object-contain p-5 transition duration-300 group-hover:scale-[1.03]"
             onError={() => setImgOk(false)}
           />
         ) : (
-          <div className="text-xs text-slate-500">Image missing</div>
+          <div className="flex h-full items-center justify-center text-sm font-semibold text-slate-400">Image coming soon</div>
         )}
 
-        <div className="absolute right-3 top-3 rounded-full bg-slate-900 px-3 py-1 text-xs font-extrabold text-white shadow">
+        <div className="absolute left-4 top-4 rounded-full bg-white/90 px-3 py-1 text-[11px] font-extrabold uppercase tracking-wide text-slate-900 shadow-sm ring-1 ring-slate-200 backdrop-blur">
+          {status}
+        </div>
+
+        <div className="absolute right-4 top-4 rounded-2xl bg-slate-900 px-3 py-1.5 text-sm font-extrabold text-white shadow">
           {formatZAR(item.prizeValueZAR)}
         </div>
 
-        {hot ? (
-          <div className="absolute left-3 top-3 rounded-full bg-amber-300 px-3 py-1 text-[11px] font-extrabold text-slate-900 shadow">
-            Hot
-          </div>
-        ) : null}
-
         {showEndsIn ? (
-          <div className="absolute left-3 bottom-3 rounded-full bg-white/95 px-3 py-1 text-xs font-semibold text-slate-900 shadow ring-1 ring-slate-200 backdrop-blur">
-            Ends in <CountdownChip state={item.state} closesAt={item.closesAt ?? null} />
+          <div className="absolute bottom-4 left-4 rounded-full bg-white/90 px-3 py-1 text-xs font-semibold text-slate-900 shadow-sm ring-1 ring-slate-200 backdrop-blur">
+            <span className="mr-2 text-slate-600">Ends in</span>
+            <CountdownChip state={item.state} closesAt={item.closesAt ?? null} />
           </div>
         ) : null}
 
         {closed ? (
-          <div className="pointer-events-none absolute inset-0">
-            <div className="absolute -left-12 top-8 w-[320px] -rotate-12 bg-slate-900/90 px-4 py-2 text-center text-xs font-extrabold uppercase tracking-wide text-white shadow">
-              Prize claimed
+          <div className="pointer-events-none absolute inset-0 overflow-hidden">
+            <div className="absolute -left-20 top-8 w-[140%] -rotate-12 bg-slate-900/92 py-2 text-center text-xs font-extrabold uppercase tracking-[0.18em] text-white shadow-lg">
+              Closed
             </div>
           </div>
         ) : null}
       </div>
 
-      <div className="flex flex-1 flex-col px-4 py-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <div className="truncate text-base font-extrabold text-slate-900">{item.title}</div>
-            <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-slate-600">
-              {gLabel ? (
-                <span className="rounded-full bg-slate-50 px-2.5 py-1 font-semibold text-slate-700 ring-1 ring-slate-200">
-                  {gLabel}
-                </span>
-              ) : null}
-              {urgencyText ? <span className="font-semibold text-slate-700">{urgencyText}</span> : null}
-            </div>
-          </div>
-          <div className="rounded-full bg-slate-50 px-2.5 py-1 text-[11px] font-extrabold text-slate-900 ring-1 ring-slate-200">
-            {pct}%
+      <div className="space-y-3 p-4">
+        <div>
+          <h3 className="line-clamp-1 text-base font-extrabold text-slate-900">{item.title}</h3>
+          <div className="mt-1 flex items-center gap-2 text-xs text-slate-600">
+            <span className="rounded-full bg-slate-50 px-2.5 py-1 font-semibold ring-1 ring-slate-200">{gLabel}</span>
+            {typeof item.playCostCredits === "number" ? (
+              <span>{item.playCostCredits} {item.playCostCredits === 1 ? "credit" : "credits"} / play</span>
+            ) : null}
           </div>
         </div>
 
-        <div className="mt-4 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Activation progress</div>
-        <div className="mt-1 flex items-center justify-between gap-2 text-sm text-slate-700">
-          <span>
-            {item.totalEntriesToday}/{item.activationGoalEntries} plays
-          </span>
-          <span className="font-semibold text-slate-900">
-            {item.playCostCredits ?? 0} {(item.playCostCredits ?? 0) === 1 ? "credit" : "credits"}/play
-          </span>
-        </div>
-
-        <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-slate-200">
-          <div className="h-full bg-slate-900 transition-all duration-500" style={{ width: `${pct}%` }} />
+        <div className="rounded-2xl bg-slate-50 p-3 ring-1 ring-slate-200">
+          <div className="mb-2 flex items-center justify-between text-[11px] font-bold uppercase tracking-wide text-slate-500">
+            <span>Activation threshold</span>
+            <span>{item.activationGoalEntries} plays</span>
+          </div>
+          <div className="h-2.5 overflow-hidden rounded-full bg-slate-200">
+            <div className="h-full rounded-full bg-slate-900 transition-all duration-500" style={{ width: `${pct}%` }} />
+          </div>
+          <div className="mt-2 flex items-center justify-between text-sm">
+            <span className="font-semibold text-slate-900">{item.totalEntriesToday} / {item.activationGoalEntries} plays</span>
+            <span className="text-slate-600">{closed || item.state === "ACTIVATED" ? status : `${remaining} to go`}</span>
+          </div>
         </div>
       </div>
     </Link>

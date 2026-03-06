@@ -28,9 +28,9 @@ export default async function HomePage() {
   const winnersMap = new Map(winnerCounts.map((w) => [w.itemId, w._count._all]));
 
   for (const item of items) {
-    const totalEntries = entryMap.get(item.id) ?? 0;
+    const totalAttempts = entryMap.get(item.id) ?? 0;
 
-    if (item.state === "OPEN" && totalEntries >= item.activationGoalEntries) {
+    if (item.state === "OPEN" && totalAttempts >= item.activationGoalEntries) {
       const closes = new Date(now.getTime() + item.countdownMinutes * 60_000);
       await prisma.item.update({
         where: { id: item.id },
@@ -62,49 +62,46 @@ export default async function HomePage() {
   const anyActivated = refreshed.some((it) => it.state === "ACTIVATED");
 
   return (
-    <main className="flex h-full min-h-0 flex-col gap-3 overflow-hidden pb-1">
+    <main className="flex min-h-0 flex-col gap-4 pb-2">
       <WelcomeModal />
       <AutoRefreshActivated enabled={anyActivated} everyMs={10_000} />
 
-      <div className="shrink-0 text-xs text-slate-600">
-        Logged in as <span className="font-semibold text-slate-900">{user.email}</span>
-      </div>
-
-      <section className="shrink-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="text-lg font-extrabold tracking-tight text-slate-900">Choose a prize. Play a skill game. Win.</div>
-        <div className="mt-1 text-sm text-slate-600">Or buy it if you don&apos;t.</div>
+      <section className="rounded-3xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
+        <div className="text-sm font-semibold text-slate-600">Logged in as <span className="text-slate-900">{user.email}</span></div>
+        <h1 className="mt-1 text-2xl font-extrabold tracking-tight text-slate-900">Choose a prize. Play a skill game. Win.</h1>
+        <p className="mt-1 text-sm text-slate-600">Or buy it if you don’t.</p>
       </section>
 
-      <div className="grid flex-1 min-h-0 grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {refreshed.length === 0 ? (
-          <div className="col-span-full rounded-2xl border border-slate-200 bg-white p-6">
-            <div className="text-base font-extrabold text-slate-900">No items yet</div>
-            <div className="mt-1 text-sm text-slate-600">Seed the MVP items to populate the home page.</div>
-            <div className="mt-3 text-sm">
-              <span className="mr-2 font-semibold text-slate-900">Run:</span>
-              <code className="rounded bg-slate-100 px-2 py-1 text-xs">npm run db:seed</code>
-            </div>
+      {refreshed.length === 0 ? (
+        <div className="rounded-2xl border border-slate-200 bg-white p-6">
+          <div className="text-base font-extrabold text-slate-900">No items yet</div>
+          <div className="mt-1 text-sm text-slate-600">Seed the MVP items to populate the marketplace.</div>
+          <div className="mt-3 text-sm">
+            <span className="mr-2 font-semibold text-slate-900">Run:</span>
+            <code className="rounded bg-slate-100 px-2 py-1 text-xs">npm run db:seed</code>
           </div>
-        ) : null}
-
-        {refreshed.map((it) => (
-          <ItemCard
-            key={it.id}
-            item={{
-              id: it.id,
-              title: it.title,
-              prizeValueZAR: it.prizeValueZAR,
-              state: it.state as any,
-              activationGoalEntries: it.activationGoalEntries,
-              totalEntriesToday: entryMap.get(it.id) ?? 0,
-              imageUrl: it.imageUrl ?? null,
-              closesAt: it.closesAt ? it.closesAt.toISOString() : null,
-              playCostCredits: playCostForPrize(it.prizeValueZAR),
-              gameKey: (it as any).gameKey ?? null,
-            }}
-          />
-        ))}
-      </div>
+        </div>
+      ) : (
+        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {refreshed.map((it) => (
+            <ItemCard
+              key={it.id}
+              item={{
+                id: it.id,
+                title: it.title,
+                prizeValueZAR: it.prizeValueZAR,
+                state: it.state,
+                activationGoalEntries: it.activationGoalEntries,
+                totalEntriesToday: entryMap.get(it.id) ?? 0,
+                imageUrl: it.imageUrl ?? null,
+                closesAt: it.closesAt ? it.closesAt.toISOString() : null,
+                playCostCredits: playCostForPrize(it.prizeValueZAR),
+                gameKey: it.gameKey ?? null,
+              }}
+            />
+          ))}
+        </section>
+      )}
     </main>
   );
 }
