@@ -3,10 +3,10 @@ export const runtime = "nodejs";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getOrCreateDemoUser } from "@/lib/auth";
-import { buyPriceAfterSpend } from "@/lib/pricing";
+import { buyPriceAfterSpend, tierLabel } from "@/lib/pricing";
 
 function getParamItemId(params: any) {
-  const raw = params?.itemId ?? params?.ItemId ?? params?.id ?? "";
+  const raw = params?.ItemId ?? params?.itemId ?? params?.id ?? "";
   return String(raw || "").trim();
 }
 
@@ -20,17 +20,18 @@ async function buildQuote(itemId: string) {
     where: { itemId, userId: me.id },
     select: { id: true },
   });
-  if (iWon) return { ok: false as const, status: 400, error: "You won this item — no need to buy." };
+  if (iWon) return { ok: false as const, status: 400, error: "You won this prize — no need to buy." };
 
   const agg = await prisma.attempt.aggregate({
     where: { itemId, userId: me.id },
     _sum: { paidUsed: true },
   });
-  const spentPaidCredits = Number(agg._sum.paidUsed ?? 0);
+  const spentCredits = Number(agg._sum.paidUsed ?? 0);
 
   const price = buyPriceAfterSpend({
     prizeValueZAR: item.prizeValueZAR,
-    spentPaidCredits,
+    tierNumber: item.tier,
+    spentCredits,
   });
 
   const fresh = await prisma.user.findUnique({
@@ -39,6 +40,8 @@ async function buildQuote(itemId: string) {
   });
   const paidBal = Number(fresh?.paidCreditsBalance ?? 0);
   const freeBal = Number((fresh as any)?.freeCreditsBalance ?? 0);
+  const walletAppliedCredits = Math.min(price.payCredits, paidBal);
+  const topUpCredits = Math.max(0, price.payCredits - walletAppliedCredits);
 
   return {
     ok: true as const,
@@ -51,6 +54,8 @@ async function buildQuote(itemId: string) {
       free: freeBal,
       total: paidBal + freeBal,
     },
+    walletAppliedCredits,
+    topUpCredits,
   };
 }
 
@@ -63,18 +68,25 @@ export async function GET(_: Request, ctx: { params: any }) {
 
   return NextResponse.json({
     ok: true,
+    tier: tierLabel(q.price.tierKey),
+    discountPct: q.price.discountPct,
     priceCredits: q.price.priceCredits,
-    spentPaidCredits: q.price.spentPaidCredits,
+    spentCredits: q.price.spentCredits,
     discountAppliedCredits: q.price.appliedDiscount,
-    payCredits: q.price.payCredits,
+    amountDueCredits: q.price.payCredits,
+    walletAppliedCredits: q.walletAppliedCredits,
+    topUpCredits: q.topUpCredits,
     balances: q.balances,
   });
 }
 
-export async function POST(_: Request, ctx: { params: any }) {
+export async function POST(req: Request, ctx: { params: any }) {
   try {
     const itemId = getParamItemId(ctx?.params);
     if (!itemId) return NextResponse.json({ ok: false, error: "Missing itemId" }, { status: 400 });
+
+    const body = await req.json().catch(() => ({}));
+    const mode = body?.mode === "full" ? "full" : "mix";
 
     const q = await buildQuote(itemId);
     if (!q.ok) return NextResponse.json({ ok: false, error: q.error }, { status: q.status });
@@ -83,14 +95,15 @@ export async function POST(_: Request, ctx: { params: any }) {
       const fresh = await tx.user.findUnique({ where: { id: q.me.id } });
       const paidBal = Number(fresh?.paidCreditsBalance ?? 0);
 
-      if (paidBal < q.price.payCredits) {
-        return { ok: false as const, error: `Not enough paid credits. You still need R${q.price.payCredits}.` };
-      }
+      const walletAppliedCredits = mode === "mix" ? Math.min(q.price.payCredits, paidBal) : 0;
+      const topUpCredits = Math.max(0, q.price.payCredits - walletAppliedCredits);
 
-      await tx.user.update({
-        where: { id: q.me.id },
-        data: { paidCreditsBalance: paidBal - q.price.payCredits },
-      });
+      if (walletAppliedCredits > 0) {
+        await tx.user.update({
+          where: { id: q.me.id },
+          data: { paidCreditsBalance: paidBal - walletAppliedCredits },
+        });
+      }
 
       await tx.itemPurchase.create({
         data: {
@@ -98,25 +111,33 @@ export async function POST(_: Request, ctx: { params: any }) {
           userId: q.me.id,
           dayKey: new Date().toISOString().slice(0, 10),
           priceCredits: q.price.priceCredits,
-          spentCredits: q.price.spentPaidCredits,
-          discountPct: 100,
+          spentCredits: q.price.spentCredits,
+          discountPct: q.price.discountPct,
           discountCredits: q.price.appliedDiscount,
           payCredits: q.price.payCredits,
-          tierKey: "DIRECT_BUY",
+          tierKey: mode === "full" ? `${q.price.tierKey}_FULLPAY` : q.price.tierKey,
         } as any,
       });
 
-      return { ok: true as const, newBalance: paidBal - q.price.payCredits };
+      return {
+        ok: true as const,
+        newBalance: paidBal - walletAppliedCredits,
+        walletAppliedCredits,
+        topUpCredits,
+      };
     });
-
-    if (!result.ok) return NextResponse.json({ ok: false, error: result.error }, { status: 400 });
 
     return NextResponse.json({
       ok: true,
+      mode,
+      tier: tierLabel(q.price.tierKey),
+      discountPct: q.price.discountPct,
       priceCredits: q.price.priceCredits,
-      spentPaidCredits: q.price.spentPaidCredits,
+      spentCredits: q.price.spentCredits,
       discountAppliedCredits: q.price.appliedDiscount,
-      payCredits: q.price.payCredits,
+      amountDueCredits: q.price.payCredits,
+      walletAppliedCredits: result.walletAppliedCredits,
+      topUpCredits: result.topUpCredits,
       newBalance: result.newBalance,
     });
   } catch (e: any) {

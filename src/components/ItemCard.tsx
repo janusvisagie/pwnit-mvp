@@ -44,22 +44,20 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
   const pct = progressPct(item.totalEntriesToday, item.activationGoalEntries);
   const remaining = Math.max(0, item.activationGoalEntries - item.totalEntriesToday);
   const isClosed = item.state === "CLOSED" || item.state === "PUBLISHED";
-  const isLive = item.state === "ACTIVATED";
+  const isActivated = item.state === "ACTIVATED";
   const href = item.state === "PUBLISHED" ? `/item/${item.id}/leaderboard` : `/item/${item.id}`;
   const gLabel = gameLabel(item.gameKey);
   const displayImage = getProductContent(item.title, item.imageUrl)?.imageUrl ?? item.imageUrl;
 
-  const statusTone = useMemo(() => {
-    if (isClosed) return "bg-slate-900 text-white";
-    if (isLive) return "bg-emerald-100 text-emerald-800 ring-1 ring-emerald-200";
-    return "bg-slate-100 text-slate-700 ring-1 ring-slate-200";
-  }, [isClosed, isLive]);
+  const hot = useMemo(() => !isClosed && !isActivated && (remaining <= 1 || pct >= 67), [isClosed, isActivated, remaining, pct]);
 
-  const statusText = useMemo(() => {
-    if (isClosed) return "Won";
-    if (isLive) return "Live now";
-    return "Open";
-  }, [isClosed, isLive]);
+  const statusTone = isClosed
+    ? "bg-slate-900 text-white"
+    : isActivated
+      ? "bg-emerald-100 text-emerald-800 ring-1 ring-emerald-200"
+      : "bg-slate-100 text-slate-700 ring-1 ring-slate-200";
+
+  const statusText = isClosed ? "Won" : isActivated ? "Activated" : "Open";
 
   return (
     <Link
@@ -88,7 +86,13 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
           {statusText}
         </div>
 
-        {isLive && item.closesAt ? (
+        {hot ? (
+          <div className="absolute left-4 bottom-4 rounded-full bg-amber-300 px-3 py-1 text-[11px] font-extrabold text-slate-900 shadow">
+            Hot
+          </div>
+        ) : null}
+
+        {isActivated && item.closesAt ? (
           <div className="absolute bottom-4 left-4 rounded-full bg-white/95 px-3 py-1 text-[11px] font-semibold text-slate-800 shadow ring-1 ring-slate-200">
             Ends in <CountdownChip state={item.state} closesAt={item.closesAt} />
           </div>
@@ -96,8 +100,8 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
 
         {isClosed ? (
           <div className="pointer-events-none absolute inset-0 overflow-hidden">
-            <div className="absolute -left-16 top-9 w-[320px] -rotate-12 bg-slate-900 px-4 py-2 text-center text-xs font-extrabold tracking-wide text-white shadow-xl">
-              ITEM WON • NEW DROP LOADING
+            <div className="absolute left-[-20%] top-[42%] w-[140%] -rotate-12 bg-slate-900/95 px-4 py-2 text-center text-xs font-extrabold tracking-wide text-white shadow-xl">
+              PRIZE WON • NEXT PRIZE LOADING
             </div>
           </div>
         ) : null}
@@ -123,20 +127,22 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
         {!isClosed ? (
           <div className="space-y-2">
             <div className="flex items-center justify-between text-[11px] font-semibold text-slate-600">
-              <span>Goes live after {item.activationGoalEntries} plays</span>
+              <span>Activation threshold</span>
               <span>
-                {Math.min(item.totalEntriesToday, item.activationGoalEntries)}/{item.activationGoalEntries}
+                {Math.min(item.totalEntriesToday, item.activationGoalEntries)}/{item.activationGoalEntries} plays
               </span>
             </div>
             <div className="h-2.5 overflow-hidden rounded-full bg-slate-200">
-              <div
-                className="h-full rounded-full bg-slate-900 transition-all duration-500"
-                style={{ width: `${pct}%` }}
-              />
+              <div className="h-full rounded-full bg-slate-900 transition-all duration-500" style={{ width: `${pct}%` }} />
             </div>
+            {!isActivated ? (
+              <div className="text-[11px] text-slate-500">
+                {remaining === 0 ? "Ready to activate." : `${remaining} ${remaining === 1 ? "play" : "plays"} to activate.`}
+              </div>
+            ) : null}
           </div>
         ) : (
-          <div className="text-[11px] text-slate-500">View results or buy the item if you didn’t win.</div>
+          <div className="text-[11px] text-slate-500">View results or buy the prize if you didn’t win.</div>
         )}
       </div>
     </Link>

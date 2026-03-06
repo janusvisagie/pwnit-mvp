@@ -13,7 +13,7 @@ function formatZAR(v: number) {
 
 function stateLabel(s: string) {
   if (s === "OPEN") return "Open";
-  if (s === "ACTIVATED") return "Live";
+  if (s === "ACTIVATED") return "Activated";
   if (s === "CLOSED") return "Closed";
   if (s === "PUBLISHED") return "Results";
   return s || "Open";
@@ -62,6 +62,7 @@ export default async function ItemPage({ params }: { params: { id: string } }) {
 
   const isPlayable = item.state === "OPEN" || item.state === "ACTIVATED";
   const pct = Math.min(100, Math.round((totalEntries / Math.max(1, item.activationGoalEntries)) * 100));
+  const remaining = Math.max(0, item.activationGoalEntries - totalEntries);
   const product = getProductContent(item.title, item.imageUrl);
   const displayImage = product?.imageUrl ?? item.imageUrl;
 
@@ -69,7 +70,6 @@ export default async function ItemPage({ params }: { params: { id: string } }) {
     <main className="mx-auto max-w-6xl space-y-4 p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Prize page</div>
           <h1 className="truncate text-2xl font-extrabold leading-tight text-slate-900 md:text-3xl">{item.title}</h1>
           <div className="mt-2 flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-700">
             <span className="rounded-full bg-white px-3 py-1 ring-1 ring-slate-200">{stateLabel(item.state)}</span>
@@ -125,25 +125,26 @@ export default async function ItemPage({ params }: { params: { id: string } }) {
               </div>
               <div className="mt-2 flex items-center justify-between text-sm">
                 <span className="font-semibold text-slate-900">
-                  {totalEntries} / {item.activationGoalEntries} plays
+                  {Math.min(totalEntries, item.activationGoalEntries)} / {item.activationGoalEntries} plays
                 </span>
-                <span className="text-slate-600">
-                  {item.state === "ACTIVATED" ? "Live" : Math.max(0, item.activationGoalEntries - totalEntries) + " to go"}
-                </span>
+                <span className="text-slate-600">{item.state === "ACTIVATED" ? "Activated" : `${remaining} to go`}</span>
               </div>
+              {item.state === "ACTIVATED" && closesAtIso ? (
+                <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-800 ring-1 ring-slate-200">
+                  <span>Ends in</span>
+                  <CountdownChip state={item.state} closesAt={closesAtIso} />
+                </div>
+              ) : null}
             </div>
 
             {meWon ? (
               <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-900">
-                🎉 You won this item. No purchase needed.
+                🎉 You won this prize. No purchase needed.
               </div>
             ) : (
               <section className="rounded-2xl border border-slate-200 bg-white p-4">
-                <div className="text-sm font-extrabold text-slate-900">Didn’t win?</div>
-                <div className="mt-1 text-sm text-slate-600">Buy it by paying the difference.</div>
-                <div className="mt-2 text-xs text-slate-600">
-                  Your paid credits spent playing this item count as your discount.
-                </div>
+                <div className="text-sm font-extrabold text-slate-900">Didn’t win? Buy it by paying the difference.</div>
+                <div className="mt-1 text-xs text-slate-600">Your paid credits spent on this prize reduce what you pay.</div>
                 <div className="mt-3">
                   <BuyNowButton itemId={itemId} />
                 </div>

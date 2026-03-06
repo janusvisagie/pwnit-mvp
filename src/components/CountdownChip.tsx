@@ -1,15 +1,10 @@
-// src/components/CountdownChip.tsx
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 
 type Props = {
   state?: string | null;
   closesAt?: string | null;
-  closesAtIso?: string | null;
-  /** What to show when countdown hits zero */
-  labelWhenClosed?: string;
 };
 
 function formatMs(ms: number) {
@@ -21,24 +16,15 @@ function formatMs(ms: number) {
   return `${mm}:${ss}`;
 }
 
-export function CountdownChip({
-  state,
-  closesAt,
-  closesAtIso,
-  labelWhenClosed = "Closed",
-}: Props) {
-  const router = useRouter();
-  const refreshedRef = useRef(false);
-
-  const iso = closesAtIso ?? closesAt ?? null;
-
+export function CountdownChip({ state, closesAt }: Props) {
   const targetMs = useMemo(() => {
-    if (!iso) return null;
-    const t = Date.parse(iso);
+    if (!closesAt) return null;
+    const t = Date.parse(closesAt);
     return Number.isFinite(t) ? t : null;
-  }, [iso]);
+  }, [closesAt]);
 
-  const [nowMs, setNowMs] = useState(() => Date.now());
+  const [nowMs, setNowMs] = useState<number>(() => Date.now());
+  const refreshed = useRef(false);
 
   useEffect(() => {
     if (!targetMs) return;
@@ -46,33 +32,26 @@ export function CountdownChip({
     return () => clearInterval(id);
   }, [targetMs]);
 
-  // If caller provides state, only show when live.
-  const hasState = typeof state === "string" && state.length > 0;
-  const isLive = !hasState || (state || "").toUpperCase() === "ACTIVATED";
-
+  const isLive = (state || "").toUpperCase() === "ACTIVATED";
   if (!isLive || !targetMs) return null;
 
   const remaining = targetMs - nowMs;
-
   if (remaining <= 0) {
-    // Refresh once to allow the server-rendered pages to transition state.
-    if (!refreshedRef.current) {
-      refreshedRef.current = true;
-      // small delay ensures UI paints first
-      setTimeout(() => router.refresh(), 150);
+    if (!refreshed.current) {
+      refreshed.current = true;
+      setTimeout(() => window.location.reload(), 350);
     }
+
     return (
-      <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-700">
-        {labelWhenClosed}
+      <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-extrabold text-slate-900 ring-1 ring-slate-200">
+        Closed
       </span>
     );
   }
 
   return (
-    <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-700">
+    <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-extrabold tabular-nums text-slate-900 ring-1 ring-slate-200">
       {formatMs(remaining)}
     </span>
   );
 }
-
-export default CountdownChip;

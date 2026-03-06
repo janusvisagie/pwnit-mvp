@@ -69,9 +69,6 @@ export function WelcomeModal() {
             <div className="mt-2 text-3xl font-black tracking-tight sm:text-4xl">
               Pick. Play. <span className="text-cyan-300">PwnIt.</span>
             </div>
-            <p className="mt-3 max-w-2xl text-sm text-slate-200 sm:text-base">
-              A faster, sharper way to chase prizes. One clean game, one live leaderboard, one chance to win.
-            </p>
           </div>
         </div>
 
@@ -95,7 +92,7 @@ export function WelcomeModal() {
           </div>
 
           <div className="mt-5 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm">
-            Didn&apos;t win? <span className="text-slate-900">Buy it if you don&apos;t.</span>
+            Or buy it if you don’t.
           </div>
 
           <div className="mt-5 flex items-center justify-end">
