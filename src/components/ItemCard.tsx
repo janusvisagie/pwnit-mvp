@@ -38,6 +38,22 @@ function gameLabel(k?: string | null) {
   return k;
 }
 
+function resolveImage(title: string, imageUrl: string | null) {
+  const t = title.toLowerCase();
+
+  if (t.includes("nintendo switch")) {
+    return "https://assets.nintendo.com/image/upload/f_auto/q_auto/dpr_1.5/ncom/en_US/switch/videos/heg001-07060600/posters/oled-model";
+  }
+  if (t.includes("wh-1000xm5") || t.includes("headphones")) {
+    return "https://www.sony.com/image/6145c1d32e6ac8e63a46c912dc33c5bb?bgc=FFFFFF&bgcolor=FFFFFF&fmt=pjpeg&wid=1200";
+  }
+  if (t.includes("gopro")) {
+    return "https://static.gopro.com/assets/blta2b8522e5372af40/bltdcd3295493f2b049/66b0eba949df090a205ce45b/01-h13-hero-intro-1920.jpg?auto=webp&disable=upscale&quality=80&width=1920";
+  }
+
+  return imageUrl;
+}
+
 export function ItemCard({ item }: { item: ItemCardModel }) {
   const [imgOk, setImgOk] = useState(true);
   const pct = progressPct(item.totalEntriesToday, item.activationGoalEntries);
@@ -46,20 +62,19 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
   const isLive = item.state === "ACTIVATED";
   const href = item.state === "PUBLISHED" ? `/item/${item.id}/leaderboard` : `/item/${item.id}`;
   const gLabel = gameLabel(item.gameKey);
+  const displayImage = resolveImage(item.title, item.imageUrl);
 
   const statusTone = useMemo(() => {
     if (isClosed) return "bg-slate-900 text-white";
     if (isLive) return "bg-emerald-100 text-emerald-800 ring-1 ring-emerald-200";
-    if (remaining <= 1) return "bg-amber-100 text-amber-900 ring-1 ring-amber-200";
     return "bg-slate-100 text-slate-700 ring-1 ring-slate-200";
-  }, [isClosed, isLive, remaining]);
+  }, [isClosed, isLive]);
 
   const statusText = useMemo(() => {
     if (isClosed) return "Won";
     if (isLive) return "Live now";
-    if (remaining <= 1) return "Almost live";
-    return `${item.activationGoalEntries} plays to go live`;
-  }, [isClosed, isLive, remaining, item.activationGoalEntries]);
+    return "Open";
+  }, [isClosed, isLive]);
 
   return (
     <Link
@@ -67,13 +82,14 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
       className="group relative overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg"
     >
       <div className="relative flex h-[210px] items-center justify-center overflow-hidden bg-gradient-to-b from-slate-50 to-white p-5">
-        {item.imageUrl && imgOk ? (
+        {displayImage && imgOk ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={item.imageUrl}
+            src={displayImage}
             alt={item.title}
             className="max-h-full max-w-full object-contain transition duration-300 group-hover:scale-[1.03]"
             onError={() => setImgOk(false)}
+            referrerPolicy="no-referrer"
           />
         ) : (
           <div className="text-sm font-semibold text-slate-400">Image unavailable</div>
@@ -81,6 +97,10 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
 
         <div className="absolute left-4 top-4 rounded-full bg-white/95 px-3 py-1 text-[11px] font-extrabold text-slate-900 shadow ring-1 ring-slate-200">
           {formatZAR(item.prizeValueZAR)}
+        </div>
+
+        <div className={`absolute right-4 top-4 rounded-full px-3 py-1 text-[11px] font-extrabold shadow-sm ${statusTone}`}>
+          {statusText}
         </div>
 
         {isLive && item.closesAt ? (
@@ -99,39 +119,35 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
       </div>
 
       <div className="space-y-3 p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h3 className="truncate text-base font-extrabold text-slate-900">{item.title}</h3>
-            <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-slate-600">
-              {gLabel ? (
-                <span className="rounded-full bg-slate-100 px-2.5 py-1 font-semibold text-slate-700 ring-1 ring-slate-200">
-                  {gLabel}
-                </span>
-              ) : null}
-              {typeof item.playCostCredits === "number" ? (
-                <span>{item.playCostCredits} {item.playCostCredits === 1 ? "credit" : "credits"}/play</span>
-              ) : null}
-            </div>
+        <div className="min-w-0">
+          <h3 className="truncate text-base font-extrabold text-slate-900">{item.title}</h3>
+          <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-slate-600">
+            {gLabel ? (
+              <span className="rounded-full bg-slate-100 px-2.5 py-1 font-semibold text-slate-700 ring-1 ring-slate-200">
+                {gLabel}
+              </span>
+            ) : null}
+            {typeof item.playCostCredits === "number" ? (
+              <span>
+                {item.playCostCredits} {item.playCostCredits === 1 ? "credit" : "credits"}/play
+              </span>
+            ) : null}
           </div>
-
-          <span className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-extrabold ${statusTone}`}>
-            {statusText}
-          </span>
         </div>
 
         {!isClosed ? (
           <div className="space-y-2">
             <div className="flex items-center justify-between text-[11px] font-semibold text-slate-600">
-              <span>Activation threshold</span>
+              <span>Goes live after {item.activationGoalEntries} plays</span>
               <span>
-                {Math.min(item.totalEntriesToday, item.activationGoalEntries)}/{item.activationGoalEntries} plays
+                {Math.min(item.totalEntriesToday, item.activationGoalEntries)}/{item.activationGoalEntries}
               </span>
             </div>
             <div className="h-2.5 overflow-hidden rounded-full bg-slate-200">
-              <div className="h-full rounded-full bg-slate-900 transition-all duration-500" style={{ width: `${pct}%` }} />
-            </div>
-            <div className="text-[11px] text-slate-500">
-              {isLive ? "This item is live." : remaining > 0 ? `${remaining} more ${remaining === 1 ? "play" : "plays"} to unlock the countdown.` : "Ready to go live."}
+              <div
+                className="h-full rounded-full bg-slate-900 transition-all duration-500"
+                style={{ width: `${pct}%` }}
+              />
             </div>
           </div>
         ) : (
@@ -141,3 +157,5 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
     </Link>
   );
 }
+
+export default ItemCard;
