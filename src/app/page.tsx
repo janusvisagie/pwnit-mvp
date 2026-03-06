@@ -14,10 +14,9 @@ export default async function HomePage() {
   const dayKey = dayKeyZA();
   const now = new Date();
 
-  // MVP: focus on a small set of items
   const items = await prisma.item.findMany({
     orderBy: [{ createdAt: "asc" }],
-    take: 4,
+    take: 6,
   });
 
   const counts = await prisma.attempt.groupBy({
@@ -34,22 +33,17 @@ export default async function HomePage() {
   });
   const paidMap = new Map(paidCounts.map((c) => [c.itemId, Number((c as any)._sum?.paidUsed ?? 0)]));
 
-
   const winnerCounts = await prisma.winner.groupBy({
     by: ["itemId"],
     _count: { _all: true },
   });
   const winnersMap = new Map(winnerCounts.map((w) => [w.itemId, w._count._all]));
 
-  // State transitions (keeps home tiles accurate)
   for (const item of items) {
-    const totalToday = entryMap.get(item.id) ?? 0;
-
     const paidToday = paidMap.get(item.id) ?? 0;
-    const activationGoalCredits = itemPriceCredits(item.prizeValueZAR);
+    const coverageRatio = Number((item as any).activationCoverageRatio ?? 1);
+    const activationGoalCredits = Math.max(1, Math.ceil(itemPriceCredits(item.prizeValueZAR) * coverageRatio));
 
-    // Activation rule (portfolio-safe MVP): only activate once total PAID credits spent today
-    // on this item can cover the prize value (winner gets the item without paying).
     if (item.state === "OPEN" && paidToday >= activationGoalCredits) {
       const closes = new Date(now.getTime() + item.countdownMinutes * 60_000);
       await prisma.item.update({
@@ -76,56 +70,98 @@ export default async function HomePage() {
 
   const refreshed = await prisma.item.findMany({
     orderBy: [{ createdAt: "asc" }],
-    take: 4,
+    take: 6,
   });
 
   const anyActivated = refreshed.some((it) => it.state === "ACTIVATED");
 
+  const heroStats = {
+    total: refreshed.length,
+    live: refreshed.filter((it) => it.state === "ACTIVATED").length,
+    almost: refreshed.filter((it) => {
+      const paidToday = paidMap.get(it.id) ?? 0;
+      const coverageRatio = Number((it as any).activationCoverageRatio ?? 1);
+      const goal = Math.max(1, Math.ceil(itemPriceCredits(it.prizeValueZAR) * coverageRatio));
+      return it.state === "OPEN" && paidToday / goal >= 0.75;
+    }).length,
+  };
+
   return (
-    <main className="flex h-full min-h-0 flex-col gap-2 overflow-hidden pb-1">
+    <main className="pb-4">
       <WelcomeModal />
       <AutoRefreshActivated enabled={anyActivated} everyMs={10_000} />
 
-      {/* Single (non-duplicated) status line */}
-      <div className="shrink-0">
-        <div className="text-xs text-slate-600">
-          Logged in as <span className="font-semibold text-slate-900">{user.email}</span>
-        </div>
-      </div>
+      <section className="mb-4 rounded-[28px] border border-slate-200 bg-gradient-to-br from-white via-slate-50 to-slate-100 p-5 shadow-sm">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <div className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">Marketplace</div>
+            <h1 className="mt-1 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
+              Pick. Play. <span className="text-4xl sm:text-5xl">PwnIt</span>
+            </h1>
+            <p className="mt-2 max-w-2xl text-sm text-slate-600 sm:text-base">
+              Choose a prize, play a quick skill game, and push items live. If you do not win, you can still buy the item by paying the difference.
+            </p>
+          </div>
 
-      <div className="grid flex-1 min-h-0 grid-cols-2 gap-2">
-        {refreshed.length === 0 ? (
-          <div className="col-span-2 rounded-2xl border border-slate-200 bg-white p-6">
-            <div className="text-base font-extrabold text-slate-900">No items yet</div>
-            <div className="mt-1 text-sm text-slate-600">Seed the MVP items to populate the marketplace.</div>
-            <div className="mt-3 text-sm">
-              <span className="mr-2 font-semibold text-slate-900">Run:</span>
-              <code className="rounded bg-slate-100 px-2 py-1 text-xs">npm run db:seed</code>
+          <div className="grid grid-cols-3 gap-2 sm:min-w-[320px]">
+            <div className="rounded-2xl bg-white px-4 py-3 shadow-sm ring-1 ring-slate-200">
+              <div className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Showing</div>
+              <div className="mt-1 text-xl font-black text-slate-950">{heroStats.total}</div>
+            </div>
+            <div className="rounded-2xl bg-white px-4 py-3 shadow-sm ring-1 ring-slate-200">
+              <div className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Live now</div>
+              <div className="mt-1 text-xl font-black text-slate-950">{heroStats.live}</div>
+            </div>
+            <div className="rounded-2xl bg-white px-4 py-3 shadow-sm ring-1 ring-slate-200">
+              <div className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Almost live</div>
+              <div className="mt-1 text-xl font-black text-slate-950">{heroStats.almost}</div>
             </div>
           </div>
-        ) : null}
+        </div>
 
-        {refreshed.map((it) => (
-          <ItemCard
-            key={it.id}
-            item={{
-              id: it.id,
-              title: it.title,
-              prizeValueZAR: it.prizeValueZAR,
-              state: it.state as any,
-              activationGoalEntries: it.activationGoalEntries,
-              totalEntriesToday: entryMap.get(it.id) ?? 0,
-              paidCreditsToday: paidMap.get(it.id) ?? 0,
-              activationGoalCredits: itemPriceCredits(it.prizeValueZAR),
-              imageUrl: it.imageUrl ?? null,
-              closesAt: it.closesAt ? it.closesAt.toISOString() : null,
-              countdownMinutes: (it as any).countdownMinutes ?? 5,
-              playCostCredits: playCostForPrize(it.prizeValueZAR),
-              gameKey: it.gameKey ?? null,
-            }}
-          />
-        ))}
-      </div>
+        <div className="mt-4 text-xs text-slate-600">
+          Logged in as <span className="font-semibold text-slate-900">{user.email}</span>
+        </div>
+      </section>
+
+      {refreshed.length === 0 ? (
+        <div className="rounded-2xl border border-slate-200 bg-white p-6">
+          <div className="text-base font-extrabold text-slate-900">No items yet</div>
+          <div className="mt-1 text-sm text-slate-600">Seed the MVP items to populate the marketplace.</div>
+          <div className="mt-3 text-sm">
+            <span className="mr-2 font-semibold text-slate-900">Run:</span>
+            <code className="rounded bg-slate-100 px-2 py-1 text-xs">npm run db:seed</code>
+          </div>
+        </div>
+      ) : null}
+
+      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        {refreshed.map((it) => {
+          const coverageRatio = Number((it as any).activationCoverageRatio ?? 1);
+          const activationGoalCredits = Math.max(1, Math.ceil(itemPriceCredits(it.prizeValueZAR) * coverageRatio));
+
+          return (
+            <ItemCard
+              key={it.id}
+              item={{
+                id: it.id,
+                title: it.title,
+                prizeValueZAR: it.prizeValueZAR,
+                state: it.state as any,
+                activationGoalEntries: it.activationGoalEntries,
+                totalEntriesToday: entryMap.get(it.id) ?? 0,
+                paidCreditsToday: paidMap.get(it.id) ?? 0,
+                activationGoalCredits,
+                imageUrl: it.imageUrl ?? null,
+                closesAt: it.closesAt ? it.closesAt.toISOString() : null,
+                countdownMinutes: (it as any).countdownMinutes ?? 5,
+                playCostCredits: playCostForPrize(it.prizeValueZAR),
+                gameKey: it.gameKey ?? null,
+              }}
+            />
+          );
+        })}
+      </section>
     </main>
   );
 }

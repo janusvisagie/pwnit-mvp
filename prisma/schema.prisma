@@ -41,6 +41,7 @@ model Item {
   opensAt               DateTime?
   closesAt              DateTime?
   subscriberOnly        Boolean   @default(false)
+  activationCoverageRatio Float   @default(1.0)
   gameKey               String?
 
   attempts  Attempt[]
