@@ -26,16 +26,8 @@ function progressPct(total: number, goal: number) {
   return Math.max(0, Math.min(100, Math.round((total / goal) * 100)));
 }
 
-function minutesLeft(closesAtIso?: string | null) {
-  if (!closesAtIso) return null;
-  const t = Date.parse(closesAtIso);
-  if (!Number.isFinite(t)) return null;
-  const ms = t - Date.now();
-  return Math.max(0, Math.floor(ms / 60_000));
-}
-
 function gameLabel(k?: string | null) {
-  if (!k) return "Skill game";
+  if (!k) return null;
   if (k === "precision-timer") return "Precision Timer";
   if (k === "rhythm-hold") return "Rhythm Hold";
   if (k === "tap-speed") return "Tap Speed";
@@ -46,93 +38,105 @@ function gameLabel(k?: string | null) {
   return k;
 }
 
-function statusLabel(state: string, pct: number, remaining: number, closesAt?: string | null) {
-  if (state === "PUBLISHED" || state === "CLOSED") return "Closed";
-  if (state === "ACTIVATED") return "Live now";
-  const mins = minutesLeft(closesAt);
-  if (mins != null && mins <= 3) return "Ending soon";
-  if (remaining <= 1) return "Almost live";
-  if (pct >= 67) return "Going live soon";
-  return "Open";
-}
-
 export function ItemCard({ item }: { item: ItemCardModel }) {
   const [imgOk, setImgOk] = useState(true);
-
   const pct = progressPct(item.totalEntriesToday, item.activationGoalEntries);
-  const remaining = Math.max(0, (item.activationGoalEntries || 0) - (item.totalEntriesToday || 0));
-  const closed = item.state === "CLOSED" || item.state === "PUBLISHED";
-  const deepLink = item.state === "PUBLISHED" ? `/item/${item.id}/leaderboard` : `/item/${item.id}`;
-  const showEndsIn = item.state === "ACTIVATED" && !!item.closesAt;
-  const status = useMemo(() => statusLabel(item.state, pct, remaining, item.closesAt), [item.state, pct, remaining, item.closesAt]);
+  const remaining = Math.max(0, item.activationGoalEntries - item.totalEntriesToday);
+  const isClosed = item.state === "CLOSED" || item.state === "PUBLISHED";
+  const isLive = item.state === "ACTIVATED";
+  const href = item.state === "PUBLISHED" ? `/item/${item.id}/leaderboard` : `/item/${item.id}`;
   const gLabel = gameLabel(item.gameKey);
+
+  const statusTone = useMemo(() => {
+    if (isClosed) return "bg-slate-900 text-white";
+    if (isLive) return "bg-emerald-100 text-emerald-800 ring-1 ring-emerald-200";
+    if (remaining <= 1) return "bg-amber-100 text-amber-900 ring-1 ring-amber-200";
+    return "bg-slate-100 text-slate-700 ring-1 ring-slate-200";
+  }, [isClosed, isLive, remaining]);
+
+  const statusText = useMemo(() => {
+    if (isClosed) return "Won";
+    if (isLive) return "Live now";
+    if (remaining <= 1) return "Almost live";
+    return `${item.activationGoalEntries} plays to go live`;
+  }, [isClosed, isLive, remaining, item.activationGoalEntries]);
 
   return (
     <Link
-      href={deepLink}
+      href={href}
       className="group relative overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg"
     >
-      <div className="relative aspect-[4/3] overflow-hidden bg-gradient-to-br from-slate-100 to-white">
+      <div className="relative flex h-[210px] items-center justify-center overflow-hidden bg-gradient-to-b from-slate-50 to-white p-5">
         {item.imageUrl && imgOk ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={item.imageUrl}
             alt={item.title}
-            className="h-full w-full object-contain p-5 transition duration-300 group-hover:scale-[1.03]"
+            className="max-h-full max-w-full object-contain transition duration-300 group-hover:scale-[1.03]"
             onError={() => setImgOk(false)}
           />
         ) : (
-          <div className="flex h-full items-center justify-center text-sm font-semibold text-slate-400">Image coming soon</div>
+          <div className="text-sm font-semibold text-slate-400">Image unavailable</div>
         )}
 
-        <div className="absolute left-4 top-4 rounded-full bg-white/90 px-3 py-1 text-[11px] font-extrabold uppercase tracking-wide text-slate-900 shadow-sm ring-1 ring-slate-200 backdrop-blur">
-          {status}
-        </div>
-
-        <div className="absolute right-4 top-4 rounded-2xl bg-slate-900 px-3 py-1.5 text-sm font-extrabold text-white shadow">
+        <div className="absolute left-4 top-4 rounded-full bg-white/95 px-3 py-1 text-[11px] font-extrabold text-slate-900 shadow ring-1 ring-slate-200">
           {formatZAR(item.prizeValueZAR)}
         </div>
 
-        {showEndsIn ? (
-          <div className="absolute bottom-4 left-4 rounded-full bg-white/90 px-3 py-1 text-xs font-semibold text-slate-900 shadow-sm ring-1 ring-slate-200 backdrop-blur">
-            <span className="mr-2 text-slate-600">Ends in</span>
-            <CountdownChip state={item.state} closesAt={item.closesAt ?? null} />
+        {isLive && item.closesAt ? (
+          <div className="absolute bottom-4 left-4 rounded-full bg-white/95 px-3 py-1 text-[11px] font-semibold text-slate-800 shadow ring-1 ring-slate-200">
+            Ends in <CountdownChip state={item.state} closesAt={item.closesAt} />
           </div>
         ) : null}
 
-        {closed ? (
+        {isClosed ? (
           <div className="pointer-events-none absolute inset-0 overflow-hidden">
-            <div className="absolute -left-20 top-8 w-[140%] -rotate-12 bg-slate-900/92 py-2 text-center text-xs font-extrabold uppercase tracking-[0.18em] text-white shadow-lg">
-              Closed
+            <div className="absolute -left-16 top-9 w-[320px] -rotate-12 bg-slate-900 px-4 py-2 text-center text-xs font-extrabold tracking-wide text-white shadow-xl">
+              ITEM WON • NEW DROP LOADING
             </div>
           </div>
         ) : null}
       </div>
 
       <div className="space-y-3 p-4">
-        <div>
-          <h3 className="line-clamp-1 text-base font-extrabold text-slate-900">{item.title}</h3>
-          <div className="mt-1 flex items-center gap-2 text-xs text-slate-600">
-            <span className="rounded-full bg-slate-50 px-2.5 py-1 font-semibold ring-1 ring-slate-200">{gLabel}</span>
-            {typeof item.playCostCredits === "number" ? (
-              <span>{item.playCostCredits} {item.playCostCredits === 1 ? "credit" : "credits"} / play</span>
-            ) : null}
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h3 className="truncate text-base font-extrabold text-slate-900">{item.title}</h3>
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-slate-600">
+              {gLabel ? (
+                <span className="rounded-full bg-slate-100 px-2.5 py-1 font-semibold text-slate-700 ring-1 ring-slate-200">
+                  {gLabel}
+                </span>
+              ) : null}
+              {typeof item.playCostCredits === "number" ? (
+                <span>{item.playCostCredits} {item.playCostCredits === 1 ? "credit" : "credits"}/play</span>
+              ) : null}
+            </div>
           </div>
+
+          <span className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-extrabold ${statusTone}`}>
+            {statusText}
+          </span>
         </div>
 
-        <div className="rounded-2xl bg-slate-50 p-3 ring-1 ring-slate-200">
-          <div className="mb-2 flex items-center justify-between text-[11px] font-bold uppercase tracking-wide text-slate-500">
-            <span>Activation threshold</span>
-            <span>{item.activationGoalEntries} plays</span>
+        {!isClosed ? (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-[11px] font-semibold text-slate-600">
+              <span>Activation threshold</span>
+              <span>
+                {Math.min(item.totalEntriesToday, item.activationGoalEntries)}/{item.activationGoalEntries} plays
+              </span>
+            </div>
+            <div className="h-2.5 overflow-hidden rounded-full bg-slate-200">
+              <div className="h-full rounded-full bg-slate-900 transition-all duration-500" style={{ width: `${pct}%` }} />
+            </div>
+            <div className="text-[11px] text-slate-500">
+              {isLive ? "This item is live." : remaining > 0 ? `${remaining} more ${remaining === 1 ? "play" : "plays"} to unlock the countdown.` : "Ready to go live."}
+            </div>
           </div>
-          <div className="h-2.5 overflow-hidden rounded-full bg-slate-200">
-            <div className="h-full rounded-full bg-slate-900 transition-all duration-500" style={{ width: `${pct}%` }} />
-          </div>
-          <div className="mt-2 flex items-center justify-between text-sm">
-            <span className="font-semibold text-slate-900">{item.totalEntriesToday} / {item.activationGoalEntries} plays</span>
-            <span className="text-slate-600">{closed || item.state === "ACTIVATED" ? status : `${remaining} to go`}</span>
-          </div>
-        </div>
+        ) : (
+          <div className="text-[11px] text-slate-500">View results or buy the item if you didn’t win.</div>
+        )}
       </div>
     </Link>
   );

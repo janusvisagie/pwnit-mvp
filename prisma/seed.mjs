@@ -28,31 +28,28 @@ async function main() {
 
   const items = [
     {
-      title: "55\" Smart TV",
+      title: "Nintendo Switch OLED",
       prizeType: "Physical",
-      prizeValueZAR: 6999,
-      imageUrl: "/products/tv.svg",
+      prizeValueZAR: 8500,
+      imageUrl: "/products/nintendo-switch-oled.svg",
       activationGoalEntries: 3,
       countdownMinutes: 1,
-      shortDesc: "Big-screen headline prize.",
     },
     {
-      title: "AR Glasses",
+      title: "Sony WH-1000XM5 Headphones",
       prizeType: "Physical",
-      prizeValueZAR: 3499,
-      imageUrl: "/products/ar-glasses.svg",
+      prizeValueZAR: 7999,
+      imageUrl: "/products/sony-xm5-headphones.svg",
       activationGoalEntries: 3,
       countdownMinutes: 1,
-      shortDesc: "A cooler tech prize for the mid-tier slot.",
     },
     {
-      title: "Wireless Headphones",
+      title: "GoPro HERO13 Black",
       prizeType: "Physical",
-      prizeValueZAR: 2199,
-      imageUrl: "/products/headphones.svg",
+      prizeValueZAR: 9999,
+      imageUrl: "/products/gopro-hero.svg",
       activationGoalEntries: 3,
       countdownMinutes: 1,
-      shortDesc: "Popular, giftable, and easy to value.",
     },
     {
       title: "Takealot Voucher",
@@ -61,7 +58,6 @@ async function main() {
       imageUrl: "/products/takealot-voucher.svg",
       activationGoalEntries: 3,
       countdownMinutes: 1,
-      shortDesc: "Instant digital voucher.",
     },
     {
       title: "Checkers Voucher",
@@ -70,21 +66,21 @@ async function main() {
       imageUrl: "/products/checkers-voucher.svg",
       activationGoalEntries: 3,
       countdownMinutes: 1,
-      shortDesc: "Useful everyday grocery value.",
     },
     {
       title: "Petrol Voucher",
       prizeType: "Voucher",
-      prizeValueZAR: 750,
+      prizeValueZAR: 1200,
       imageUrl: "/products/petrol-voucher.svg",
       activationGoalEntries: 3,
       countdownMinutes: 1,
-      shortDesc: "Fast-moving, easy-win feel item.",
     },
   ];
 
   for (let idx = 0; idx < items.length; idx++) {
     const it = items[idx];
+    const gameKey = pickFromPool(idx);
+
     await prisma.item.create({
       data: {
         title: it.title,
@@ -92,19 +88,19 @@ async function main() {
         prizeType: it.prizeType,
         prizeValueZAR: it.prizeValueZAR,
         imageUrl: it.imageUrl,
-        shortDesc: it.shortDesc,
+        shortDesc: null,
         productUrl: null,
         state: "OPEN",
         activationGoalEntries: it.activationGoalEntries,
         countdownMinutes: it.countdownMinutes,
         opensAt: now,
         subscriberOnly: false,
-        gameKey: pickFromPool(idx),
+        gameKey,
       },
     });
   }
 
-  console.log("Seeded 6 items with a stronger conversion mix.");
+  console.log("Seeded 6 items + sticky gameKey.");
 }
 
 main()
