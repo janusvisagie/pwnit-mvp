@@ -76,7 +76,6 @@ export default async function HomePage() {
   const anyActivated = refreshed.some((it) => it.state === "ACTIVATED");
 
   const heroStats = {
-    total: refreshed.length,
     live: refreshed.filter((it) => it.state === "ACTIVATED").length,
     almost: refreshed.filter((it) => {
       const paidToday = paidMap.get(it.id) ?? 0;
@@ -94,26 +93,22 @@ export default async function HomePage() {
       <section className="mb-4 rounded-[28px] border border-slate-200 bg-gradient-to-br from-white via-slate-50 to-slate-100 p-5 shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <div className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">Marketplace</div>
-            <h1 className="mt-1 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
+            <h1 className="text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
               Pick. Play. <span className="text-4xl sm:text-5xl">PwnIt</span>
             </h1>
             <p className="mt-2 max-w-2xl text-sm text-slate-600 sm:text-base">
-              Choose a prize, play a quick skill game, and push items live. If you do not win, you can still buy the item by paying the difference.
+              Choose a prize. Play a skill game. Win.
             </p>
+            <p className="mt-1 text-sm text-slate-500 sm:text-base">Or buy it if you don&apos;t.</p>
           </div>
 
-          <div className="grid grid-cols-3 gap-2 sm:min-w-[320px]">
-            <div className="rounded-2xl bg-white px-4 py-3 shadow-sm ring-1 ring-slate-200">
-              <div className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Showing</div>
-              <div className="mt-1 text-xl font-black text-slate-950">{heroStats.total}</div>
-            </div>
+          <div className="grid grid-cols-2 gap-2 sm:min-w-[220px]">
             <div className="rounded-2xl bg-white px-4 py-3 shadow-sm ring-1 ring-slate-200">
               <div className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Live now</div>
               <div className="mt-1 text-xl font-black text-slate-950">{heroStats.live}</div>
             </div>
             <div className="rounded-2xl bg-white px-4 py-3 shadow-sm ring-1 ring-slate-200">
-              <div className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Almost live</div>
+              <div className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Going live soon</div>
               <div className="mt-1 text-xl font-black text-slate-950">{heroStats.almost}</div>
             </div>
           </div>
@@ -127,7 +122,7 @@ export default async function HomePage() {
       {refreshed.length === 0 ? (
         <div className="rounded-2xl border border-slate-200 bg-white p-6">
           <div className="text-base font-extrabold text-slate-900">No items yet</div>
-          <div className="mt-1 text-sm text-slate-600">Seed the MVP items to populate the marketplace.</div>
+          <div className="mt-1 text-sm text-slate-600">Seed the MVP items to populate the home page.</div>
           <div className="mt-3 text-sm">
             <span className="mr-2 font-semibold text-slate-900">Run:</span>
             <code className="rounded bg-slate-100 px-2 py-1 text-xs">npm run db:seed</code>

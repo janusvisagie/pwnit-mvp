@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { CountdownChip } from "@/components/CountdownChip";
+import CountdownChip from "@/components/CountdownChip";
 
-export type ItemCardModel = {
+type ItemCardModel = {
   id: string;
   title: string;
   prizeValueZAR: number;
@@ -87,15 +87,9 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
   const urgencyText = useMemo(() => {
     if (closed) return "Results available";
     if (item.state === "ACTIVATED") return "Live now";
-    if (usingPaidProgress && item.state === "OPEN" && remainingCredits > 0 && remainingCredits <= 100) {
-      return `${formatZAR(remainingCredits)} to go`;
-    }
-    if (!usingPaidProgress && item.state === "OPEN" && remainingEntries > 0 && remainingEntries <= 2) {
-      return `Only ${remainingEntries} more to go`;
-    }
-    if (item.state === "OPEN" && pct >= 80) return "Almost live";
+    if (item.state === "OPEN" && pct >= 80) return "Going live soon";
     return "Open now";
-  }, [closed, item.state, usingPaidProgress, remainingCredits, remainingEntries, pct]);
+  }, [closed, item.state, pct]);
 
   const showCost = typeof item.playCostCredits === "number";
   const gLabel = gameLabel(item.gameKey);
@@ -108,6 +102,21 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
     const remainingMs = Math.max(0, endMs - Date.now());
     return Math.max(0, Math.min(100, Math.round((remainingMs / totalMs) * 100)));
   }, [showEndsIn, item.closesAt, item.countdownMinutes, tick]);
+
+  const progressText = useMemo(() => {
+    if (closed) return "Closed";
+    if (item.state === "ACTIVATED") return "Live now";
+    if (pct >= 90) return "Almost live";
+    if (pct >= 70) return "Building fast";
+    if (pct >= 40) return "Building";
+    return "Starting up";
+  }, [closed, item.state, pct]);
+
+  const helperText = useMemo(() => {
+    if (closed) return "This prize has been won.";
+    if (item.state === "ACTIVATED") return "Countdown has started.";
+    return "More play pushes this prize live.";
+  }, [closed, item.state]);
 
   return (
     <Link
@@ -192,20 +201,8 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
         <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50/80 p-3">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <div className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
-                Activation progress
-              </div>
-              <div className="mt-0.5 text-sm font-semibold text-slate-900">
-                {usingPaidProgress ? (
-                  <>
-                    {formatZAR(paidToday || 0)} <span className="text-slate-500">of</span> {formatZAR(goalCredits || 0)}
-                  </>
-                ) : (
-                  <>
-                    {item.totalEntriesToday} <span className="text-slate-500">of</span> {item.activationGoalEntries} entries
-                  </>
-                )}
-              </div>
+              <div className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Activation</div>
+              <div className="mt-0.5 text-sm font-semibold text-slate-900">{progressText}</div>
             </div>
             <div className="rounded-full bg-white px-2.5 py-1 text-xs font-extrabold text-slate-900 shadow-sm">
               {pct}%
@@ -219,23 +216,7 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
             />
           </div>
 
-          <div className="mt-2 text-xs text-slate-600">
-            {usingPaidProgress ? (
-              item.state === "OPEN" ? (
-                <>
-                  <span className="font-semibold text-slate-900">{formatZAR(remainingCredits)}</span> still needed before the countdown starts.
-                </>
-              ) : (
-                <>Activation target reached.</>
-              )
-            ) : item.state === "OPEN" ? (
-              <>
-                <span className="font-semibold text-slate-900">{remainingEntries}</span> more entries needed before the countdown starts.
-              </>
-            ) : (
-              <>Activation target reached.</>
-            )}
-          </div>
+          <div className="mt-2 text-xs text-slate-600">{helperText}</div>
         </div>
       </div>
     </Link>
