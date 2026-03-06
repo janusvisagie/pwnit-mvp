@@ -1,7 +1,20 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800">
-<rect width="1200" height="800" fill="#0f172a"/>
-<rect x="70" y="70" width="1060" height="660" rx="34" fill="#ffffff" opacity="0.08"/>
-
-<rect x="870" y="260" width="160" height="260" rx="20" fill="#ef4444"/>
-<rect x="890" y="300" width="120" height="60" fill="#111827"/>
+<svg width="1200" height="800" viewBox="0 0 1200 800" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="800" rx="48" fill="#F3F6FB"/>
+  <rect x="120" y="130" width="960" height="540" rx="42" fill="#0F172A"/>
+  <rect x="120" y="130" width="960" height="540" rx="42" stroke="#1E293B" stroke-width="6"/>
+  <rect x="166" y="176" width="868" height="448" rx="30" fill="url(#bg)"/>
+  <text x="226" y="268" fill="#FFFFFF" font-family="Arial, Helvetica, sans-serif" font-size="44" font-weight="800">PETROL VOUCHER</text>
+  <text x="226" y="334" fill="#CBD5E1" font-family="Arial, Helvetica, sans-serif" font-size="28">Fuel up with a practical everyday prize</text>
+  <rect x="226" y="470" width="286" height="92" rx="24" fill="#EF4444"/>
+  <text x="286" y="528" fill="#FFFFFF" font-family="Arial, Helvetica, sans-serif" font-size="54" font-weight="800">R 1 200</text>
+  <rect x="818" y="250" width="118" height="198" rx="18" fill="#F8FAFC"/>
+  <rect x="840" y="282" width="74" height="62" rx="8" fill="#F87171"/>
+  <path d="M938 288C971 288 986 312 986 340V414" stroke="#F8FAFC" stroke-width="16" stroke-linecap="round"/>
+  <path d="M986 414C986 438 972 452 950 452H920" stroke="#F8FAFC" stroke-width="16" stroke-linecap="round"/>
+  <defs>
+    <linearGradient id="bg" x1="166" y1="176" x2="1034" y2="624" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#162038"/>
+      <stop offset="1" stop-color="#0B1224"/>
+    </linearGradient>
+  </defs>
 </svg>

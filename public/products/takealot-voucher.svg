@@ -1,38 +1,21 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800">
+<svg width="1200" height="800" viewBox="0 0 1200 800" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="800" rx="48" fill="#F3F6FB"/>
+  <rect x="116" y="140" width="968" height="520" rx="40" fill="url(#bg)"/>
+  <rect x="152" y="176" width="896" height="448" rx="34" fill="#0B1324"/>
+  <rect x="152" y="176" width="896" height="448" rx="34" stroke="#1F2A44" stroke-width="4"/>
+  <rect x="184" y="208" width="460" height="64" rx="18" fill="#14203A"/>
+  <text x="214" y="251" fill="#FFFFFF" font-family="Arial, Helvetica, sans-serif" font-size="44" font-weight="700">TAKEALOT VOUCHER</text>
+  <text x="214" y="324" fill="#CBD5E1" font-family="Arial, Helvetica, sans-serif" font-size="28">Shop tech, home, beauty and more online</text>
+  <rect x="184" y="456" width="340" height="96" rx="24" fill="#1E90FF"/>
+  <text x="248" y="516" fill="#FFFFFF" font-family="Arial, Helvetica, sans-serif" font-size="54" font-weight="800">R 1 500</text>
+  <circle cx="920" cy="400" r="112" fill="#111C33"/>
+  <circle cx="920" cy="400" r="104" stroke="#39A3FF" stroke-width="16"/>
+  <path d="M887 401H953" stroke="#39A3FF" stroke-width="18" stroke-linecap="round"/>
+  <path d="M920 368V434" stroke="#39A3FF" stroke-width="18" stroke-linecap="round"/>
   <defs>
-    <radialGradient id="bg" cx="50%" cy="35%" r="75%">
-      <stop offset="0%" stop-color="#ffffff"/>
-      <stop offset="100%" stop-color="#f8fafc"/>
-    </radialGradient>
-
-    <filter id="softShadow" x="-30%" y="-30%" width="160%" height="160%">
-      <feDropShadow dx="0" dy="18" stdDeviation="16" flood-color="#0f172a" flood-opacity="0.18"/>
-    </filter>
-
-    <linearGradient id="ink" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#0f172a"/>
-      <stop offset="100%" stop-color="#111827"/>
-    </linearGradient>
-
-    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#2563eb"/>
-      <stop offset="100%" stop-color="#1d4ed8"/>
+    <linearGradient id="bg" x1="116" y1="140" x2="1084" y2="660" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#E9EEF8"/>
+      <stop offset="1" stop-color="#DCE6F5"/>
     </linearGradient>
   </defs>
-
-  <rect width="1200" height="800" fill="url(#bg)"/>
-  <ellipse cx="600" cy="615" rx="270" ry="34" fill="#0f172a" opacity="0.06"/>
-
-  <!-- card -->
-  <g filter="url(#softShadow)">
-    <rect x="360" y="265" width="480" height="300" rx="44" fill="#ffffff" stroke="url(#ink)" stroke-width="20"/>
-    <rect x="400" y="315" width="400" height="70" rx="22" fill="url(#accent)" opacity="0.12"/>
-    <path d="M420 430h260" stroke="#cbd5e1" stroke-width="14" stroke-linecap="round"/>
-    <path d="M420 485h210" stroke="#cbd5e1" stroke-width="14" stroke-linecap="round"/>
-
-    <!-- badge -->
-    <rect x="700" y="420" width="120" height="110" rx="26" fill="url(#accent)"/>
-    <path d="M736 470h48" stroke="#ffffff" stroke-width="18" stroke-linecap="round"/>
-    <path d="M760 446v48" stroke="#ffffff" stroke-width="18" stroke-linecap="round"/>
-  </g>
 </svg>

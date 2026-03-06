@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { CountdownChip } from "@/components/CountdownChip";
+import { getProductContent } from "@/lib/productCatalog";
 
 export type ItemCardModel = {
   id: string;
@@ -38,22 +39,6 @@ function gameLabel(k?: string | null) {
   return k;
 }
 
-function resolveImage(title: string, imageUrl: string | null) {
-  const t = title.toLowerCase();
-
-  if (t.includes("nintendo switch")) {
-    return "https://assets.nintendo.com/image/upload/f_auto/q_auto/dpr_1.5/ncom/en_US/switch/videos/heg001-07060600/posters/oled-model";
-  }
-  if (t.includes("wh-1000xm5") || t.includes("headphones")) {
-    return "https://www.sony.com/image/6145c1d32e6ac8e63a46c912dc33c5bb?bgc=FFFFFF&bgcolor=FFFFFF&fmt=pjpeg&wid=1200";
-  }
-  if (t.includes("gopro")) {
-    return "https://static.gopro.com/assets/blta2b8522e5372af40/bltdcd3295493f2b049/66b0eba949df090a205ce45b/01-h13-hero-intro-1920.jpg?auto=webp&disable=upscale&quality=80&width=1920";
-  }
-
-  return imageUrl;
-}
-
 export function ItemCard({ item }: { item: ItemCardModel }) {
   const [imgOk, setImgOk] = useState(true);
   const pct = progressPct(item.totalEntriesToday, item.activationGoalEntries);
@@ -62,7 +47,7 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
   const isLive = item.state === "ACTIVATED";
   const href = item.state === "PUBLISHED" ? `/item/${item.id}/leaderboard` : `/item/${item.id}`;
   const gLabel = gameLabel(item.gameKey);
-  const displayImage = resolveImage(item.title, item.imageUrl);
+  const displayImage = getProductContent(item.title, item.imageUrl)?.imageUrl ?? item.imageUrl;
 
   const statusTone = useMemo(() => {
     if (isClosed) return "bg-slate-900 text-white";

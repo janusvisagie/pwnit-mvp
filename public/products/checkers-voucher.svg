@@ -1,37 +1,18 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800">
+<svg width="1200" height="800" viewBox="0 0 1200 800" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="800" rx="48" fill="#F6F8FB"/>
+  <rect x="110" y="146" width="980" height="508" rx="40" fill="#FFFFFF"/>
+  <rect x="110" y="146" width="980" height="508" rx="40" stroke="#D7DEE9" stroke-width="6"/>
+  <rect x="144" y="180" width="912" height="440" rx="34" fill="url(#bg)"/>
+  <text x="206" y="272" fill="#0F172A" font-family="Arial, Helvetica, sans-serif" font-size="44" font-weight="800">CHECKERS VOUCHER</text>
+  <text x="206" y="338" fill="#334155" font-family="Arial, Helvetica, sans-serif" font-size="28">Everyday value for groceries and essentials</text>
+  <rect x="206" y="468" width="320" height="92" rx="24" fill="#15A34A"/>
+  <text x="272" y="526" fill="#FFFFFF" font-family="Arial, Helvetica, sans-serif" font-size="54" font-weight="800">R 1 000</text>
+  <path d="M870 280L962 372L870 464L778 372L870 280Z" fill="#EAF7EF" stroke="#16A34A" stroke-width="18"/>
+  <path d="M830 372L858 400L912 344" stroke="#16A34A" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
   <defs>
-    <radialGradient id="bg" cx="50%" cy="35%" r="75%">
-      <stop offset="0%" stop-color="#ffffff"/>
-      <stop offset="100%" stop-color="#f8fafc"/>
-    </radialGradient>
-
-    <filter id="softShadow" x="-30%" y="-30%" width="160%" height="160%">
-      <feDropShadow dx="0" dy="18" stdDeviation="16" flood-color="#0f172a" flood-opacity="0.18"/>
-    </filter>
-
-    <linearGradient id="ink" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#0f172a"/>
-      <stop offset="100%" stop-color="#111827"/>
-    </linearGradient>
-
-    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#22c55e"/>
-      <stop offset="100%" stop-color="#16a34a"/>
+    <linearGradient id="bg" x1="144" y1="180" x2="1056" y2="620" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F8FAFC"/>
+      <stop offset="1" stop-color="#E7F5EC"/>
     </linearGradient>
   </defs>
-
-  <rect width="1200" height="800" fill="url(#bg)"/>
-  <ellipse cx="600" cy="615" rx="270" ry="34" fill="#0f172a" opacity="0.06"/>
-
-  <!-- ticket/voucher -->
-  <g filter="url(#softShadow)">
-    <path d="M360 280h480c28 0 50 22 50 50v170c-28 0-50 22-50 50H360c0-28-22-50-50-50V330c28 0 50-22 50-50z"
-          fill="#ffffff" stroke="url(#ink)" stroke-width="20" stroke-linejoin="round"/>
-    <path d="M420 345h360" stroke="#cbd5e1" stroke-width="14" stroke-linecap="round"/>
-    <path d="M420 410h240" stroke="#cbd5e1" stroke-width="14" stroke-linecap="round"/>
-    <path d="M420 475h300" stroke="#cbd5e1" stroke-width="14" stroke-linecap="round"/>
-
-    <rect x="730" y="395" width="120" height="110" rx="26" fill="url(#accent)"/>
-    <path d="M775 455l18 18 38-42" fill="none" stroke="#ffffff" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
-  </g>
 </svg>
