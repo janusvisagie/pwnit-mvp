@@ -36,12 +36,11 @@ model Item {
   shortDesc             String?
   productUrl            String?
   state                 String    @default("OPEN") // OPEN | ACTIVATED | CLOSED | PUBLISHED
-  activationGoalEntries Int       @default(5)
+  activationGoalEntries Int       @default(3)
   countdownMinutes      Int       @default(5)
   opensAt               DateTime?
   closesAt              DateTime?
   subscriberOnly        Boolean   @default(false)
-  activationCoverageRatio Float   @default(1.0)
   gameKey               String?
 
   attempts  Attempt[]

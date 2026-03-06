@@ -1,77 +1,58 @@
-// src/components/WelcomeModal.tsx
 "use client";
 
 import { useEffect, useState } from "react";
 
-const KEY = "pwnit_welcome_seen_session_v1_2";
+const KEY = "pwnit_welcome_seen_session_v1";
 
 export function WelcomeModal() {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    // Show once per browser session
     try {
       const seen = window.sessionStorage.getItem(KEY);
-      if (!seen) {
-        window.sessionStorage.setItem(KEY, "1");
-        setOpen(true);
-      }
+      if (!seen) setOpen(true);
     } catch {
-      // storage blocked -> still show once on mount
-      setOpen(true);
+      // ignore
     }
   }, []);
 
   function dismiss() {
     setOpen(false);
+    try {
+      window.sessionStorage.setItem(KEY, "1");
+    } catch {}
   }
 
   if (!open) return null;
 
   return (
-    <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/40 p-4"
-      onClick={dismiss}
-      role="dialog"
-      aria-modal="true"
-      aria-label="Welcome"
-    >
-      <div
-        className="w-full max-w-xl rounded-2xl bg-white p-5 shadow-xl ring-1 ring-slate-200"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="space-y-1">
-          <div className="text-xs font-semibold text-slate-600">Welcome to</div>
-          <div className="text-2xl font-extrabold tracking-tight text-slate-900">
-            PwnIt <span className="text-base">👋</span>
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/40 p-4">
+      <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl ring-1 ring-slate-200">
+        <div className="text-2xl font-extrabold tracking-tight text-slate-900">PwnIt</div>
+
+        <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
+          <div className="rounded-2xl bg-slate-50 p-3 ring-1 ring-slate-200">
+            <div className="text-xs font-black text-slate-500">1</div>
+            <div className="mt-1 text-sm font-extrabold text-slate-900">Pick a prize</div>
+          </div>
+          <div className="rounded-2xl bg-slate-50 p-3 ring-1 ring-slate-200">
+            <div className="text-xs font-black text-slate-500">2</div>
+            <div className="mt-1 text-sm font-extrabold text-slate-900">Play a skill game</div>
+          </div>
+          <div className="rounded-2xl bg-slate-50 p-3 ring-1 ring-slate-200">
+            <div className="text-xs font-black text-slate-500">3</div>
+            <div className="mt-1 text-sm font-extrabold text-slate-900">Win</div>
           </div>
         </div>
 
-        <div className="mt-4 grid gap-3 sm:grid-cols-3">
-          <div className="rounded-2xl border border-slate-200 bg-white p-3">
-            <div className="text-xs font-extrabold text-slate-900">1) Pick a prize</div>
-            <div className="mt-1 text-sm text-slate-600">Choose what you want to win.</div>
-          </div>
-
-          <div className="rounded-2xl border border-slate-200 bg-white p-3">
-            <div className="text-xs font-extrabold text-slate-900">2) Play a quick skill game</div>
-            <div className="mt-1 text-sm text-slate-600">Best time ranks higher.</div>
-          </div>
-
-          <div className="rounded-2xl border border-slate-200 bg-white p-3">
-            <div className="text-xs font-extrabold text-slate-900">3) Win!</div>
-            <div className="mt-1 text-sm text-slate-600">Top players take the prizes.</div>
-          </div>
-        </div>
-
-        <div className="mt-3 text-sm font-semibold text-slate-900">If you didn&apos;t win - buy it!</div>
+        <p className="mt-3 text-sm text-slate-700">Or buy it if you don&apos;t.</p>
 
         <div className="mt-4 flex items-center justify-end">
           <button
             onClick={dismiss}
             className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-extrabold text-white hover:bg-slate-800"
           >
-            Start playing
+            Start
           </button>
         </div>
       </div>

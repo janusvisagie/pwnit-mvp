@@ -4,9 +4,9 @@ const prisma = new PrismaClient();
 
 async function main() {
   const res = await prisma.item.updateMany({
-    data: { activationGoalEntries: 5 },
+    data: { activationGoalEntries: 3 },
   });
-  console.log(`OK: updated ${res.count} items → activationGoalEntries=5`);
+  console.log(`OK: updated ${res.count} items → activationGoalEntries=3`);
 }
 
 main()

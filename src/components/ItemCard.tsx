@@ -1,21 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
-import CountdownChip from "@/components/CountdownChip";
+import { useMemo, useState } from "react";
+import { CountdownChip } from "@/components/CountdownChip";
 
-type ItemCardModel = {
+export type ItemCardModel = {
   id: string;
   title: string;
   prizeValueZAR: number;
   state: string;
   activationGoalEntries: number;
   totalEntriesToday: number;
-  paidCreditsToday?: number;
-  activationGoalCredits?: number;
   imageUrl: string | null;
   closesAt?: string | null;
-  countdownMinutes?: number;
   playCostCredits?: number;
   gameKey?: string | null;
 };
@@ -51,24 +48,9 @@ function gameLabel(k?: string | null) {
 
 export function ItemCard({ item }: { item: ItemCardModel }) {
   const [imgOk, setImgOk] = useState(true);
-  const [tick, setTick] = useState(0);
 
-  useEffect(() => {
-    if (item.state !== "ACTIVATED" || !item.closesAt) return;
-    const t = window.setInterval(() => setTick((x) => x + 1), 250);
-    return () => window.clearInterval(t);
-  }, [item.state, item.closesAt]);
-
-  const paidToday = typeof item.paidCreditsToday === "number" ? item.paidCreditsToday : null;
-  const goalCredits = typeof item.activationGoalCredits === "number" ? item.activationGoalCredits : null;
-  const usingPaidProgress = paidToday != null && goalCredits != null;
-  const pct = usingPaidProgress
-    ? progressPct(paidToday, goalCredits)
-    : progressPct(item.totalEntriesToday, item.activationGoalEntries);
-
-  const remainingEntries = Math.max(0, (item.activationGoalEntries || 0) - (item.totalEntriesToday || 0));
-  const remainingCredits = usingPaidProgress ? Math.max(0, (goalCredits || 0) - (paidToday || 0)) : 0;
-
+  const pct = progressPct(item.totalEntriesToday, item.activationGoalEntries);
+  const remaining = Math.max(0, (item.activationGoalEntries || 0) - (item.totalEntriesToday || 0));
   const showEndsIn = item.state === "ACTIVATED" && !!item.closesAt;
   const closed = item.state === "CLOSED" || item.state === "PUBLISHED";
   const deepLink = item.state === "PUBLISHED" ? `/item/${item.id}/leaderboard` : `/item/${item.id}`;
@@ -76,151 +58,99 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
   const hot = useMemo(() => {
     if (closed) return false;
     if (item.state === "ACTIVATED") return true;
-    if (item.state === "OPEN" && pct >= 80) return true;
-    if (!usingPaidProgress && item.state === "OPEN" && remainingEntries <= 2) return true;
-    if (usingPaidProgress && item.state === "OPEN" && remainingCredits <= 50) return true;
+    if (item.state === "OPEN" && pct >= 67) return true;
+    if (item.state === "OPEN" && remaining <= 1) return true;
+
     const mins = minutesLeft(item.closesAt);
     if (item.state === "ACTIVATED" && mins != null && mins <= 3) return true;
+
     return false;
-  }, [closed, item.state, pct, usingPaidProgress, remainingEntries, remainingCredits, item.closesAt]);
+  }, [item.state, pct, remaining, item.closesAt, closed]);
 
   const urgencyText = useMemo(() => {
     if (closed) return "Results available";
     if (item.state === "ACTIVATED") return "Live now";
-    if (item.state === "OPEN" && pct >= 80) return "Going live soon";
-    return "Open now";
-  }, [closed, item.state, pct]);
+    if (item.state === "OPEN" && remaining > 0 && remaining <= 1) return `Only ${remaining} more play to go`;
+    if (item.state === "OPEN" && pct >= 67) return "Almost live";
+    return null;
+  }, [item.state, remaining, pct, closed]);
 
-  const showCost = typeof item.playCostCredits === "number";
   const gLabel = gameLabel(item.gameKey);
-
-  const countdownPct = useMemo(() => {
-    if (!showEndsIn) return null;
-    const totalMs = Math.max(1, Number(item.countdownMinutes ?? 5) * 60_000);
-    const endMs = Date.parse(item.closesAt as string);
-    if (!Number.isFinite(endMs)) return null;
-    const remainingMs = Math.max(0, endMs - Date.now());
-    return Math.max(0, Math.min(100, Math.round((remainingMs / totalMs) * 100)));
-  }, [showEndsIn, item.closesAt, item.countdownMinutes, tick]);
-
-  const progressText = useMemo(() => {
-    if (closed) return "Closed";
-    if (item.state === "ACTIVATED") return "Live now";
-    if (pct >= 90) return "Almost live";
-    if (pct >= 70) return "Building fast";
-    if (pct >= 40) return "Building";
-    return "Starting up";
-  }, [closed, item.state, pct]);
-
-  const helperText = useMemo(() => {
-    if (closed) return "This prize has been won.";
-    if (item.state === "ACTIVATED") return "Countdown has started.";
-    return "More play pushes this prize live.";
-  }, [closed, item.state]);
 
   return (
     <Link
       href={deepLink}
-      className="group relative flex h-full flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-xl"
+      className="group relative flex flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
     >
-      <div className="relative aspect-[4/3] overflow-hidden bg-gradient-to-br from-slate-50 via-white to-slate-100">
+      <div className="relative flex h-[180px] items-center justify-center overflow-hidden bg-slate-50 p-4">
         {item.imageUrl && imgOk ? (
-          // eslint-disable-next-line @next/next/no-img-element
           <img
             src={item.imageUrl}
             alt={item.title}
-            className="h-full w-full object-contain p-5 transition duration-300 group-hover:scale-[1.03]"
+            className="max-h-full max-w-full object-contain transition duration-300 group-hover:scale-[1.03]"
             onError={() => setImgOk(false)}
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center text-sm font-semibold text-slate-500">
-            Image missing
-          </div>
+          <div className="text-xs text-slate-500">Image missing</div>
         )}
 
-        <div className="absolute inset-x-0 top-0 flex items-start justify-between p-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full border border-white/70 bg-white/90 px-2.5 py-1 text-[11px] font-bold tracking-wide text-slate-800 backdrop-blur">
-              {urgencyText}
-            </span>
-            {hot ? (
-              <span className="rounded-full bg-amber-400 px-2.5 py-1 text-[11px] font-extrabold tracking-wide text-slate-950">
-                HOT
-              </span>
-            ) : null}
-          </div>
-
-          <div className="rounded-full bg-slate-950 px-3 py-1.5 text-xs font-extrabold text-white shadow-sm">
-            {formatZAR(item.prizeValueZAR)}
-          </div>
+        <div className="absolute right-3 top-3 rounded-full bg-slate-900 px-3 py-1 text-xs font-extrabold text-white shadow">
+          {formatZAR(item.prizeValueZAR)}
         </div>
 
+        {hot ? (
+          <div className="absolute left-3 top-3 rounded-full bg-amber-300 px-3 py-1 text-[11px] font-extrabold text-slate-900 shadow">
+            Hot
+          </div>
+        ) : null}
+
         {showEndsIn ? (
-          <div className="absolute inset-x-3 bottom-3 rounded-2xl border border-white/60 bg-white/88 px-3 py-2 shadow-sm backdrop-blur">
-            <div className="flex items-center justify-between gap-3 text-xs font-semibold text-slate-700">
-              <span>Ends in</span>
-              <CountdownChip state={item.state} closesAtIso={item.closesAt ?? null} labelWhenClosed="Closed" />
-            </div>
-            {typeof countdownPct === "number" ? (
-              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-200">
-                <div
-                  className="h-full rounded-full bg-slate-900 transition-[width] duration-200"
-                  style={{ width: `${countdownPct}%` }}
-                />
-              </div>
-            ) : null}
+          <div className="absolute left-3 bottom-3 rounded-full bg-white/95 px-3 py-1 text-xs font-semibold text-slate-900 shadow ring-1 ring-slate-200 backdrop-blur">
+            Ends in <CountdownChip state={item.state} closesAt={item.closesAt ?? null} />
           </div>
         ) : null}
 
         {closed ? (
-          <div className="pointer-events-none absolute left-[-28%] top-[42%] w-[156%] -rotate-12 bg-slate-950/92 py-2.5 text-center text-xs font-extrabold uppercase tracking-[0.22em] text-white shadow-xl">
-            Item already won · New item loading
+          <div className="pointer-events-none absolute inset-0">
+            <div className="absolute -left-12 top-8 w-[320px] -rotate-12 bg-slate-900/90 px-4 py-2 text-center text-xs font-extrabold uppercase tracking-wide text-white shadow">
+              Prize claimed
+            </div>
           </div>
         ) : null}
       </div>
 
-      <div className="flex flex-1 flex-col p-4">
-        <div className="min-h-[3.25rem]">
-          <h3 className="line-clamp-2 text-base font-extrabold leading-tight text-slate-950 group-hover:text-slate-700">
-            {item.title}
-          </h3>
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            {gLabel ? (
-              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-700">
-                {gLabel}
-              </span>
-            ) : null}
-            {showCost ? (
-              <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700">
-                {item.playCostCredits} {item.playCostCredits === 1 ? "credit" : "credits"}/play
-              </span>
-            ) : null}
+      <div className="flex flex-1 flex-col px-4 py-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="truncate text-base font-extrabold text-slate-900">{item.title}</div>
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-slate-600">
+              {gLabel ? (
+                <span className="rounded-full bg-slate-50 px-2.5 py-1 font-semibold text-slate-700 ring-1 ring-slate-200">
+                  {gLabel}
+                </span>
+              ) : null}
+              {urgencyText ? <span className="font-semibold text-slate-700">{urgencyText}</span> : null}
+            </div>
+          </div>
+          <div className="rounded-full bg-slate-50 px-2.5 py-1 text-[11px] font-extrabold text-slate-900 ring-1 ring-slate-200">
+            {pct}%
           </div>
         </div>
 
-        <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50/80 p-3">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <div className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Activation</div>
-              <div className="mt-0.5 text-sm font-semibold text-slate-900">{progressText}</div>
-            </div>
-            <div className="rounded-full bg-white px-2.5 py-1 text-xs font-extrabold text-slate-900 shadow-sm">
-              {pct}%
-            </div>
-          </div>
+        <div className="mt-4 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Activation progress</div>
+        <div className="mt-1 flex items-center justify-between gap-2 text-sm text-slate-700">
+          <span>
+            {item.totalEntriesToday}/{item.activationGoalEntries} plays
+          </span>
+          <span className="font-semibold text-slate-900">
+            {item.playCostCredits ?? 0} {(item.playCostCredits ?? 0) === 1 ? "credit" : "credits"}/play
+          </span>
+        </div>
 
-          <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-slate-200">
-            <div
-              className="h-full rounded-full bg-gradient-to-r from-slate-700 via-slate-900 to-slate-700 transition-[width] duration-500"
-              style={{ width: `${pct}%` }}
-            />
-          </div>
-
-          <div className="mt-2 text-xs text-slate-600">{helperText}</div>
+        <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-slate-200">
+          <div className="h-full bg-slate-900 transition-all duration-500" style={{ width: `${pct}%` }} />
         </div>
       </div>
     </Link>
   );
 }
-
-export default ItemCard;

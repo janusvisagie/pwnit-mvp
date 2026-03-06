@@ -1,3 +1,4 @@
+// prisma/seed.mjs
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
@@ -32,59 +33,55 @@ async function main() {
       prizeType: "Voucher",
       prizeValueZAR: 500,
       imageUrl: "/products/pwnit_takealot-voucher.png",
-      activationGoalEntries: 5,
+      activationGoalEntries: 3,
       countdownMinutes: 2,
-      activationCoverageRatio: 1.0,
     },
     {
       title: "Checkers Voucher",
       prizeType: "Voucher",
       prizeValueZAR: 750,
       imageUrl: "/products/pwnit_checkers-voucher.png",
-      activationGoalEntries: 5,
+      activationGoalEntries: 3,
       countdownMinutes: 2,
-      activationCoverageRatio: 0.95,
+    },
+    {
+      title: "Woolworths Voucher",
+      prizeType: "Voucher",
+      prizeValueZAR: 1000,
+      imageUrl: "/products/woolworths-voucher.svg",
+      activationGoalEntries: 3,
+      countdownMinutes: 2,
     },
     {
       title: "Fuel Voucher",
       prizeType: "Voucher",
       prizeValueZAR: 1000,
       imageUrl: "/products/petrol-voucher.svg",
-      activationGoalEntries: 6,
-      countdownMinutes: 3,
-      activationCoverageRatio: 0.9,
-    },
-    {
-      title: "Woolworths Voucher",
-      prizeType: "Voucher",
-      prizeValueZAR: 1200,
-      imageUrl: "/products/woolworths-voucher.svg",
-      activationGoalEntries: 6,
-      countdownMinutes: 3,
-      activationCoverageRatio: 0.9,
+      activationGoalEntries: 3,
+      countdownMinutes: 2,
     },
     {
       title: "Air Fryer",
       prizeType: "Physical",
       prizeValueZAR: 2500,
       imageUrl: "/products/pwnit_air-fryer.png",
-      activationGoalEntries: 7,
-      countdownMinutes: 4,
-      activationCoverageRatio: 0.85,
+      activationGoalEntries: 3,
+      countdownMinutes: 2,
     },
     {
       title: "Smeg Kettle",
       prizeType: "Physical",
       prizeValueZAR: 3000,
       imageUrl: "/products/pwnit_smeg-kettle.png",
-      activationGoalEntries: 8,
-      countdownMinutes: 5,
-      activationCoverageRatio: 0.8,
+      activationGoalEntries: 3,
+      countdownMinutes: 2,
     },
   ];
 
   for (let idx = 0; idx < items.length; idx++) {
     const it = items[idx];
+    const gameKey = pickFromPool(idx);
+
     await prisma.item.create({
       data: {
         title: it.title,
@@ -99,13 +96,12 @@ async function main() {
         countdownMinutes: it.countdownMinutes,
         opensAt: now,
         subscriberOnly: false,
-        activationCoverageRatio: it.activationCoverageRatio,
-        gameKey: pickFromPool(idx),
+        gameKey,
       },
     });
   }
 
-  console.log("Seeded 6 marketplace items with per-item coverage ratios.");
+  console.log("Seeded 6 items + sticky gameKey.");
 }
 
 main()

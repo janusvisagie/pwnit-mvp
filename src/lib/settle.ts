@@ -1,19 +1,6 @@
-// src/lib/settle.ts
 import { prisma } from "@/lib/db";
 import { dayKeyZA } from "@/lib/time";
 
-/**
- * Settle winners for an item for "today" (dayKeyZA).
- *
- * Winner rule: Top X% win (default 5%).
- * - winnersCount = ceil(uniquePlayersToday * pct)
- * - clamp to [minWinners, maxWinners]
- * - ranks determined by best (lowest) score per user for the day
- *
- * Idempotent: if winners already exist for (itemId, dayKey), returns existing cutoff info.
- *
- * IMPORTANT: This project schema does NOT have item.publishedAt, so we never write it.
- */
 export type SettleResult = {
   ok: boolean;
   dayKey: string;
@@ -39,7 +26,6 @@ function pctToLabel(pct: number) {
   return Number.isInteger(v) ? `${v.toFixed(0)}%` : `${v}%`;
 }
 
-// ✅ IMPORTANT: exclude invalid attempts (e.g. memory incorrect) from leaderboard scoring
 function validAttemptWhere() {
   return {
     OR: [{ flags: null }, { NOT: { flags: { contains: '"valid":false' } } }],
@@ -52,19 +38,17 @@ export async function settleItemWinners(
     pct?: number;
     minWinners?: number;
     maxWinners?: number;
-    publishItem?: boolean; // default true
+    publishItem?: boolean;
   }
 ): Promise<SettleResult> {
   const dayKey = dayKeyZA();
-
   const pct = typeof opts?.pct === "number" ? opts.pct : DEFAULT_TOP_PCT;
   const minWinners = typeof opts?.minWinners === "number" ? opts.minWinners : DEFAULT_MIN_WINNERS;
   const maxWinners = typeof opts?.maxWinners === "number" ? opts.maxWinners : DEFAULT_MAX_WINNERS;
   const publishItem = opts?.publishItem !== false;
 
-  // Idempotent: already settled today
   const existing = await prisma.winner.findMany({
-    where: { itemId, dayKey },
+    where: { itemId },
     orderBy: [{ rank: "asc" }],
     select: { rank: true },
   });
@@ -72,7 +56,7 @@ export async function settleItemWinners(
   if (existing.length > 0) {
     const uniquePlayersAgg = await prisma.attempt.groupBy({
       by: ["userId"],
-      where: { itemId, dayKey, ...validAttemptWhere() },
+      where: { itemId, ...validAttemptWhere() },
     });
 
     return {
@@ -88,9 +72,8 @@ export async function settleItemWinners(
     };
   }
 
-  // Best attempt per user (valid attempts only)
   const attempts = await prisma.attempt.findMany({
-    where: { itemId, dayKey, ...validAttemptWhere() },
+    where: { itemId, ...validAttemptWhere() },
     orderBy: [{ scoreMs: "asc" }, { createdAt: "asc" }],
     select: { userId: true, scoreMs: true, createdAt: true },
   });
@@ -117,7 +100,6 @@ export async function settleItemWinners(
 
   const rawCount = Math.ceil(uniquePlayers * pct);
   const winnersCount = clamp(rawCount, minWinners, maxWinners);
-
   const ranked = Array.from(bestByUser.values()).slice(0, winnersCount);
 
   const users = await prisma.user.findMany({
