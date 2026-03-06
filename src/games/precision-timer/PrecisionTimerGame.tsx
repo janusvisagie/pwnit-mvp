@@ -49,39 +49,43 @@ export default function PrecisionTimerGame(props: GameProps & { onResult?: any }
     if (finish) finish({ scoreMs: error, meta: { stoppedAtMs: ms, targetMs: TARGET_MS } });
   };
 
+  const progress = Math.min(100, (elapsed / TARGET_MS) * 100);
+
   return (
-    <div className="space-y-3">
-      <div className="text-sm font-extrabold text-slate-900">Precision Timer</div>
-      <div className="text-xs text-slate-700">
-        Stop at exactly {(TARGET_MS / 1000).toFixed(3)}s. Score = error in ms (lower is better).
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <div className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Objective</div>
+          <div className="mt-1 text-sm font-semibold text-slate-700">
+            Stop as close as possible to exactly {(TARGET_MS / 1000).toFixed(3)} seconds.
+          </div>
+        </div>
+        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-right shadow-sm">
+          <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Target</div>
+          <div className="mt-1 text-xl font-black tabular-nums text-slate-900">3.000s</div>
+        </div>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 text-center">
-        <div className="text-4xl font-black tabular-nums text-slate-900">
-          {(elapsed / 1000).toFixed(3)}s
+      <div className="rounded-[28px] border border-slate-200 bg-slate-950 p-5 text-center text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+        <div className="text-[11px] font-bold uppercase tracking-[0.24em] text-slate-400">Live timer</div>
+        <div className="mt-4 text-5xl font-black tabular-nums tracking-tight sm:text-6xl">
+          {(elapsed / 1000).toFixed(3)}
         </div>
-        <div className="mt-1 text-xs font-semibold text-slate-600">
-          Target: {(TARGET_MS / 1000).toFixed(3)}s
+        <div className="mt-4 h-3 overflow-hidden rounded-full bg-white/10">
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-cyan-400 via-sky-400 to-blue-500 transition-[width] duration-100"
+            style={{ width: `${progress}%` }}
+          />
         </div>
       </div>
 
-      {!running ? (
-        <button
-          className="w-full rounded-xl bg-slate-900 px-4 py-2 text-sm font-extrabold text-white disabled:opacity-50"
-          onClick={start}
-          disabled={!!disabled}
-        >
-          Start
-        </button>
-      ) : (
-        <button
-          className="w-full rounded-xl bg-slate-900 px-4 py-2 text-sm font-extrabold text-white disabled:opacity-50"
-          onClick={stop}
-          disabled={!!disabled}
-        >
-          Stop
-        </button>
-      )}
+      <button
+        className="w-full rounded-2xl bg-slate-900 px-4 py-3 text-sm font-extrabold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+        onClick={running ? stop : start}
+        disabled={!!disabled}
+      >
+        {running ? "Stop timer" : "Start timer"}
+      </button>
     </div>
   );
 }
