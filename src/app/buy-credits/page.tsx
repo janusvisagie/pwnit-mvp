@@ -1,28 +1,31 @@
-// src/app/buy-credits/page.tsx
 "use client";
 
 import Link from "next/link";
 import { useState } from "react";
 
 const BUNDLES = [
-  { credits: 10, price: "R10" },
-  { credits: 25, price: "R25" },
-  { credits: 50, price: "R50" },
-  { credits: 100, price: "R100" },
+  { key: "starter", credits: 60, price: 50, label: "Starter" },
+  { key: "player", credits: 130, price: 100, label: "Player" },
+  { key: "pro", credits: 350, price: 250, label: "Pro" },
+  { key: "elite", credits: 750, price: 500, label: "Elite" },
 ];
 
+function formatZAR(v: number) {
+  return `R${Number(v || 0).toLocaleString("en-ZA")}`;
+}
+
 export default function BuyCreditsPage() {
-  const [loading, setLoading] = useState<number | null>(null);
+  const [loading, setLoading] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
 
-  async function buy(credits: number) {
-    setLoading(credits);
+  async function buy(bundleKey: string) {
+    setLoading(bundleKey);
     setMsg(null);
     try {
       const res = await fetch("/api/credits/buy", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ exactCredits: credits }),
+        body: JSON.stringify({ bundleKey }),
       });
       const data: any = await res.json().catch(() => ({}));
 
@@ -31,8 +34,8 @@ export default function BuyCreditsPage() {
         return;
       }
 
-      setMsg(`Added ${credits} credits. Your balance is now ${data?.totalCredits ?? "updated"}.`);
-      // simplest update for MVP
+      setMsg(`Added ${data?.added ?? 0} credits. Your balance is now ${data?.totalCredits ?? "updated"}.`);
+      window.dispatchEvent(new Event("pwnit:credits"));
       window.location.href = "/";
     } catch {
       setMsg("Network error. Please try again.");
@@ -42,32 +45,31 @@ export default function BuyCreditsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-4">
+    <div className="mx-auto max-w-4xl space-y-4">
       <h1 className="text-2xl font-extrabold tracking-tight">Buy credits</h1>
 
       <section className="rounded-2xl border border-slate-200 bg-white p-4">
-        <div className="text-sm font-semibold text-slate-900">Bundles</div>
+        <div className="text-sm font-semibold text-slate-900">Credit packs</div>
+        <div className="mt-1 text-sm text-slate-600">Bigger packs include bonus credits.</div>
 
-        <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
           {BUNDLES.map((b) => (
             <button
-              key={b.credits}
+              key={b.key}
               className="rounded-2xl border border-slate-200 bg-white p-3 text-left hover:bg-slate-50 disabled:opacity-60"
               disabled={loading !== null}
-              onClick={() => buy(b.credits)}
+              onClick={() => buy(b.key)}
             >
-              <div className="text-lg font-extrabold text-slate-900">{b.credits}</div>
-              <div className="text-xs font-semibold text-slate-600">{b.price}</div>
-              <div className="mt-1 text-[11px] text-slate-500">
-                {loading === b.credits ? "Adding…" : "Add credits"}
-              </div>
+              <div className="text-[11px] font-bold uppercase tracking-wide text-slate-500">{b.label}</div>
+              <div className="mt-1 text-2xl font-extrabold text-slate-900">{b.credits}</div>
+              <div className="text-sm font-semibold text-slate-600">{formatZAR(b.price)}</div>
+              <div className="mt-2 text-[11px] text-emerald-700">{b.credits - b.price} bonus credits</div>
+              <div className="mt-1 text-[11px] text-slate-500">{loading === b.key ? "Adding…" : "Add credits"}</div>
             </button>
           ))}
         </div>
 
-        <div className="mt-4 text-xs text-slate-600">
-          MVP note: payments are placeholder. This simulates adding credits to the current demo user.
-        </div>
+        <div className="mt-4 text-xs text-slate-600">MVP note: payments are placeholder. This simulates adding credits to the current demo user.</div>
 
         {msg ? <div className="mt-3 text-sm font-semibold text-slate-900">{msg}</div> : null}
 

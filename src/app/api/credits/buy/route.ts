@@ -1,4 +1,3 @@
-// src/app/api/credits/purchase/route.ts
 export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
@@ -11,27 +10,31 @@ function clampInt(n: any, lo: number, hi: number) {
   return Math.max(lo, Math.min(hi, x));
 }
 
+const BUNDLES: Record<string, number> = {
+  starter: 60,
+  player: 130,
+  pro: 350,
+  elite: 750,
+  small: 60,
+  medium: 130,
+  large: 350,
+};
+
 export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => ({}));
-
-    // allow either: bundleKey OR exactCredits
-    const bundleKey = String(body?.bundleKey || "").trim();
+    const bundleKey = String(body?.bundleKey || "").trim().toLowerCase();
     const exactCredits = body?.exactCredits;
-
     const me = await getOrCreateDemoUser();
 
     let creditsToAdd = 0;
-
-    // Bundles (existing behavior)
     if (bundleKey) {
-      if (bundleKey === "small") creditsToAdd = 10;
-      else if (bundleKey === "medium") creditsToAdd = 25;
-      else if (bundleKey === "large") creditsToAdd = 60;
-      else return NextResponse.json({ ok: false, error: "Unknown bundleKey" }, { status: 400 });
+      creditsToAdd = BUNDLES[bundleKey] ?? 0;
+      if (!creditsToAdd) {
+        return NextResponse.json({ ok: false, error: "Unknown bundleKey" }, { status: 400 });
+      }
     } else {
-      // Exact credits (new behavior)
-      creditsToAdd = clampInt(exactCredits, 1, 500); // safety cap
+      creditsToAdd = clampInt(exactCredits, 1, 1000);
     }
 
     const updated = await prisma.user.update({

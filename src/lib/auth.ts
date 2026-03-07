@@ -3,14 +3,10 @@ import { prisma } from "@/lib/db";
 import { dayKeyZA } from "@/lib/time";
 import { cookies, headers } from "next/headers";
 
-export const DAILY_FREE_CREDITS = 5;
+export const DAILY_FREE_CREDITS = 30;
 
-/**
- * Demo user is selected via cookie.
- * This helper tries several cookie keys to avoid mismatch.
- */
 const COOKIE_KEYS = [
-  "pwnit_demo", // recommended
+  "pwnit_demo",
   "pwnit_demo_user",
   "demo",
   "demoUser",
@@ -25,7 +21,6 @@ function normalizeDemoId(raw: string | null | undefined) {
 }
 
 function getDemoIdFromRequest(): string {
-  // 1) Cookie
   try {
     const jar = cookies();
     for (const key of COOKIE_KEYS) {
@@ -33,28 +28,17 @@ function getDemoIdFromRequest(): string {
       const id = normalizeDemoId(v);
       if (id) return id;
     }
-  } catch {
-    // ignore
-  }
+  } catch {}
 
-  // 2) Header fallback
   try {
     const h = headers();
     const id = normalizeDemoId(h.get("x-demo-user"));
     if (id) return id;
-  } catch {
-    // ignore
-  }
+  } catch {}
 
-  // 3) Default
   return "demo1";
 }
 
-/**
- * Concurrency-safe daily free-credit reset:
- * - If the day rolled over, we reset exactly once using an atomic updateMany guard.
- * - This prevents multiple parallel requests from resetting (or racing) at the same time.
- */
 export async function getOrCreateDemoUser() {
   const demoId = getDemoIdFromRequest();
   const demoEmail = `${demoId}@maketiyours.local`;
@@ -75,13 +59,11 @@ export async function getOrCreateDemoUser() {
     return user;
   }
 
-  // Reset free credits once per day (atomic guard)
   const lastKey = String((user as any).lastDailyCreditsDayKey ?? "");
   if (lastKey !== today) {
     const res = await prisma.user.updateMany({
       where: {
         id: user.id,
-        // only update if still on an older day
         NOT: { lastDailyCreditsDayKey: today as any },
       } as any,
       data: {
@@ -90,11 +72,9 @@ export async function getOrCreateDemoUser() {
       } as any,
     });
 
-    if (res.count > 0) {
-      user = await prisma.user.findUnique({ where: { id: user.id } });
-    } else {
-      // someone else already updated; re-read to keep response consistent
-      user = await prisma.user.findUnique({ where: { id: user.id } });
+    user = await prisma.user.findUnique({ where: { id: user.id } });
+    if (!user && res.count > 0) {
+      user = await prisma.user.findUnique({ where: { email: demoEmail } });
     }
   }
 

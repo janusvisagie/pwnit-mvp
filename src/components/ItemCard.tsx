@@ -4,27 +4,23 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { CountdownChip } from "@/components/CountdownChip";
 import { getProductContent } from "@/lib/productCatalog";
+import { activationStageLabel } from "@/lib/playCost";
 
 export type ItemCardModel = {
   id: string;
   title: string;
   prizeValueZAR: number;
   state: string;
-  activationGoalEntries: number;
-  totalEntriesToday: number;
   imageUrl: string | null;
   closesAt?: string | null;
   playCostCredits?: number;
   gameKey?: string | null;
+  activationPct?: number;
+  activationLabel?: string;
 };
 
 function formatZAR(v: number) {
   return `R${Number(v || 0).toLocaleString("en-ZA")}`;
-}
-
-function progressPct(total: number, goal: number) {
-  if (!goal || goal <= 0) return 0;
-  return Math.max(0, Math.min(100, Math.round((total / goal) * 100)));
 }
 
 function gameLabel(k?: string | null) {
@@ -41,15 +37,13 @@ function gameLabel(k?: string | null) {
 
 export function ItemCard({ item }: { item: ItemCardModel }) {
   const [imgOk, setImgOk] = useState(true);
-  const pct = progressPct(item.totalEntriesToday, item.activationGoalEntries);
-  const remaining = Math.max(0, item.activationGoalEntries - item.totalEntriesToday);
+  const pct = Math.max(0, Math.min(100, Number(item.activationPct ?? 0)));
   const isClosed = item.state === "CLOSED" || item.state === "PUBLISHED";
   const isActivated = item.state === "ACTIVATED";
   const href = item.state === "PUBLISHED" ? `/item/${item.id}/leaderboard` : `/item/${item.id}`;
   const gLabel = gameLabel(item.gameKey);
   const displayImage = getProductContent(item.title, item.imageUrl)?.imageUrl ?? item.imageUrl;
-
-  const hot = useMemo(() => !isClosed && !isActivated && (remaining <= 1 || pct >= 67), [isClosed, isActivated, remaining, pct]);
+  const hot = useMemo(() => !isClosed && !isActivated && pct >= 75, [isClosed, isActivated, pct]);
 
   const statusTone = isClosed
     ? "bg-slate-900 text-white"
@@ -64,7 +58,7 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
       href={href}
       className="group relative overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg"
     >
-      <div className="relative flex h-[210px] items-center justify-center overflow-hidden bg-gradient-to-b from-slate-50 to-white p-5">
+      <div className="relative flex h-[168px] items-center justify-center overflow-hidden bg-gradient-to-b from-slate-50 to-white p-4">
         {displayImage && imgOk ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -93,14 +87,14 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
         ) : null}
 
         {isActivated && item.closesAt ? (
-          <div className="absolute bottom-4 left-4 rounded-full bg-white/95 px-3 py-1 text-[11px] font-semibold text-slate-800 shadow ring-1 ring-slate-200">
+          <div className="absolute bottom-4 right-4 rounded-full bg-white/95 px-3 py-1 text-[11px] font-semibold text-slate-800 shadow ring-1 ring-slate-200">
             Ends in <CountdownChip state={item.state} closesAt={item.closesAt} />
           </div>
         ) : null}
 
         {isClosed ? (
           <div className="pointer-events-none absolute inset-0 overflow-hidden">
-            <div className="absolute left-[-20%] top-[42%] w-[140%] -rotate-12 bg-slate-900/95 px-4 py-2 text-center text-xs font-extrabold tracking-wide text-white shadow-xl">
+            <div className="absolute left-[-24%] top-[42%] w-[148%] -rotate-12 bg-slate-900/95 px-4 py-2 text-center text-xs font-extrabold tracking-wide text-white shadow-xl">
               PRIZE WON • NEXT PRIZE LOADING
             </div>
           </div>
@@ -127,19 +121,13 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
         {!isClosed ? (
           <div className="space-y-2">
             <div className="flex items-center justify-between text-[11px] font-semibold text-slate-600">
-              <span>Activation threshold</span>
-              <span>
-                {Math.min(item.totalEntriesToday, item.activationGoalEntries)}/{item.activationGoalEntries} plays
-              </span>
+              <span>Activation progress</span>
+              <span>{isActivated ? "Activated" : activationStageLabel(pct)}</span>
             </div>
             <div className="h-2.5 overflow-hidden rounded-full bg-slate-200">
               <div className="h-full rounded-full bg-slate-900 transition-all duration-500" style={{ width: `${pct}%` }} />
             </div>
-            {!isActivated ? (
-              <div className="text-[11px] text-slate-500">
-                {remaining === 0 ? "Ready to activate." : `${remaining} ${remaining === 1 ? "play" : "plays"} to activate.`}
-              </div>
-            ) : null}
+            {!isActivated ? <div className="text-[11px] text-slate-500">More play pushes this prize live.</div> : null}
           </div>
         ) : (
           <div className="text-[11px] text-slate-500">View results or buy the prize if you didn’t win.</div>

@@ -10,6 +10,7 @@ type Quote = {
   amountDueCredits: number;
   walletAppliedCredits: number;
   topUpCredits: number;
+  paidBalance: number;
 };
 
 function formatZAR(v: number) {
@@ -55,6 +56,7 @@ export function BuyNowButton({
         amountDueCredits: Number(data.amountDueCredits || 0),
         walletAppliedCredits: Number(data.walletAppliedCredits || 0),
         topUpCredits: Number(data.topUpCredits || 0),
+        paidBalance: Number(data?.balances?.paid ?? 0),
       });
     } catch (e: any) {
       setMsg(e?.message || "Could not load buy options");
@@ -86,11 +88,9 @@ export function BuyNowButton({
       }
 
       if (mode === "full") {
-        setMsg(`Purchase recorded. Pay ${formatZAR(data.amountDueCredits)} directly.`);
+        setMsg(`Purchase recorded. Pay ${formatZAR(data.topUpCredits ?? data.amountDueCredits)} directly.`);
       } else {
-        setMsg(
-          `Purchase recorded. Used ${formatZAR(data.walletAppliedCredits)} paid credits and topped up ${formatZAR(data.topUpCredits)}.`
-        );
+        setMsg(`Purchase recorded. Applied ${formatZAR(data.walletAppliedCredits)} from your wallet and pay ${formatZAR(data.topUpCredits)}.`);
       }
       setQuote(null);
       window.dispatchEvent(new Event("pwnit:credits"));
@@ -126,13 +126,13 @@ export function BuyNowButton({
               Price: <span className="font-extrabold text-slate-900">{formatZAR(quote.priceCredits)}</span>
             </div>
             <div>
-              Your discount: <span className="font-extrabold text-slate-900">{formatZAR(quote.discountAppliedCredits)}</span>
+              Your play discount: <span className="font-extrabold text-slate-900">{formatZAR(quote.discountAppliedCredits)}</span>
             </div>
             <div>
-              Amount to pay: <span className="font-extrabold text-slate-900">{formatZAR(quote.amountDueCredits)}</span>
+              New price: <span className="font-extrabold text-slate-900">{formatZAR(quote.amountDueCredits)}</span>
             </div>
             <div>
-              Paid credits already used: <span className="font-extrabold text-slate-900">{formatZAR(quote.spentCredits)}</span>
+              Paid credits in wallet: <span className="font-extrabold text-slate-900">{formatZAR(quote.paidBalance)}</span>
             </div>
           </div>
 
@@ -147,11 +147,13 @@ export function BuyNowButton({
             </button>
             <button
               type="button"
-              disabled={busy}
+              disabled={busy || quote.walletAppliedCredits <= 0}
               onClick={() => purchase("mix")}
               className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-extrabold text-slate-900 hover:bg-slate-50 disabled:bg-slate-100 disabled:text-slate-400"
             >
-              Use {formatZAR(quote.walletAppliedCredits)} paid credits + pay {formatZAR(quote.topUpCredits)}
+              {quote.walletAppliedCredits > 0
+                ? `Use ${formatZAR(quote.walletAppliedCredits)} wallet credits + pay ${formatZAR(quote.topUpCredits)}`
+                : "No paid wallet credits available yet"}
             </button>
           </div>
         </div>
@@ -161,3 +163,5 @@ export function BuyNowButton({
     </div>
   );
 }
+
+export default BuyNowButton;
