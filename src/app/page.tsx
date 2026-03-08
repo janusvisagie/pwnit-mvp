@@ -1,47 +1,80 @@
 import { prisma } from "@/lib/db";
 import { getOrCreateDemoUser } from "@/lib/auth";
 import { AutoRefreshActivated } from "@/components/AutoRefreshActivated";
+import { settleItemWinners } from "@/lib/settle";
 import { ItemCard } from "@/components/ItemCard";
+import { activationProgress, activationTargetPaidCredits, playCostForPrize } from "@/lib/playCost";
 import { WelcomeModal } from "@/components/WelcomeModal";
-import { publicProgress, syncHomeItems } from "@/lib/rounds";
 
 export default async function HomePage() {
   const user = await getOrCreateDemoUser();
-
-  const baseItems = await prisma.item.findMany({
-    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-    take: 6,
-    select: { id: true },
-  });
-
-  await syncHomeItems(baseItems.map((i) => i.id));
+  const now = new Date();
 
   const items = await prisma.item.findMany({
-    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+    orderBy: [{ createdAt: "asc" }],
     take: 6,
-    include: {
-      rounds: {
-        orderBy: [{ sequence: "desc" }],
-        take: 1,
-      },
-    },
   });
 
-  const anyActivated = items.some((it) => it.rounds[0]?.state === "ACTIVATED");
+  const paidAgg = await prisma.attempt.groupBy({
+    by: ["itemId"],
+    _sum: { paidUsed: true },
+  });
+  const paidMap = new Map(paidAgg.map((c) => [c.itemId, Number(c._sum.paidUsed ?? 0)]));
+
+  const winnerCounts = await prisma.winner.groupBy({
+    by: ["itemId"],
+    _count: { _all: true },
+  });
+  const winnersMap = new Map(winnerCounts.map((w) => [w.itemId, w._count._all]));
+
+  for (const item of items) {
+    const paidSpent = paidMap.get(item.id) ?? 0;
+    const targetPaidCredits = activationTargetPaidCredits(item.prizeValueZAR);
+
+    if (item.state === "OPEN" && paidSpent >= targetPaidCredits) {
+      const closes = new Date(now.getTime() + item.countdownMinutes * 60_000);
+      await prisma.item.update({
+        where: { id: item.id },
+        data: { state: "ACTIVATED", closesAt: closes },
+      });
+      item.state = "ACTIVATED";
+      item.closesAt = closes;
+    }
+
+    if (item.state === "ACTIVATED" && item.closesAt && now > item.closesAt) {
+      await prisma.item.update({ where: { id: item.id }, data: { state: "CLOSED" } });
+      item.state = "CLOSED";
+    }
+
+    if (item.state === "CLOSED") {
+      const already = winnersMap.get(item.id) ?? 0;
+      if (already === 0) {
+        await settleItemWinners(item.id);
+        item.state = "PUBLISHED";
+      }
+    }
+  }
+
+  const refreshed = await prisma.item.findMany({
+    orderBy: [{ createdAt: "asc" }],
+    take: 6,
+  });
+
+  const anyActivated = refreshed.some((it) => it.state === "ACTIVATED");
 
   return (
-    <main className="flex h-full min-h-0 flex-col gap-3 overflow-hidden pb-1">
+    <main className="flex h-full min-h-0 flex-col gap-2 overflow-hidden">
       <WelcomeModal />
       <AutoRefreshActivated enabled={anyActivated} everyMs={10_000} />
 
-      <div className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+      <div className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
         Logged in as <span className="font-bold text-slate-900 normal-case tracking-normal">{user.email}</span>
       </div>
 
-      <div className="grid flex-1 min-h-0 grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        {items.map((it) => {
-          const round = it.rounds[0];
-          const progress = round ? publicProgress(round) : { pct: 0, label: "Starting", hot: false };
+      <div className="grid flex-1 min-h-0 grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
+        {refreshed.map((it) => {
+          const paidSpent = paidMap.get(it.id) ?? 0;
+          const progress = activationProgress(it.prizeValueZAR, paidSpent);
           return (
             <ItemCard
               key={it.id}
@@ -49,14 +82,13 @@ export default async function HomePage() {
                 id: it.id,
                 title: it.title,
                 prizeValueZAR: it.prizeValueZAR,
-                state: round?.state ?? it.state,
+                state: it.state,
                 imageUrl: it.imageUrl ?? null,
-                closesAt: (round?.closesAt ?? it.closesAt)?.toISOString?.() ?? null,
-                playCostCredits: it.playCostCredits,
+                closesAt: it.closesAt ? it.closesAt.toISOString() : null,
+                playCostCredits: playCostForPrize(it.prizeValueZAR),
                 gameKey: it.gameKey ?? null,
                 activationPct: progress.pct,
-                activationLabel: progress.label,
-                isHot: progress.hot,
+                activationLabel: progress.pct >= 100 ? "Activated" : undefined,
               }}
             />
           );

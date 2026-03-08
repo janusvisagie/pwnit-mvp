@@ -15,9 +15,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
   return (
     <html lang="en">
-      <body className="min-h-screen bg-slate-50 text-slate-900">
-        <header className="border-b border-slate-200 bg-white">
-          <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-3">
+      <body className="flex h-screen flex-col overflow-hidden bg-slate-50 text-slate-900">
+        <header className="shrink-0 border-b border-slate-200 bg-white/95 backdrop-blur">
+          <div className="mx-auto flex max-w-[1180px] flex-wrap items-center justify-between gap-3 px-3 py-2.5">
             <div className="flex items-center gap-2">
               <div className="text-sm font-semibold text-slate-900">
                 Pick. Play. <span className="text-lg font-extrabold">PwnIt</span>.
@@ -31,11 +31,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </div>
         </header>
 
-        <main className="mx-auto max-w-5xl px-4 py-4">{children}</main>
+        <main className="mx-auto flex w-full max-w-[1180px] flex-1 min-h-0 px-3 py-2">
+          <div className="w-full min-h-0 overflow-y-auto">{children}</div>
+        </main>
 
-        <footer className="mt-8 border-t border-slate-200 bg-white">
-          <div className="mx-auto max-w-5xl px-4 py-6 text-sm text-slate-600">
-            <div className="flex flex-wrap items-center justify-between gap-3">
+        <footer className="shrink-0 border-t border-slate-200 bg-white">
+          <div className="mx-auto max-w-[1180px] px-3 py-3 text-xs text-slate-600">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="font-semibold text-slate-900">Contact</div>
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
                 <span>
