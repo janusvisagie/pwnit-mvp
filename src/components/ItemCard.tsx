@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { CountdownChip } from "@/components/CountdownChip";
 import { getProductContent } from "@/lib/productCatalog";
-import { activationStageLabel } from "@/lib/playCost";
+import { getGameMeta } from "@/lib/gameRules";
 
 export type ItemCardModel = {
   id: string;
@@ -17,33 +17,22 @@ export type ItemCardModel = {
   gameKey?: string | null;
   activationPct?: number;
   activationLabel?: string;
+  isHot?: boolean;
 };
 
 function formatZAR(v: number) {
   return `R${Number(v || 0).toLocaleString("en-ZA")}`;
 }
 
-function gameLabel(k?: string | null) {
-  if (!k) return null;
-  if (k === "precision-timer") return "Precision Timer";
-  if (k === "rhythm-hold") return "Rhythm Hold";
-  if (k === "tap-speed") return "Tap Speed";
-  if (k === "number-memory") return "Number Memory";
-  if (k === "target-hold") return "Target Hold";
-  if (k === "stop-zero") return "Stop Zero";
-  if (k === "tap-pattern") return "Tap Pattern";
-  return k;
-}
-
 export function ItemCard({ item }: { item: ItemCardModel }) {
   const [imgOk, setImgOk] = useState(true);
   const pct = Math.max(0, Math.min(100, Number(item.activationPct ?? 0)));
-  const isClosed = item.state === "CLOSED" || item.state === "PUBLISHED";
+  const isClosed = ["CLOSED", "PUBLISHED", "FAILED", "REFUNDED"].includes(item.state);
   const isActivated = item.state === "ACTIVATED";
   const href = item.state === "PUBLISHED" ? `/item/${item.id}/leaderboard` : `/item/${item.id}`;
-  const gLabel = gameLabel(item.gameKey);
+  const gMeta = getGameMeta(item.gameKey);
   const displayImage = getProductContent(item.title, item.imageUrl)?.imageUrl ?? item.imageUrl;
-  const hot = useMemo(() => !isClosed && !isActivated && pct >= 75, [isClosed, isActivated, pct]);
+  const hot = Boolean(item.isHot) && !isClosed && !isActivated;
 
   const statusTone = isClosed
     ? "bg-slate-900 text-white"
@@ -51,7 +40,7 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
       ? "bg-emerald-100 text-emerald-800 ring-1 ring-emerald-200"
       : "bg-slate-100 text-slate-700 ring-1 ring-slate-200";
 
-  const statusText = isClosed ? "Won" : isActivated ? "Activated" : "Open";
+  const statusText = isClosed ? (item.state === "FAILED" || item.state === "REFUNDED" ? "Not activated" : "Closed") : isActivated ? "Activated" : item.activationLabel ?? "Building";
 
   return (
     <Link
@@ -94,8 +83,8 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
 
         {isClosed ? (
           <div className="pointer-events-none absolute inset-0 overflow-hidden">
-            <div className="absolute left-[-24%] top-[42%] w-[148%] -rotate-12 bg-slate-900/95 px-4 py-2 text-center text-xs font-extrabold tracking-wide text-white shadow-xl">
-              PRIZE WON • NEXT PRIZE LOADING
+            <div className="absolute left-[-24%] top-[42%] w-[150%] -rotate-12 bg-slate-900/95 px-4 py-2 text-center text-xs font-extrabold tracking-wide text-white shadow-xl">
+              {item.state === "FAILED" || item.state === "REFUNDED" ? "ROUND RESETTING" : "ROUND CLOSED"}
             </div>
           </div>
         ) : null}
@@ -105,15 +94,11 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
         <div className="min-w-0">
           <h3 className="truncate text-base font-extrabold text-slate-900">{item.title}</h3>
           <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-slate-600">
-            {gLabel ? (
-              <span className="rounded-full bg-slate-100 px-2.5 py-1 font-semibold text-slate-700 ring-1 ring-slate-200">
-                {gLabel}
-              </span>
-            ) : null}
+            <span className="rounded-full bg-slate-100 px-2.5 py-1 font-semibold text-slate-700 ring-1 ring-slate-200">
+              {gMeta.label}
+            </span>
             {typeof item.playCostCredits === "number" ? (
-              <span>
-                {item.playCostCredits} {item.playCostCredits === 1 ? "credit" : "credits"}/play
-              </span>
+              <span>{item.playCostCredits} {item.playCostCredits === 1 ? "credit" : "credits"}/play</span>
             ) : null}
           </div>
         </div>
@@ -121,16 +106,20 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
         {!isClosed ? (
           <div className="space-y-2">
             <div className="flex items-center justify-between text-[11px] font-semibold text-slate-600">
-              <span>Activation progress</span>
-              <span>{isActivated ? "Activated" : activationStageLabel(pct)}</span>
+              <span>Activation threshold</span>
+              <span>{isActivated ? "Activated" : item.activationLabel ?? "Building"}</span>
             </div>
             <div className="h-2.5 overflow-hidden rounded-full bg-slate-200">
               <div className="h-full rounded-full bg-slate-900 transition-all duration-500" style={{ width: `${pct}%` }} />
             </div>
-            {!isActivated ? <div className="text-[11px] text-slate-500">More play pushes this prize live.</div> : null}
+            {!isActivated ? (
+              <div className="text-[11px] text-slate-500">Play now to compete and help this prize go live.</div>
+            ) : (
+              <div className="text-[11px] text-slate-500">The countdown is on. Play now to improve your position.</div>
+            )}
           </div>
         ) : (
-          <div className="text-[11px] text-slate-500">View results or buy the prize if you didn’t win.</div>
+          <div className="text-[11px] text-slate-500">View the final leaderboard, runner-up bonuses, and buy options.</div>
         )}
       </div>
     </Link>

@@ -1,7 +1,7 @@
-export type GameType = "REACTION" | "PRECISION_TIMER" | "RHYTHM_HOLD";
+export type GameType = "TAP_RUSH" | "MEMORY_SPRINT" | "ZONE_HOLD";
 
 export type GameResult = {
-  scoreMs: number;     // lower is better
+  scoreMs: number;
   meta?: Record<string, any>;
 };
 

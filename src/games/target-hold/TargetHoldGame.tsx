@@ -24,7 +24,9 @@ export default function TargetHoldGame({ onFinish, disabled }: any) {
     const ms = Date.now() - start.current;
     if (intervalRef.current) clearInterval(intervalRef.current);
     intervalRef.current = null;
-    onFinish({ scoreMs: Math.abs(ms - TARGET) });
+    const error = Math.abs(ms - TARGET);
+    const score = Math.max(0, 10000 - error * 6);
+    onFinish({ scoreMs: score, meta: { heldMs: ms, targetMs: TARGET, errorMs: error } });
     setHolding(false);
   }
 
@@ -34,12 +36,12 @@ export default function TargetHoldGame({ onFinish, disabled }: any) {
     <div className="space-y-5">
       <div>
         <div className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Objective</div>
-        <div className="mt-1 text-sm font-semibold text-slate-700">Hold for exactly 1.5 seconds, then release.</div>
+        <div className="mt-1 text-sm font-semibold text-slate-700">Hold for as close to 1.5 seconds as you can. Cleaner control means more points.</div>
       </div>
 
       <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
         <div className="mb-3 flex items-center justify-between text-xs font-semibold text-slate-500">
-          <span>Hold progress</span>
+          <span>Control meter</span>
           <span>{heldMs}ms / {TARGET}ms</span>
         </div>
         <div className="h-3 overflow-hidden rounded-full bg-slate-100">

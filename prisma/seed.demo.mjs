@@ -4,13 +4,9 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 const GAME_POOL = [
-  "precision-timer",
-  "rhythm-hold",
   "tap-speed",
   "number-memory",
   "target-hold",
-  "stop-zero",
-  "tap-pattern",
 ];
 
 function pickFromPool(i) {
@@ -104,10 +100,14 @@ const CATALOG = [
 
 async function main() {
   // Clean slate for items + gameplay (keep users)
+  await prisma.creditLedger.deleteMany();
   await prisma.winner.deleteMany();
   await prisma.attempt.deleteMany();
   try {
     await prisma.itemPurchase.deleteMany();
+  } catch {}
+  try {
+    await prisma.itemRound.deleteMany();
   } catch {}
   await prisma.item.deleteMany();
 

@@ -1,0 +1,72 @@
+export type SupportedGameKey = "tap-speed" | "target-hold" | "number-memory";
+
+type GameMeta = {
+  label: string;
+  higherIsBetter: boolean;
+  description: string;
+  formatScore: (score: number) => string;
+};
+
+const DEFAULT_META: GameMeta = {
+  label: "Quick Skill Game",
+  higherIsBetter: true,
+  description: "Post the strongest score to climb the leaderboard.",
+  formatScore: (score) => `${Number(score || 0).toLocaleString("en-ZA")} pts`,
+};
+
+export const GAME_META: Record<string, GameMeta> = {
+  "tap-speed": {
+    label: "Tap Rush",
+    higherIsBetter: true,
+    description: "Tap as many times as possible before the clock runs out.",
+    formatScore: (score) => `${Math.max(0, Math.floor(Number(score || 0)))} taps`,
+  },
+  "target-hold": {
+    label: "Zone Hold",
+    higherIsBetter: true,
+    description: "Hold inside the target zone and finish with the highest control score.",
+    formatScore: (score) => `${Number(score || 0).toLocaleString("en-ZA")} pts`,
+  },
+  "number-memory": {
+    label: "Memory Sprint",
+    higherIsBetter: true,
+    description: "Memorise longer sequences and finish quickly for a stronger score.",
+    formatScore: (score) => {
+      const v = Math.max(0, Math.floor(Number(score || 0)));
+      const level = Math.max(1, Math.floor(v / 10000));
+      const bonus = v % 10000;
+      return `Lvl ${level} • ${bonus.toLocaleString("en-ZA")} bonus`;
+    },
+  },
+};
+
+export function getGameMeta(gameKey?: string | null): GameMeta {
+  return (gameKey && GAME_META[gameKey]) || DEFAULT_META;
+}
+
+export function compareScores(gameKey: string | null | undefined, a: { scoreMs: number; createdAt?: Date | string | null }, b: { scoreMs: number; createdAt?: Date | string | null }) {
+  const meta = getGameMeta(gameKey);
+  const diff = meta.higherIsBetter ? b.scoreMs - a.scoreMs : a.scoreMs - b.scoreMs;
+  if (diff !== 0) return diff;
+  const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+  const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+  return aTime - bTime;
+}
+
+export function getBestScore(gameKey: string | null | undefined, scores: Array<{ scoreMs: number; createdAt?: Date | string | null }>) {
+  if (!scores.length) return null;
+  return [...scores].sort((a, b) => compareScores(gameKey, a, b))[0];
+}
+
+export function publicStageLabel(progressPct: number) {
+  if (progressPct >= 100) return "Activated";
+  if (progressPct >= 85) return "Almost there";
+  if (progressPct >= 60) return "Heating up";
+  if (progressPct >= 25) return "Building";
+  return "Starting";
+}
+
+export function publicProgressPct(current: number, target: number) {
+  if (target <= 0) return 100;
+  return Math.max(0, Math.min(100, Math.round((current / target) * 100)));
+}

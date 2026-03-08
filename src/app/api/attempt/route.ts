@@ -1,15 +1,12 @@
-// src/app/api/attempt/route.ts
 export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { dayKeyZA } from "@/lib/time";
 import { getOrCreateDemoUser } from "@/lib/auth";
-import { playCostForPrize } from "@/lib/playCost";
+import { compareScores } from "@/lib/gameRules";
+import { ensureCurrentRound, syncRoundLifecycle } from "@/lib/rounds";
 
-const CUTOFF_PCT = 5;
-
-// Used by NumberMemory for "invalid but counts for activation"
 const INVALID_FLAG_FRAGMENT = '"valid":false';
 
 function isInvalidAttempt(flags: string | null | undefined) {
@@ -26,7 +23,7 @@ export async function POST(req: Request) {
 
     if (!itemId) return NextResponse.json({ ok: false, error: "Missing itemId" }, { status: 400 });
     if (!Number.isFinite(scoreMs)) {
-      return NextResponse.json({ ok: false, error: "Invalid scoreMs" }, { status: 400 });
+      return NextResponse.json({ ok: false, error: "Invalid score" }, { status: 400 });
     }
 
     const user = await getOrCreateDemoUser();
@@ -34,13 +31,21 @@ export async function POST(req: Request) {
 
     const item = await prisma.item.findUnique({
       where: { id: itemId },
-      select: { id: true, prizeValueZAR: true },
+      select: { id: true, prizeValueZAR: true, playCostCredits: true, gameKey: true },
     });
     if (!item) return NextResponse.json({ ok: false, error: "Item not found" }, { status: 404 });
 
-    const playCost = playCostForPrize(item.prizeValueZAR);
+    const round = await ensureCurrentRound(itemId);
+    if (!round) return NextResponse.json({ ok: false, error: "Round not found" }, { status: 404 });
 
-    // Debit + attempt atomically
+    const synced = await syncRoundLifecycle(itemId);
+    const currentState = synced?.state ?? round.state;
+    if (!["BUILDING", "ACTIVATED"].includes(currentState)) {
+      return NextResponse.json({ ok: false, error: "This prize is not accepting plays right now." }, { status: 409 });
+    }
+
+    const playCost = Math.max(1, Number(item.playCostCredits || 0));
+
     const txRes = await prisma.$transaction(async (tx) => {
       const freshUser: any = await tx.user.findUnique({
         where: { id: user.id },
@@ -62,11 +67,8 @@ export async function POST(req: Request) {
         };
       }
 
-      // ✅ deduct free first, then paid
       const freeUsed = Math.min(playCost, freeBal);
-      const remaining = playCost - freeUsed;
-      const paidUsed = remaining;
-
+      const paidUsed = Math.max(0, playCost - freeUsed);
       const newFree = freeBal - freeUsed;
       const newPaid = paidBal - paidUsed;
 
@@ -84,18 +86,50 @@ export async function POST(req: Request) {
         data: {
           userId: user.id,
           itemId,
+          roundId: round.id,
           dayKey,
-
-          // exact pricing attribution
           costCredits: playCost,
           freeUsed,
           paidUsed,
           isPaid: paidUsed > 0,
-
           scoreMs: Math.max(0, Math.floor(scoreMs)),
           flags,
         } as any,
       });
+
+      await tx.itemRound.update({
+        where: { id: round.id },
+        data: {
+          attemptCount: { increment: 1 },
+          paidCreditsCollected: { increment: paidUsed },
+          freeCreditsCollected: { increment: freeUsed },
+        },
+      });
+
+      if (paidUsed > 0) {
+        await tx.creditLedger.create({
+          data: {
+            userId: user.id,
+            itemId,
+            roundId: round.id,
+            kind: "PLAY_DEBIT_PAID",
+            credits: -paidUsed,
+            note: `Paid play on ${itemId}`,
+          },
+        });
+      }
+      if (freeUsed > 0) {
+        await tx.creditLedger.create({
+          data: {
+            userId: user.id,
+            itemId,
+            roundId: round.id,
+            kind: "PLAY_DEBIT_FREE",
+            credits: -freeUsed,
+            note: `Free play on ${itemId}`,
+          },
+        });
+      }
 
       return {
         ok: true as const,
@@ -123,55 +157,48 @@ export async function POST(req: Request) {
       );
     }
 
-    // ✅ Live standings (exclude invalid attempts from leaderboard)
-    const best = await prisma.attempt.groupBy({
-      by: ["userId"],
+    await syncRoundLifecycle(itemId);
+
+    const rowsRaw = await prisma.attempt.findMany({
       where: {
         itemId,
-        dayKey,
+        roundId: round.id,
         OR: [{ flags: null }, { NOT: { flags: { contains: INVALID_FLAG_FRAGMENT } } }],
       },
-      _min: { scoreMs: true },
-      orderBy: { _min: { scoreMs: "asc" } },
-      take: 500,
+      orderBy: [{ createdAt: "asc" }],
+      select: { userId: true, scoreMs: true, createdAt: true },
     });
 
-    const rows = best
-      .filter((b) => typeof b._min.scoreMs === "number")
-      .map((b) => ({ userId: b.userId, scoreMs: b._min.scoreMs as number }));
+    const bestByUser = new Map<string, { userId: string; scoreMs: number; createdAt: Date }>();
+    for (const row of rowsRaw) {
+      const current = bestByUser.get(row.userId);
+      if (!current || compareScores(item.gameKey, row, current) < 0) bestByUser.set(row.userId, row);
+    }
 
+    const rows = Array.from(bestByUser.values()).sort((a, b) => compareScores(item.gameKey, a, b));
     const totalPlayers = rows.length;
     const myRank = totalPlayers ? Math.max(1, rows.findIndex((r) => r.userId === user.id) + 1) : 0;
-    const cutoffRank = totalPlayers ? Math.max(1, Math.ceil((totalPlayers * CUTOFF_PCT) / 100)) : 0;
 
-    const status =
-      totalPlayers === 0
-        ? "PLAYING"
-        : myRank <= cutoffRank
-        ? "WINNING"
-        : myRank <= cutoffRank + 1
-        ? "ALMOST"
-        : "PLAYING";
+    let status: "LEADING" | "BONUS" | "CHASING" = "CHASING";
+    if (myRank === 1) status = "LEADING";
+    else if (myRank === 2 || myRank === 3) status = "BONUS";
 
+    const refreshedRound = await prisma.itemRound.findUnique({ where: { id: round.id } });
     const attemptInvalid = isInvalidAttempt(txRes.flags);
 
     return NextResponse.json({
       ok: true,
-
       playCost: txRes.playCost,
       freeUsed: txRes.freeUsed,
       paidUsed: txRes.paidUsed,
       freeBalance: txRes.freeBalance,
       paidBalance: txRes.paidBalance,
       totalBalance: txRes.totalBalance,
-
       attemptInvalid,
-
       myRank,
       totalPlayers,
-      cutoffPct: CUTOFF_PCT,
-      cutoffRank,
       status,
+      roundState: refreshedRound?.state ?? currentState,
     });
   } catch (e: any) {
     return NextResponse.json({ ok: false, error: e?.message || String(e) || "Server error" }, { status: 500 });

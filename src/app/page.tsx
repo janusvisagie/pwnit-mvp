@@ -1,66 +1,33 @@
 import { prisma } from "@/lib/db";
 import { getOrCreateDemoUser } from "@/lib/auth";
 import { AutoRefreshActivated } from "@/components/AutoRefreshActivated";
-import { settleItemWinners } from "@/lib/settle";
 import { ItemCard } from "@/components/ItemCard";
-import { activationProgress, activationTargetPaidCredits, playCostForPrize } from "@/lib/playCost";
 import { WelcomeModal } from "@/components/WelcomeModal";
+import { publicProgress, syncHomeItems } from "@/lib/rounds";
 
 export default async function HomePage() {
   const user = await getOrCreateDemoUser();
-  const now = new Date();
+
+  const baseItems = await prisma.item.findMany({
+    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+    take: 6,
+    select: { id: true },
+  });
+
+  await syncHomeItems(baseItems.map((i) => i.id));
 
   const items = await prisma.item.findMany({
-    orderBy: [{ createdAt: "asc" }],
+    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
     take: 6,
+    include: {
+      rounds: {
+        orderBy: [{ sequence: "desc" }],
+        take: 1,
+      },
+    },
   });
 
-  const paidAgg = await prisma.attempt.groupBy({
-    by: ["itemId"],
-    _sum: { paidUsed: true },
-  });
-  const paidMap = new Map(paidAgg.map((c) => [c.itemId, Number(c._sum.paidUsed ?? 0)]));
-
-  const winnerCounts = await prisma.winner.groupBy({
-    by: ["itemId"],
-    _count: { _all: true },
-  });
-  const winnersMap = new Map(winnerCounts.map((w) => [w.itemId, w._count._all]));
-
-  for (const item of items) {
-    const paidSpent = paidMap.get(item.id) ?? 0;
-    const targetPaidCredits = activationTargetPaidCredits(item.prizeValueZAR);
-
-    if (item.state === "OPEN" && paidSpent >= targetPaidCredits) {
-      const closes = new Date(now.getTime() + item.countdownMinutes * 60_000);
-      await prisma.item.update({
-        where: { id: item.id },
-        data: { state: "ACTIVATED", closesAt: closes },
-      });
-      item.state = "ACTIVATED";
-      item.closesAt = closes;
-    }
-
-    if (item.state === "ACTIVATED" && item.closesAt && now > item.closesAt) {
-      await prisma.item.update({ where: { id: item.id }, data: { state: "CLOSED" } });
-      item.state = "CLOSED";
-    }
-
-    if (item.state === "CLOSED") {
-      const already = winnersMap.get(item.id) ?? 0;
-      if (already === 0) {
-        await settleItemWinners(item.id);
-        item.state = "PUBLISHED";
-      }
-    }
-  }
-
-  const refreshed = await prisma.item.findMany({
-    orderBy: [{ createdAt: "asc" }],
-    take: 6,
-  });
-
-  const anyActivated = refreshed.some((it) => it.state === "ACTIVATED");
+  const anyActivated = items.some((it) => it.rounds[0]?.state === "ACTIVATED");
 
   return (
     <main className="flex h-full min-h-0 flex-col gap-3 overflow-hidden pb-1">
@@ -72,9 +39,9 @@ export default async function HomePage() {
       </div>
 
       <div className="grid flex-1 min-h-0 grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        {refreshed.map((it) => {
-          const paidSpent = paidMap.get(it.id) ?? 0;
-          const progress = activationProgress(it.prizeValueZAR, paidSpent);
+        {items.map((it) => {
+          const round = it.rounds[0];
+          const progress = round ? publicProgress(round) : { pct: 0, label: "Starting", hot: false };
           return (
             <ItemCard
               key={it.id}
@@ -82,13 +49,14 @@ export default async function HomePage() {
                 id: it.id,
                 title: it.title,
                 prizeValueZAR: it.prizeValueZAR,
-                state: it.state,
+                state: round?.state ?? it.state,
                 imageUrl: it.imageUrl ?? null,
-                closesAt: it.closesAt ? it.closesAt.toISOString() : null,
-                playCostCredits: playCostForPrize(it.prizeValueZAR),
+                closesAt: (round?.closesAt ?? it.closesAt)?.toISOString?.() ?? null,
+                playCostCredits: it.playCostCredits,
                 gameKey: it.gameKey ?? null,
                 activationPct: progress.pct,
-                activationLabel: progress.pct >= 100 ? "Activated" : undefined,
+                activationLabel: progress.label,
+                isHot: progress.hot,
               }}
             />
           );

@@ -3,31 +3,17 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import PrecisionTimerGame from "@/games/precision-timer/PrecisionTimerGame";
-import RhythmHoldGame from "@/games/rhythm-hold/RhythmHoldGame";
 import TapSpeedGame from "@/games/tap-speed/TapSpeedGame";
 import NumberMemoryGame from "@/games/number-memory/NumberMemoryGame";
 import TargetHoldGame from "@/games/target-hold/TargetHoldGame";
-import StopZeroGame from "@/games/stop-zero/StopZeroGame";
-import TapPatternGame from "@/games/tap-pattern/TapPatternGame";
+import { getGameMeta } from "@/lib/gameRules";
 
-type GameKey =
-  | "precision-timer"
-  | "rhythm-hold"
-  | "tap-speed"
-  | "number-memory"
-  | "target-hold"
-  | "stop-zero"
-  | "tap-pattern";
+type GameKey = "tap-speed" | "number-memory" | "target-hold";
 
 const GAME_REGISTRY: Record<GameKey, { title: string; Component: any }> = {
-  "precision-timer": { title: "Precision Timer", Component: PrecisionTimerGame },
-  "rhythm-hold": { title: "Rhythm Hold", Component: RhythmHoldGame },
-  "tap-speed": { title: "Tap Speed", Component: TapSpeedGame },
-  "number-memory": { title: "Number Memory", Component: NumberMemoryGame },
-  "target-hold": { title: "Target Hold", Component: TargetHoldGame },
-  "stop-zero": { title: "Stop Zero", Component: StopZeroGame },
-  "tap-pattern": { title: "Tap Pattern", Component: TapPatternGame },
+  "tap-speed": { title: "Tap Rush", Component: TapSpeedGame },
+  "number-memory": { title: "Memory Sprint", Component: NumberMemoryGame },
+  "target-hold": { title: "Zone Hold", Component: TargetHoldGame },
 };
 
 type Props = {
@@ -82,13 +68,12 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
   const [status, setStatus] = useState<null | {
     myRank: number;
     totalPlayers: number;
-    cutoffPct: number;
-    cutoffRank: number;
-    state: "WINNING" | "ALMOST" | "PLAYING";
+    state: "LEADING" | "BONUS" | "CHASING";
   }>(null);
 
-  const entry = GAME_REGISTRY[gameKey] ?? GAME_REGISTRY["precision-timer"];
+  const entry = GAME_REGISTRY[gameKey] ?? GAME_REGISTRY["tap-speed"];
   const Game = useMemo(() => entry.Component, [entry.Component]);
+  const gameMeta = getGameMeta(gameKey);
 
   async function submitAttempt(payload: { scoreMs: number; meta?: any }) {
     if (practiceMode) {
@@ -127,9 +112,7 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
       setStatus({
         myRank: Number(data.myRank || 0),
         totalPlayers: Number(data.totalPlayers || 0),
-        cutoffPct: Number(data.cutoffPct || 5),
-        cutoffRank: Number(data.cutoffRank || 1),
-        state: (data.status || "PLAYING") as any,
+        state: (data.status || "CHASING") as any,
       });
       window.dispatchEvent(new Event("pwnit:credits"));
       router.refresh();
@@ -174,23 +157,20 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
 
       {status ? (
         <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm">
-          <div className="font-semibold text-slate-900">
-            Live standing: #{status.myRank} / {status.totalPlayers}
-          </div>
-          <div className="mt-1 text-xs text-slate-600">
-            Winners right now: Top {status.cutoffPct}% (#{status.cutoffRank} cutoff)
-          </div>
-          {status.state === "WINNING" ? (
-            <div className="mt-2 text-sm font-semibold text-slate-900">🎉 You’re currently in the winning zone.</div>
-          ) : status.state === "ALMOST" ? (
-            <div className="mt-2 text-sm font-semibold text-slate-900">😮 Almost won — one better run could do it.</div>
-          ) : null}
+          <div className="font-semibold text-slate-900">Live standing: #{status.myRank} / {status.totalPlayers}</div>
+          {status.state === "LEADING" ? (
+            <div className="mt-2 text-sm font-semibold text-slate-900">🎉 You’re leading right now.</div>
+          ) : status.state === "BONUS" ? (
+            <div className="mt-2 text-sm font-semibold text-slate-900">🔥 You’re in a bonus spot right now.</div>
+          ) : (
+            <div className="mt-2 text-xs text-slate-600">Top spot wins the prize. 2nd and 3rd place earn credit bonuses.</div>
+          )}
         </div>
       ) : null}
 
       {result ? (
         <div className="text-xs text-slate-600">
-          {practiceMode ? "Practice result" : "Submitted"} • Score <span className="font-semibold text-slate-900">{result.scoreMs}ms</span>
+          {practiceMode ? "Practice result" : "Submitted"} • <span className="font-semibold text-slate-900">{gameMeta.formatScore(result.scoreMs)}</span>
         </div>
       ) : null}
 
@@ -202,7 +182,7 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
       ) : null}
 
       <div className="relative rounded-2xl border border-slate-200 bg-slate-50 p-4">
-        <ConfettiOverlay show={!practiceMode && status?.state === "WINNING"} />
+        <ConfettiOverlay show={!practiceMode && status?.state === "LEADING"} />
         <Game disabled={submitting} onFinish={(r: any) => submitAttempt({ scoreMs: r.scoreMs, meta: r.meta })} />
       </div>
 

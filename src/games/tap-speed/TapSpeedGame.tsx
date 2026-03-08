@@ -1,82 +1,80 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+
+const ROUND_MS = 5000;
 
 export default function TapSpeedGame(props: any) {
   const { onFinish, onResult, disabled } = props ?? {};
-  const finish =
-    typeof onFinish === "function"
-      ? onFinish
-      : typeof onResult === "function"
-        ? onResult
-        : null;
+  const finish = typeof onFinish === "function" ? onFinish : typeof onResult === "function" ? onResult : null;
 
-  const [phase, setPhase] = useState<"idle" | "wait" | "go">("idle");
-  const [start, setStart] = useState(0);
+  const [phase, setPhase] = useState<"idle" | "countdown" | "live" | "done">("idle");
+  const [timeLeft, setTimeLeft] = useState(ROUND_MS);
+  const [taps, setTaps] = useState(0);
+  const startedAt = useRef<number | null>(null);
 
   function begin() {
     if (disabled) return;
-    setPhase("wait");
-    const delay = 800 + Math.random() * 2000;
+    setPhase("countdown");
+    setTaps(0);
+    setTimeLeft(ROUND_MS);
     setTimeout(() => {
-      setStart(Date.now());
-      setPhase("go");
-    }, delay);
+      startedAt.current = Date.now();
+      setPhase("live");
+    }, 900);
   }
 
+  useEffect(() => {
+    if (phase !== "live") return;
+    const id = setInterval(() => {
+      const elapsed = Date.now() - (startedAt.current ?? Date.now());
+      const remaining = Math.max(0, ROUND_MS - elapsed);
+      setTimeLeft(remaining);
+      if (remaining <= 0) {
+        clearInterval(id);
+        setPhase("done");
+        finish?.({ scoreMs: taps, meta: { taps, roundMs: ROUND_MS } });
+      }
+    }, 50);
+    return () => clearInterval(id);
+  }, [phase, taps, finish]);
+
   function tap() {
-    if (phase !== "go") return;
-    const ms = Date.now() - start;
-    if (finish) finish({ scoreMs: ms });
-    setPhase("idle");
+    if (phase === "live") setTaps((v) => v + 1);
   }
 
   return (
     <div className="space-y-5">
       <div>
         <div className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Objective</div>
-        <div className="mt-1 text-sm font-semibold text-slate-700">Tap the moment the screen flips live. Lower milliseconds wins.</div>
+        <div className="mt-1 text-sm font-semibold text-slate-700">Tap as many times as possible in five seconds. More taps means a stronger score.</div>
       </div>
 
-      <div
-        className={[
-          "flex min-h-[280px] items-center justify-center rounded-[28px] border p-5 text-center shadow-sm transition-all",
-          phase === "go"
-            ? "border-emerald-300 bg-emerald-500 text-white"
-            : phase === "wait"
-              ? "border-amber-200 bg-amber-50 text-amber-900"
-              : "border-slate-200 bg-slate-950 text-white",
-        ].join(" ")}
-      >
-        {phase === "idle" && (
-          <div>
-            <div className="text-[11px] font-bold uppercase tracking-[0.24em] text-slate-400">Reaction test</div>
-            <div className="mt-4 text-4xl font-black tracking-tight">Ready?</div>
-            <button
-              className="mt-6 rounded-2xl bg-white px-5 py-3 text-sm font-extrabold text-slate-900 transition hover:-translate-y-0.5 disabled:opacity-50"
-              onClick={begin}
-              disabled={!!disabled}
-            >
-              Start run
-            </button>
-          </div>
-        )}
+      <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm text-center">
+        <div className="text-[11px] font-bold uppercase tracking-[0.24em] text-slate-500">Tap Rush</div>
+        <div className="mt-4 text-5xl font-black tracking-tight text-slate-900">{taps}</div>
+        <div className="mt-2 text-sm font-semibold text-slate-600">
+          {phase === "idle" ? "Press start when you’re ready." : phase === "countdown" ? "Get ready…" : phase === "live" ? `${Math.ceil(timeLeft / 1000)}s left` : "Round complete"}
+        </div>
 
-        {phase === "wait" && (
-          <div>
-            <div className="text-[11px] font-bold uppercase tracking-[0.24em] text-amber-700">Hold steady</div>
-            <div className="mt-4 text-4xl font-black tracking-tight">Wait…</div>
-            <div className="mt-3 text-sm font-semibold text-amber-800">Don’t click early.</div>
-          </div>
-        )}
-
-        {phase === "go" && (
+        {phase === "idle" || phase === "done" ? (
           <button
-            className="w-full rounded-[24px] bg-white px-4 py-8 text-3xl font-black tracking-tight text-emerald-700 shadow-sm transition hover:scale-[1.01] disabled:opacity-50"
-            onClick={tap}
+            className="mt-6 rounded-2xl bg-slate-900 px-5 py-3 text-sm font-extrabold text-white transition hover:-translate-y-0.5 disabled:opacity-50"
+            onClick={begin}
             disabled={!!disabled}
           >
-            TAP NOW
+            {phase === "done" ? "Play again" : "Start run"}
+          </button>
+        ) : (
+          <button
+            className={[
+              "mt-6 w-full rounded-[24px] px-4 py-10 text-3xl font-black tracking-tight shadow-sm transition",
+              phase === "live" ? "bg-slate-900 text-white hover:scale-[1.01]" : "bg-slate-200 text-slate-500",
+            ].join(" ")}
+            onClick={tap}
+            disabled={phase !== "live" || !!disabled}
+          >
+            TAP
           </button>
         )}
       </div>

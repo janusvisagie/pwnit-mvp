@@ -6,8 +6,8 @@ import { useRouter } from "next/navigation";
 type Quote = {
   priceCredits: number;
   spentCredits: number;
-  discountAppliedCredits: number;
-  amountDueCredits: number;
+  playDiscountCredits: number;
+  newPriceCredits: number;
   walletAppliedCredits: number;
   topUpCredits: number;
   paidBalance: number;
@@ -52,8 +52,8 @@ export function BuyNowButton({
       setQuote({
         priceCredits: Number(data.priceCredits || 0),
         spentCredits: Number(data.spentCredits || 0),
-        discountAppliedCredits: Number(data.discountAppliedCredits || 0),
-        amountDueCredits: Number(data.amountDueCredits || 0),
+        playDiscountCredits: Number(data.playDiscountCredits || 0),
+        newPriceCredits: Number(data.newPriceCredits || 0),
         walletAppliedCredits: Number(data.walletAppliedCredits || 0),
         topUpCredits: Number(data.topUpCredits || 0),
         paidBalance: Number(data?.balances?.paid ?? 0),
@@ -88,7 +88,7 @@ export function BuyNowButton({
       }
 
       if (mode === "full") {
-        setMsg(`Purchase recorded. Pay ${formatZAR(data.topUpCredits ?? data.amountDueCredits)} directly.`);
+        setMsg(`Purchase recorded. Pay ${formatZAR(data.topUpCredits ?? data.newPriceCredits)} directly.`);
       } else {
         setMsg(`Purchase recorded. Applied ${formatZAR(data.walletAppliedCredits)} from your wallet and pay ${formatZAR(data.topUpCredits)}.`);
       }
@@ -126,13 +126,13 @@ export function BuyNowButton({
               Price: <span className="font-extrabold text-slate-900">{formatZAR(quote.priceCredits)}</span>
             </div>
             <div>
-              Your play discount: <span className="font-extrabold text-slate-900">{formatZAR(quote.discountAppliedCredits)}</span>
+              Your play discount: <span className="font-extrabold text-slate-900">{formatZAR(quote.playDiscountCredits)}</span>
             </div>
             <div>
-              New price: <span className="font-extrabold text-slate-900">{formatZAR(quote.amountDueCredits)}</span>
+              New price: <span className="font-extrabold text-slate-900">{formatZAR(quote.newPriceCredits)}</span>
             </div>
             <div>
-              Paid credits in wallet: <span className="font-extrabold text-slate-900">{formatZAR(quote.paidBalance)}</span>
+              Wallet credits available: <span className="font-extrabold text-slate-900">{formatZAR(quote.paidBalance)}</span>
             </div>
           </div>
 
@@ -143,7 +143,7 @@ export function BuyNowButton({
               onClick={() => purchase("full")}
               className="w-full rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-extrabold text-white hover:bg-slate-800 disabled:bg-slate-200 disabled:text-slate-500"
             >
-              Pay {formatZAR(quote.amountDueCredits)} now
+              Pay {formatZAR(quote.newPriceCredits)} now
             </button>
             <button
               type="button"
@@ -152,7 +152,7 @@ export function BuyNowButton({
               className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-extrabold text-slate-900 hover:bg-slate-50 disabled:bg-slate-100 disabled:text-slate-400"
             >
               {quote.walletAppliedCredits > 0
-                ? `Use ${formatZAR(quote.walletAppliedCredits)} wallet credits + pay ${formatZAR(quote.topUpCredits)}`
+                ? `Use ${formatZAR(quote.walletAppliedCredits)} wallet credits and pay ${formatZAR(quote.topUpCredits)}`
                 : "No paid wallet credits available yet"}
             </button>
           </div>

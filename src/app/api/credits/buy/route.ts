@@ -37,10 +37,23 @@ export async function POST(req: Request) {
       creditsToAdd = clampInt(exactCredits, 1, 1000);
     }
 
-    const updated = await prisma.user.update({
-      where: { id: me.id },
-      data: { paidCreditsBalance: (me as any).paidCreditsBalance + creditsToAdd } as any,
-      select: { paidCreditsBalance: true, freeCreditsBalance: true },
+    const updated = await prisma.$transaction(async (tx) => {
+      const user = await tx.user.update({
+        where: { id: me.id },
+        data: { paidCreditsBalance: { increment: creditsToAdd } } as any,
+        select: { paidCreditsBalance: true, freeCreditsBalance: true },
+      });
+
+      await tx.creditLedger.create({
+        data: {
+          userId: me.id,
+          kind: "PACK_PURCHASE",
+          credits: creditsToAdd,
+          note: bundleKey ? `Credit pack: ${bundleKey}` : "Manual credit top-up",
+        },
+      });
+
+      return user;
     });
 
     return NextResponse.json({

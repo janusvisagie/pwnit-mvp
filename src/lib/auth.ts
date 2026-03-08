@@ -56,26 +56,42 @@ export async function getOrCreateDemoUser() {
         lastDailyCreditsDayKey: today,
       } as any,
     });
+
+    try {
+      await prisma.creditLedger.create({
+        data: {
+          userId: user.id,
+          kind: "DAILY_FREE",
+          credits: DAILY_FREE_CREDITS,
+          note: `Initial daily free credits for ${today}`,
+        },
+      });
+    } catch {}
+
     return user;
   }
 
   const lastKey = String((user as any).lastDailyCreditsDayKey ?? "");
   if (lastKey !== today) {
-    const res = await prisma.user.updateMany({
-      where: {
-        id: user.id,
-        NOT: { lastDailyCreditsDayKey: today as any },
-      } as any,
-      data: {
-        freeCreditsBalance: DAILY_FREE_CREDITS,
-        lastDailyCreditsDayKey: today,
-      } as any,
+    await prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: user.id },
+        data: {
+          freeCreditsBalance: DAILY_FREE_CREDITS,
+          lastDailyCreditsDayKey: today,
+        } as any,
+      });
+      await tx.creditLedger.create({
+        data: {
+          userId: user.id,
+          kind: "DAILY_FREE",
+          credits: DAILY_FREE_CREDITS,
+          note: `Daily free credits for ${today}`,
+        },
+      });
     });
 
     user = await prisma.user.findUnique({ where: { id: user.id } });
-    if (!user && res.count > 0) {
-      user = await prisma.user.findUnique({ where: { email: demoEmail } });
-    }
   }
 
   return user;

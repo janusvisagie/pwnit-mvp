@@ -69,6 +69,16 @@ const catalog: Record<string, ProductContent> = {
       "Good low-friction prize in the item mix",
     ],
   },
+  "Fuel Voucher": {
+    imageUrl: "/products/petrol-voucher.svg",
+    description:
+      "A fuel voucher is a practical utility prize that feels instantly valuable and easy to redeem.",
+    highlights: [
+      "Everyday real-world value",
+      "Strong conversion item for broad participation",
+      "Complements the premium tech prizes in the mix",
+    ],
+  },
   "Petrol Voucher": {
     imageUrl: "/products/petrol-voucher.svg",
     description:
