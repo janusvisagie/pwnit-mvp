@@ -93,8 +93,6 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
   const [status, setStatus] = useState<null | {
     myRank: number;
     totalPlayers: number;
-    cutoffPct: number;
-    cutoffRank: number;
     state: "WINNING" | "ALMOST" | "PLAYING";
   }>(null);
 
@@ -138,8 +136,6 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
       setStatus({
         myRank: Number(data.myRank || 0),
         totalPlayers: Number(data.totalPlayers || 0),
-        cutoffPct: Number(data.cutoffPct || 5),
-        cutoffRank: Number(data.cutoffRank || 1),
         state: (data.status || "PLAYING") as any,
       });
       window.dispatchEvent(new Event("pwnit:credits"));
@@ -186,15 +182,13 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
       {status ? (
         <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm">
           <div className="font-semibold text-slate-900">
-            Live standing: #{status.myRank} / {status.totalPlayers}
+            Current standing: #{status.myRank} / {status.totalPlayers}
           </div>
-          <div className="mt-1 text-xs text-slate-600">
-            Winners right now: Top {status.cutoffPct}% (#{status.cutoffRank} cutoff)
-          </div>
+          <div className="mt-1 text-xs text-slate-600">1st place wins the prize. 2nd and 3rd earn credit bonuses.</div>
           {status.state === "WINNING" ? (
-            <div className="mt-2 text-sm font-semibold text-slate-900">🎉 You’re currently in the winning zone.</div>
+            <div className="mt-2 text-sm font-semibold text-slate-900">🎉 You’re currently in first place.</div>
           ) : status.state === "ALMOST" ? (
-            <div className="mt-2 text-sm font-semibold text-slate-900">😮 Almost won — one better run could do it.</div>
+            <div className="mt-2 text-sm font-semibold text-slate-900">😮 You’re close — one better run could move you up.</div>
           ) : null}
         </div>
       ) : null}
@@ -212,7 +206,7 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
         </div>
       ) : null}
 
-      <div className="relative rounded-2xl border border-slate-200 bg-slate-50 p-4">
+      <div className="relative rounded-2xl border border-slate-200 bg-slate-50 p-3 sm:p-4">
         <ConfettiOverlay show={!practiceMode && status?.state === "WINNING"} />
         <Game disabled={submitting} onFinish={(r: any) => submitAttempt({ scoreMs: r.scoreMs, meta: r.meta })} />
       </div>

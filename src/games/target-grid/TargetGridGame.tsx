@@ -3,7 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 import type { GameProps } from "../types";
 
-const TURNS = 12;
+const TURNS = 9;
 
 export default function TargetGridGame({ onFinish, disabled }: GameProps) {
   const targets = useMemo(() => Array.from({ length: TURNS }, () => Math.floor(Math.random() * 9)), []);
@@ -45,32 +45,32 @@ export default function TargetGridGame({ onFinish, disabled }: GameProps) {
       setTurn(nextTurn);
       setFlash(null);
       startedAtRef.current = performance.now();
-    }, 180);
+    }, 140);
   }
 
   const currentTarget = targets[turn] ?? 0;
 
   return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <div className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Target Grid</div>
-          <div className="mt-1 text-sm font-semibold text-slate-700">Tap the highlighted cell over twelve quick turns. Wrong taps add penalties.</div>
+          <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Target Grid</div>
+          <div className="mt-1 text-xs font-semibold text-slate-700">Hit the correct square over nine quick turns.</div>
         </div>
-        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-right shadow-sm">
-          <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Turn</div>
-          <div className="mt-1 text-xl font-black tabular-nums text-slate-900">{phase === "IDLE" ? 0 : Math.min(turn + 1, TURNS)} / {TURNS}</div>
+        <div className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-right shadow-sm">
+          <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">Turn</div>
+          <div className="mt-0.5 text-lg font-black tabular-nums text-slate-900">{phase === "IDLE" ? 0 : Math.min(turn + 1, TURNS)} / {TURNS}</div>
         </div>
       </div>
 
       {phase !== "IDLE" ? (
-        <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="text-[11px] font-bold uppercase tracking-[0.24em] text-slate-500">Target cell</div>
-          <div className="mt-2 text-3xl font-black tracking-tight text-slate-900">{currentTarget + 1}</div>
+        <div className="rounded-[24px] border border-slate-200 bg-white px-4 py-3 shadow-sm">
+          <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">Target cell</div>
+          <div className="mt-1 text-2xl font-black tracking-tight text-slate-900">{currentTarget + 1}</div>
         </div>
       ) : null}
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 gap-2">
         {Array.from({ length: 9 }).map((_, idx) => {
           const active = phase === "RUNNING" && currentTarget === idx;
           const flashed = flash === idx;
@@ -80,7 +80,7 @@ export default function TargetGridGame({ onFinish, disabled }: GameProps) {
               onClick={() => select(idx)}
               disabled={disabled || phase !== "RUNNING"}
               className={[
-                "aspect-square rounded-[24px] text-lg font-black shadow-sm transition",
+                "aspect-square rounded-[18px] text-base font-black shadow-sm transition",
                 phase !== "RUNNING"
                   ? "bg-slate-100 text-slate-400"
                   : flashed
@@ -97,7 +97,7 @@ export default function TargetGridGame({ onFinish, disabled }: GameProps) {
       </div>
 
       {phase === "DONE" && score != null ? (
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">Run complete • Score <span className="font-black text-slate-900">{score}</span></div>
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">Score <span className="font-black text-slate-900">{score}</span></div>
       ) : null}
 
       <button

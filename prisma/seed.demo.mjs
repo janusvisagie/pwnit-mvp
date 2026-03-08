@@ -2,28 +2,23 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-const GAME_POOL = [
+const GAME_ASSIGNMENTS = [
+  "burst-match",
   "memory-sprint",
+  "target-grid",
   "quick-stop",
   "moving-zone",
   "trace-run",
-  "burst-match",
-  "target-grid",
 ];
 
-function pickFromPool(i) {
-  return GAME_POOL[i % GAME_POOL.length];
-}
-
 async function main() {
-  const now = new Date();
   const items = await prisma.item.findMany({ orderBy: { createdAt: "asc" }, take: 6 });
 
   for (let idx = 0; idx < items.length; idx++) {
     await prisma.item.update({
       where: { id: items[idx].id },
       data: {
-        gameKey: pickFromPool(idx),
+        gameKey: GAME_ASSIGNMENTS[idx],
         state: "OPEN",
         closesAt: null,
       },

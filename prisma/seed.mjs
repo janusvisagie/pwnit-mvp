@@ -2,19 +2,6 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-const GAME_POOL = [
-  "memory-sprint",
-  "quick-stop",
-  "moving-zone",
-  "trace-run",
-  "burst-match",
-  "target-grid",
-];
-
-function pickFromPool(i) {
-  return GAME_POOL[i % GAME_POOL.length];
-}
-
 async function main() {
   await prisma.winner.deleteMany();
   await prisma.attempt.deleteMany();
@@ -27,59 +14,62 @@ async function main() {
 
   const items = [
     {
-      title: "Nintendo Switch OLED",
-      prizeType: "Physical",
-      prizeValueZAR: 8500,
-      imageUrl: "/products/nintendo-switch-oled.svg",
-      activationGoalEntries: 3,
-      countdownMinutes: 1,
-    },
-    {
-      title: "Sony WH-1000XM5 Headphones",
-      prizeType: "Physical",
-      prizeValueZAR: 7999,
-      imageUrl: "/products/sony-xm5-headphones.svg",
-      activationGoalEntries: 3,
-      countdownMinutes: 1,
-    },
-    {
-      title: "GoPro HERO13 Black",
-      prizeType: "Physical",
-      prizeValueZAR: 9999,
-      imageUrl: "/products/gopro-hero.svg",
-      activationGoalEntries: 3,
-      countdownMinutes: 1,
-    },
-    {
-      title: "Takealot Voucher",
+      title: "Fuel Voucher",
       prizeType: "Voucher",
-      prizeValueZAR: 1500,
-      imageUrl: "/products/takealot-voucher.svg",
+      prizeValueZAR: 300,
+      imageUrl: "/products/petrol-voucher.svg",
       activationGoalEntries: 3,
       countdownMinutes: 1,
+      gameKey: "burst-match",
     },
     {
       title: "Checkers Voucher",
       prizeType: "Voucher",
-      prizeValueZAR: 1000,
+      prizeValueZAR: 500,
       imageUrl: "/products/checkers-voucher.svg",
       activationGoalEntries: 3,
       countdownMinutes: 1,
+      gameKey: "memory-sprint",
     },
     {
-      title: "Petrol Voucher",
+      title: "Takealot Voucher",
       prizeType: "Voucher",
-      prizeValueZAR: 1200,
-      imageUrl: "/products/petrol-voucher.svg",
+      prizeValueZAR: 1000,
+      imageUrl: "/products/takealot-voucher.svg",
       activationGoalEntries: 3,
       countdownMinutes: 1,
+      gameKey: "target-grid",
+    },
+    {
+      title: "Sony WH-1000XM5 Headphones",
+      prizeType: "Physical",
+      prizeValueZAR: 1999,
+      imageUrl: "/products/sony-xm5-headphones.svg",
+      activationGoalEntries: 3,
+      countdownMinutes: 1,
+      gameKey: "quick-stop",
+    },
+    {
+      title: "Nintendo Switch OLED",
+      prizeType: "Physical",
+      prizeValueZAR: 3499,
+      imageUrl: "/products/nintendo-switch-oled.svg",
+      activationGoalEntries: 3,
+      countdownMinutes: 1,
+      gameKey: "moving-zone",
+    },
+    {
+      title: "GoPro HERO13 Black",
+      prizeType: "Physical",
+      prizeValueZAR: 6499,
+      imageUrl: "/products/gopro-hero.svg",
+      activationGoalEntries: 3,
+      countdownMinutes: 1,
+      gameKey: "trace-run",
     },
   ];
 
-  for (let idx = 0; idx < items.length; idx++) {
-    const it = items[idx];
-    const gameKey = pickFromPool(idx);
-
+  for (const it of items) {
     await prisma.item.create({
       data: {
         title: it.title,
@@ -94,7 +84,7 @@ async function main() {
         countdownMinutes: it.countdownMinutes,
         opensAt: now,
         subscriberOnly: false,
-        gameKey,
+        gameKey: it.gameKey,
       },
     });
   }
