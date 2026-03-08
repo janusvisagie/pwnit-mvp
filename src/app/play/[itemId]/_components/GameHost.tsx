@@ -3,31 +3,42 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import PrecisionTimerGame from "@/games/precision-timer/PrecisionTimerGame";
-import RhythmHoldGame from "@/games/rhythm-hold/RhythmHoldGame";
-import TapSpeedGame from "@/games/tap-speed/TapSpeedGame";
 import NumberMemoryGame from "@/games/number-memory/NumberMemoryGame";
-import TargetHoldGame from "@/games/target-hold/TargetHoldGame";
-import StopZeroGame from "@/games/stop-zero/StopZeroGame";
-import TapPatternGame from "@/games/tap-pattern/TapPatternGame";
+import QuickStopGame from "@/games/quick-stop/QuickStopGame";
+import MovingZoneGame from "@/games/moving-zone/MovingZoneGame";
+import TraceRunGame from "@/games/trace-run/TraceRunGame";
+import BurstMatchGame from "@/games/burst-match/BurstMatchGame";
+import TargetGridGame from "@/games/target-grid/TargetGridGame";
 
 type GameKey =
+  | "memory-sprint"
+  | "quick-stop"
+  | "moving-zone"
+  | "trace-run"
+  | "burst-match"
+  | "target-grid"
+  | "number-memory"
   | "precision-timer"
   | "rhythm-hold"
   | "tap-speed"
-  | "number-memory"
   | "target-hold"
   | "stop-zero"
   | "tap-pattern";
 
 const GAME_REGISTRY: Record<GameKey, { title: string; Component: any }> = {
-  "precision-timer": { title: "Precision Timer", Component: PrecisionTimerGame },
-  "rhythm-hold": { title: "Rhythm Hold", Component: RhythmHoldGame },
-  "tap-speed": { title: "Tap Rush", Component: TapSpeedGame },
+  "memory-sprint": { title: "Memory Sprint", Component: NumberMemoryGame },
+  "quick-stop": { title: "Quick Stop", Component: QuickStopGame },
+  "moving-zone": { title: "Moving Zone Hold", Component: MovingZoneGame },
+  "trace-run": { title: "Trace Run", Component: TraceRunGame },
+  "burst-match": { title: "Burst Match", Component: BurstMatchGame },
+  "target-grid": { title: "Target Grid", Component: TargetGridGame },
   "number-memory": { title: "Memory Sprint", Component: NumberMemoryGame },
-  "target-hold": { title: "Zone Hold", Component: TargetHoldGame },
-  "stop-zero": { title: "Stop Zero", Component: StopZeroGame },
-  "tap-pattern": { title: "Tap Pattern", Component: TapPatternGame },
+  "precision-timer": { title: "Quick Stop", Component: QuickStopGame },
+  "rhythm-hold": { title: "Moving Zone Hold", Component: MovingZoneGame },
+  "tap-speed": { title: "Burst Match", Component: BurstMatchGame },
+  "target-hold": { title: "Target Grid", Component: TargetGridGame },
+  "stop-zero": { title: "Quick Stop", Component: QuickStopGame },
+  "tap-pattern": { title: "Burst Match", Component: BurstMatchGame },
 };
 
 type Props = {
@@ -87,7 +98,7 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
     state: "WINNING" | "ALMOST" | "PLAYING";
   }>(null);
 
-  const entry = GAME_REGISTRY[gameKey] ?? GAME_REGISTRY["precision-timer"];
+  const entry = GAME_REGISTRY[gameKey] ?? GAME_REGISTRY["quick-stop"];
   const Game = useMemo(() => entry.Component, [entry.Component]);
 
   async function submitAttempt(payload: { scoreMs: number; meta?: any }) {
@@ -149,7 +160,7 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
             {playCost} {playCost === 1 ? "credit" : "credits"} / play
           </span>
           <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-700 ring-1 ring-slate-200">
-            {credits} credits available
+            You have {credits}
           </span>
         </div>
 
@@ -190,7 +201,7 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
 
       {result ? (
         <div className="text-xs text-slate-600">
-          {practiceMode ? "Practice result" : "Submitted"} • Score <span className="font-semibold text-slate-900">{result.scoreMs}ms</span>
+          {practiceMode ? "Practice result" : "Submitted"} • Score <span className="font-semibold text-slate-900">{result.scoreMs}</span>
         </div>
       ) : null}
 
