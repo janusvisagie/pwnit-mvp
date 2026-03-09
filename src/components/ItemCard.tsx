@@ -29,7 +29,7 @@ function gameLabel(k?: string | null) {
   if (k === "quick-stop" || k === "precision-timer" || k === "stop-zero") return "Quick Stop";
   if (k === "moving-zone" || k === "rhythm-hold") return "Moving Zone Hold";
   if (k === "trace-run") return "Trace Run";
-  if (k === "burst-match" || k === "tap-speed" || k === "tap-pattern") return "Burst Match";
+  if (k === "flash-count" || k === "burst-match" || k === "tap-speed" || k === "tap-pattern") return "Flash Count";
   if (k === "target-grid" || k === "target-hold") return "Target Grid";
   return k;
 }

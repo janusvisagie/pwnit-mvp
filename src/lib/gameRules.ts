@@ -1,4 +1,4 @@
-export type SupportedGameKey = "tap-speed" | "target-hold" | "number-memory";
+export type SupportedGameKey = "tap-speed" | "target-hold" | "number-memory" | "flash-count";
 
 type GameMeta = {
   label: string;
@@ -26,6 +26,12 @@ export const GAME_META: Record<string, GameMeta> = {
     higherIsBetter: true,
     description: "Hold inside the target zone and finish with the highest control score.",
     formatScore: (score) => `${Number(score || 0).toLocaleString("en-ZA")} pts`,
+  },
+  "flash-count": {
+    label: "Flash Count",
+    higherIsBetter: true,
+    description: "Count only the target colour and answer quickly for a stronger score.",
+    formatScore: (score) => `${Math.max(0, Math.floor(Number(score || 0))).toLocaleString("en-ZA")} pts`,
   },
   "number-memory": {
     label: "Memory Sprint",

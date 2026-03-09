@@ -40,7 +40,7 @@ async function main() {
       imageUrl: "/products/petrol-voucher.svg",
       activationGoalEntries: 3,
       countdownMinutes: 1,
-      gameKey: "burst-match",
+      gameKey: "flash-count",
     },
     {
       title: "Checkers Voucher",
@@ -109,7 +109,7 @@ async function main() {
     });
   }
 
-  console.log("Seeded 6 items with 6 distinct games.");
+  console.log("Seeded 6 items with 6 distinct games (including Flash Count).");
 }
 
 main()

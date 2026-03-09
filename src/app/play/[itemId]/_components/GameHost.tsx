@@ -7,7 +7,7 @@ import NumberMemoryGame from "@/games/number-memory/NumberMemoryGame";
 import QuickStopGame from "@/games/quick-stop/QuickStopGame";
 import MovingZoneGame from "@/games/moving-zone/MovingZoneGame";
 import TraceRunGame from "@/games/trace-run/TraceRunGame";
-import BurstMatchGame from "@/games/burst-match/BurstMatchGame";
+import FlashCountGame from "@/games/flash-count/FlashCountGame";
 import TargetGridGame from "@/games/target-grid/TargetGridGame";
 
 type GameKey =
@@ -15,7 +15,7 @@ type GameKey =
   | "quick-stop"
   | "moving-zone"
   | "trace-run"
-  | "burst-match"
+  | "flash-count"
   | "target-grid"
   | "number-memory"
   | "precision-timer"
@@ -30,15 +30,15 @@ const GAME_REGISTRY: Record<GameKey, { title: string; Component: any }> = {
   "quick-stop": { title: "Quick Stop", Component: QuickStopGame },
   "moving-zone": { title: "Moving Zone Hold", Component: MovingZoneGame },
   "trace-run": { title: "Trace Run", Component: TraceRunGame },
-  "burst-match": { title: "Burst Match", Component: BurstMatchGame },
+  "flash-count": { title: "Flash Count", Component: FlashCountGame },
   "target-grid": { title: "Target Grid", Component: TargetGridGame },
   "number-memory": { title: "Memory Sprint", Component: NumberMemoryGame },
   "precision-timer": { title: "Quick Stop", Component: QuickStopGame },
   "rhythm-hold": { title: "Moving Zone Hold", Component: MovingZoneGame },
-  "tap-speed": { title: "Burst Match", Component: BurstMatchGame },
+  "tap-speed": { title: "Flash Count", Component: FlashCountGame },
   "target-hold": { title: "Target Grid", Component: TargetGridGame },
   "stop-zero": { title: "Quick Stop", Component: QuickStopGame },
-  "tap-pattern": { title: "Burst Match", Component: BurstMatchGame },
+  "tap-pattern": { title: "Flash Count", Component: FlashCountGame },
 };
 
 type Props = {

@@ -3,7 +3,7 @@ import NumberMemoryGame from "./number-memory/NumberMemoryGame";
 import QuickStopGame from "./quick-stop/QuickStopGame";
 import MovingZoneGame from "./moving-zone/MovingZoneGame";
 import TraceRunGame from "./trace-run/TraceRunGame";
-import BurstMatchGame from "./burst-match/BurstMatchGame";
+import FlashCountGame from "./flash-count/FlashCountGame";
 import TargetGridGame from "./target-grid/TargetGridGame";
 
 export function getGameComponent(t: GameType) {
@@ -16,8 +16,8 @@ export function getGameComponent(t: GameType) {
       return MovingZoneGame;
     case "TRACE_RUN":
       return TraceRunGame;
-    case "BURST_MATCH":
-      return BurstMatchGame;
+    case "FLASH_COUNT":
+      return FlashCountGame;
     case "TARGET_GRID":
     default:
       return TargetGridGame;

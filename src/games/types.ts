@@ -3,7 +3,7 @@ export type GameType =
   | "QUICK_STOP"
   | "MOVING_ZONE"
   | "TRACE_RUN"
-  | "BURST_MATCH"
+  | "FLASH_COUNT"
   | "TARGET_GRID";
 
 export type GameResult = {
