@@ -4,16 +4,17 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { GameProps } from "../types";
 
 const COLORS = [
-  { key: "rose", label: "Rose", cls: "bg-rose-500" },
-  { key: "sky", label: "Sky", cls: "bg-sky-500" },
-  { key: "amber", label: "Amber", cls: "bg-amber-400" },
-  { key: "emerald", label: "Emerald", cls: "bg-emerald-500" },
+  { key: "red", label: "Red", cls: "bg-red-500" },
+  { key: "blue", label: "Blue", cls: "bg-blue-500" },
+  { key: "yellow", label: "Yellow", cls: "bg-yellow-400" },
+  { key: "green", label: "Green", cls: "bg-green-500" },
 ] as const;
 
 const ROUNDS = 4;
 const FLASHES_PER_ROUND = 9;
 const FLASH_MS = 340;
 const GAP_MS = 120;
+const INTRO_MS = 1100;
 const BETWEEN_ROUNDS_MS = 550;
 
 function randInt(min: number, max: number) {
@@ -43,7 +44,7 @@ function buildRound(): RoundDef {
 }
 
 export default function FlashCountGame({ onFinish, disabled }: GameProps) {
-  const [phase, setPhase] = useState<"IDLE" | "SHOW" | "INPUT" | "DONE">("IDLE");
+  const [phase, setPhase] = useState<"IDLE" | "INTRO" | "SHOW" | "INPUT" | "DONE">("IDLE");
   const [roundIndex, setRoundIndex] = useState(0);
   const [flashIndex, setFlashIndex] = useState(-1);
   const [selected, setSelected] = useState<number | null>(null);
@@ -54,19 +55,34 @@ export default function FlashCountGame({ onFinish, disabled }: GameProps) {
   const totalRef = useRef(0);
   const shownAtRef = useRef(0);
   const mountedRef = useRef(true);
+  const timeoutsRef = useRef<number[]>([]);
 
   useEffect(() => {
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
+      timeoutsRef.current.forEach((id) => window.clearTimeout(id));
+      timeoutsRef.current = [];
     };
   }, []);
 
   const current = roundsRef.current[roundIndex];
   const activeFlash = phase === "SHOW" && flashIndex >= 0 && current ? current.flashes[flashIndex] : null;
 
+  function clearAllTimers() {
+    timeoutsRef.current.forEach((id) => window.clearTimeout(id));
+    timeoutsRef.current = [];
+  }
+
+  function queueTimeout(fn: () => void, delay: number) {
+    const id = window.setTimeout(fn, delay);
+    timeoutsRef.current.push(id);
+    return id;
+  }
+
   function startRun() {
     if (disabled) return;
+    clearAllTimers();
     roundsRef.current = Array.from({ length: ROUNDS }, () => buildRound());
     totalRef.current = 0;
     setRoundIndex(0);
@@ -74,18 +90,29 @@ export default function FlashCountGame({ onFinish, disabled }: GameProps) {
     setSelected(null);
     setScore(null);
     setMessage(null);
-    setPhase("SHOW");
+    setPhase("INTRO");
   }
+
+  useEffect(() => {
+    if (phase !== "INTRO") return;
+    if (!roundsRef.current[roundIndex]) return;
+    clearAllTimers();
+    queueTimeout(() => {
+      if (!mountedRef.current) return;
+      setPhase("SHOW");
+    }, INTRO_MS);
+    return () => clearAllTimers();
+  }, [phase, roundIndex]);
 
   useEffect(() => {
     if (phase !== "SHOW") return;
     const round = roundsRef.current[roundIndex];
     if (!round) return;
 
-    let i = 0;
+    clearAllTimers();
     setFlashIndex(-1);
 
-    const cycle = () => {
+    const runFlash = (i: number) => {
       if (!mountedRef.current) return;
       if (i >= round.flashes.length) {
         setFlashIndex(-1);
@@ -93,22 +120,17 @@ export default function FlashCountGame({ onFinish, disabled }: GameProps) {
         setPhase("INPUT");
         return;
       }
+
       setFlashIndex(i);
-      const onTimer = setTimeout(() => {
+      queueTimeout(() => {
+        if (!mountedRef.current) return;
         setFlashIndex(-1);
-        const offTimer = setTimeout(() => {
-          i += 1;
-          cycle();
-        }, GAP_MS);
-        return () => clearTimeout(offTimer);
+        queueTimeout(() => runFlash(i + 1), GAP_MS);
       }, FLASH_MS);
-      return () => clearTimeout(onTimer);
     };
 
-    const cleanup = cycle();
-    return () => {
-      if (typeof cleanup === "function") cleanup();
-    };
+    runFlash(0);
+    return () => clearAllTimers();
   }, [phase, roundIndex]);
 
   const choices = useMemo(() => Array.from({ length: 6 }, (_, i) => i), []);
@@ -135,12 +157,13 @@ export default function FlashCountGame({ onFinish, disabled }: GameProps) {
     }
 
     setMessage(correct ? "Correct." : `Not quite — there were ${round.answer}.`);
-    setTimeout(() => {
+    clearAllTimers();
+    queueTimeout(() => {
       if (!mountedRef.current) return;
       setMessage(null);
       setSelected(null);
       setRoundIndex(nextRound);
-      setPhase("SHOW");
+      setPhase("INTRO");
     }, BETWEEN_ROUNDS_MS);
   }
 
@@ -149,7 +172,7 @@ export default function FlashCountGame({ onFinish, disabled }: GameProps) {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <div className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Flash Count</div>
-          <div className="mt-1 text-sm font-semibold text-slate-700">Watch the flashes, count only the target colour, then answer fast.</div>
+          <div className="mt-1 text-sm font-semibold text-slate-700">Count the target colour as fast and accurately as you can.</div>
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-right shadow-sm">
           <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Round</div>
@@ -160,8 +183,8 @@ export default function FlashCountGame({ onFinish, disabled }: GameProps) {
       {phase === "IDLE" ? (
         <div className="rounded-[28px] border border-slate-200 bg-white p-6 text-center shadow-sm">
           <div className="text-[11px] font-bold uppercase tracking-[0.24em] text-slate-500">Ready?</div>
-          <div className="mt-3 text-3xl font-black tracking-tight text-slate-900">Count the colour you’re told to watch</div>
-          <div className="mt-3 text-sm text-slate-600">Simple, quick, and much wider score spread than a basic reaction tap.</div>
+          <div className="mt-3 text-3xl font-black tracking-tight text-slate-900">Count the target colour you see</div>
+          <div className="mt-3 text-sm text-slate-600">Watch the flashes, count the right colour, then answer quickly.</div>
           <button
             onClick={startRun}
             disabled={disabled}
@@ -182,7 +205,15 @@ export default function FlashCountGame({ onFinish, disabled }: GameProps) {
               <div className={`h-6 w-6 rounded-full ${current?.target.cls ?? "bg-slate-300"}`} />
             </div>
             <div className="mt-5 flex h-28 items-center justify-center rounded-[24px] bg-slate-50">
-              {activeFlash ? (
+              {phase === "INTRO" ? (
+                <div className="text-center">
+                  <div className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Count this colour</div>
+                  <div className="mt-2 flex items-center justify-center gap-3">
+                    <div className={`h-7 w-7 rounded-full ${current?.target.cls ?? "bg-slate-300"}`} />
+                    <div className="text-2xl font-black text-slate-900">{current?.target.label}</div>
+                  </div>
+                </div>
+              ) : activeFlash ? (
                 <div className={`h-20 w-20 rounded-[22px] shadow-sm ${activeFlash.cls}`} />
               ) : (
                 <div className="text-sm font-semibold text-slate-400">{phase === "SHOW" ? "Watch closely" : "How many did you see?"}</div>
