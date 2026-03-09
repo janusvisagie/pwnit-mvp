@@ -6,49 +6,49 @@ import type { GameProps } from "../types";
 const ROUNDS = 3;
 
 function triangle(t: number) {
-  const m = t % 2;
-  return m <= 1 ? m : 2 - m;
+  const cycle = t % 2;
+  return cycle <= 1 ? cycle : 2 - cycle;
 }
 
 export default function QuickStopGame({ onFinish, disabled }: GameProps) {
-  const [phase, setPhase] = useState<"IDLE" | "RUNNING" | "DONE">("IDLE");
+  const [phase, setPhase] = useState<"IDLE" | "RUNNING" | "PAUSED" | "DONE">("IDLE");
   const [round, setRound] = useState(1);
   const [position, setPosition] = useState(0.5);
   const [totalScore, setTotalScore] = useState<number | null>(null);
 
-  const rafRef = useRef<number | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const roundStartRef = useRef(0);
   const totalRef = useRef(0);
   const speedRef = useRef(0.75);
   const seedRef = useRef(Math.random());
+  const positionRef = useRef(0.5);
 
   function cleanup() {
-    if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    rafRef.current = null;
+    if (timerRef.current) clearInterval(timerRef.current);
+    timerRef.current = null;
   }
 
   useEffect(() => cleanup, []);
 
-  useEffect(() => {
-    if (phase !== "RUNNING") return;
-    const tick = () => {
-      const elapsed = (Date.now() - roundStartRef.current) / 1000;
+  function startAnimation() {
+    cleanup();
+    timerRef.current = setInterval(() => {
+      const elapsed = (performance.now() - roundStartRef.current) / 1000;
       const pos = triangle(elapsed * speedRef.current + seedRef.current);
+      positionRef.current = pos;
       setPosition(pos);
-      rafRef.current = requestAnimationFrame(tick);
-    };
-    rafRef.current = requestAnimationFrame(tick);
-    return cleanup;
-  }, [phase, round]);
+    }, 16);
+  }
 
   function startRound(nextRound = 1) {
-    cleanup();
     speedRef.current = 0.65 + Math.random() * 0.9;
     seedRef.current = Math.random();
-    roundStartRef.current = Date.now();
+    roundStartRef.current = performance.now();
+    positionRef.current = 0.5;
     setRound(nextRound);
     setPosition(0.5);
     setPhase("RUNNING");
+    startAnimation();
   }
 
   function begin() {
@@ -60,7 +60,7 @@ export default function QuickStopGame({ onFinish, disabled }: GameProps) {
 
   function stopNow() {
     if (disabled || phase !== "RUNNING") return;
-    const error = Math.abs(position - 0.5);
+    const error = Math.abs(positionRef.current - 0.5);
     const roundScore = Math.round(error * 10_000);
     const nextTotal = totalRef.current + roundScore;
     totalRef.current = nextTotal;
@@ -73,7 +73,7 @@ export default function QuickStopGame({ onFinish, disabled }: GameProps) {
       return;
     }
 
-    setPhase("IDLE");
+    setPhase("PAUSED");
     setTimeout(() => startRound(round + 1), 420);
   }
 
@@ -98,7 +98,7 @@ export default function QuickStopGame({ onFinish, disabled }: GameProps) {
         <div className="relative mt-5 h-8 overflow-hidden rounded-full bg-slate-100">
           <div className="absolute inset-y-0 left-1/2 w-[2px] -translate-x-1/2 bg-emerald-500" />
           <div
-            className="absolute top-1/2 h-6 w-10 -translate-y-1/2 rounded-full bg-slate-900 shadow-sm transition-[left] duration-75"
+            className="absolute top-1/2 h-6 w-10 -translate-y-1/2 rounded-full bg-slate-900 shadow-sm"
             style={{ left: `calc(${position * 100}% - 20px)` }}
           />
         </div>

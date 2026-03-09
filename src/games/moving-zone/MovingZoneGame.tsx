@@ -14,15 +14,15 @@ export default function MovingZoneGame({ onFinish, disabled }: GameProps) {
   const [score, setScore] = useState<number | null>(null);
 
   const areaRef = useRef<HTMLDivElement | null>(null);
-  const rafRef = useRef<number | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startRef = useRef(0);
   const scoreRef = useRef(0);
   const lastTickRef = useRef(0);
   const cursorRef = useRef(0.5);
 
   function cleanup() {
-    if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    rafRef.current = null;
+    if (timerRef.current) clearInterval(timerRef.current);
+    timerRef.current = null;
   }
 
   useEffect(() => cleanup, []);
@@ -49,7 +49,8 @@ export default function MovingZoneGame({ onFinish, disabled }: GameProps) {
     setTimeLeft(DURATION_MS);
     setPhase("RUNNING");
 
-    const tick = (now: number) => {
+    timerRef.current = setInterval(() => {
+      const now = performance.now();
       const elapsed = now - startRef.current;
       const dt = now - lastTickRef.current;
       lastTickRef.current = now;
@@ -70,13 +71,8 @@ export default function MovingZoneGame({ onFinish, disabled }: GameProps) {
         setPhase("DONE");
         onFinish({ scoreMs: finalScore, meta: { game: "moving-zone", durationMs: DURATION_MS } });
         cleanup();
-        return;
       }
-
-      rafRef.current = requestAnimationFrame(tick);
-    };
-
-    rafRef.current = requestAnimationFrame(tick);
+    }, 16);
   }
 
   return (
@@ -98,8 +94,8 @@ export default function MovingZoneGame({ onFinish, disabled }: GameProps) {
         onPointerDown={(e) => phase === "RUNNING" && updateCursor(e.clientX)}
         className="relative h-28 touch-none overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm"
       >
-        <div className="absolute inset-y-0 w-[18%] -translate-x-1/2 rounded-2xl bg-emerald-100/90 ring-1 ring-emerald-300 transition-[left] duration-75" style={{ left: `${targetX * 100}%` }} />
-        <div className="absolute inset-y-4 w-3 -translate-x-1/2 rounded-full bg-slate-900 shadow-sm transition-[left] duration-75" style={{ left: `${cursorX * 100}%` }} />
+        <div className="absolute inset-y-0 w-[18%] -translate-x-1/2 rounded-2xl bg-emerald-100/90 ring-1 ring-emerald-300" style={{ left: `${targetX * 100}%` }} />
+        <div className="absolute inset-y-4 w-3 -translate-x-1/2 rounded-full bg-slate-900 shadow-sm" style={{ left: `${cursorX * 100}%` }} />
         <div className="absolute inset-x-0 bottom-4 text-center text-[11px] font-semibold text-slate-500">Move across the lane and stay inside the green band</div>
       </div>
 

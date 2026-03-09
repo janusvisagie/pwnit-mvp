@@ -75,10 +75,20 @@ export default function NumberMemoryGame({ onFinish, disabled }: GameProps) {
       setValue("");
       setMessage(null);
       levelStartedAt.current = Date.now();
-      inputRef.current?.focus();
     }, showMs);
     return () => clearTimeout(t);
   }, [phase, showMs]);
+
+  useEffect(() => {
+    if (phase !== "INPUT") return;
+    const focusInput = () => {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    };
+    focusInput();
+    const t = setTimeout(focusInput, 40);
+    return () => clearTimeout(t);
+  }, [phase, levelIndex]);
 
   function submitGuess() {
     if (disabled || phase !== "INPUT" || !secret) return;
@@ -163,6 +173,8 @@ export default function NumberMemoryGame({ onFinish, disabled }: GameProps) {
               onKeyDown={(e) => {
                 if (e.key === "Enter") submitGuess();
               }}
+              autoFocus={phase === "INPUT"}
+              autoFocus={phase === "INPUT"}
               inputMode="numeric"
               pattern="\d*"
               placeholder={`${digits} digits`}

@@ -4,8 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import type { GameProps } from "../types";
 
 const DURATION_MS = 7000;
-const FIELD_W = 100;
-const FIELD_H = 100;
 
 function clamp(v: number, lo = 0, hi = 1) {
   return Math.max(lo, Math.min(hi, v));
@@ -19,15 +17,15 @@ export default function TraceRunGame({ onFinish, disabled }: GameProps) {
   const [score, setScore] = useState<number | null>(null);
 
   const areaRef = useRef<HTMLDivElement | null>(null);
-  const rafRef = useRef<number | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startRef = useRef(0);
   const lastTickRef = useRef(0);
   const scoreRef = useRef(0);
   const cursorRef = useRef({ x: 0.5, y: 0.5 });
 
   function cleanup() {
-    if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    rafRef.current = null;
+    if (timerRef.current) clearInterval(timerRef.current);
+    timerRef.current = null;
   }
 
   useEffect(() => cleanup, []);
@@ -53,7 +51,8 @@ export default function TraceRunGame({ onFinish, disabled }: GameProps) {
     scoreRef.current = 0;
     setPhase("RUNNING");
 
-    const tick = (now: number) => {
+    timerRef.current = setInterval(() => {
+      const now = performance.now();
       const elapsed = now - startRef.current;
       const dt = now - lastTickRef.current;
       lastTickRef.current = now;
@@ -73,15 +72,10 @@ export default function TraceRunGame({ onFinish, disabled }: GameProps) {
         const finalScore = Math.round(scoreRef.current);
         setScore(finalScore);
         setPhase("DONE");
-        onFinish({ scoreMs: finalScore, meta: { game: "trace-run", durationMs: DURATION_MS, field: [FIELD_W, FIELD_H] } });
+        onFinish({ scoreMs: finalScore, meta: { game: "trace-run", durationMs: DURATION_MS } });
         cleanup();
-        return;
       }
-
-      rafRef.current = requestAnimationFrame(tick);
-    };
-
-    rafRef.current = requestAnimationFrame(tick);
+    }, 16);
   }
 
   return (
@@ -104,11 +98,11 @@ export default function TraceRunGame({ onFinish, disabled }: GameProps) {
         className="relative h-56 touch-none overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm"
       >
         <div
-          className="absolute h-7 w-7 -translate-x-1/2 -translate-y-1/2 rounded-full bg-emerald-500 shadow-lg transition-[left,top] duration-75"
+          className="absolute h-7 w-7 -translate-x-1/2 -translate-y-1/2 rounded-full bg-emerald-500 shadow-lg"
           style={{ left: `${dot.x * 100}%`, top: `${dot.y * 100}%` }}
         />
         <div
-          className="absolute h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full bg-slate-900/85 ring-4 ring-slate-900/10 transition-[left,top] duration-75"
+          className="absolute h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full bg-slate-900/85 ring-4 ring-slate-900/10"
           style={{ left: `${cursor.x * 100}%`, top: `${cursor.y * 100}%` }}
         />
         <div className="absolute inset-x-0 bottom-4 text-center text-[11px] font-semibold text-slate-500">Keep your pointer glued to the green marker</div>
