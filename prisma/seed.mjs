@@ -2,13 +2,33 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
+async function tableExists(name) {
+  const rows = await prisma.$queryRawUnsafe(
+    `SELECT name FROM sqlite_master WHERE type='table' AND name=? LIMIT 1;`,
+    name,
+  );
+  return Array.isArray(rows) && rows.length > 0;
+}
+
+async function clearTableIfExists(name) {
+  if (await tableExists(name)) {
+    await prisma.$executeRawUnsafe(`DELETE FROM "${name}";`);
+  }
+}
+
 async function main() {
-  await prisma.winner.deleteMany();
-  await prisma.attempt.deleteMany();
-  try {
-    await prisma.itemPurchase.deleteMany();
-  } catch {}
-  await prisma.item.deleteMany();
+  await prisma.$executeRawUnsafe(`PRAGMA foreign_keys = OFF;`);
+
+  // Clear known child tables first, then legacy child tables from earlier patches,
+  // then items. This keeps reseeding resilient even when the local DB has old tables.
+  await clearTableIfExists("Winner");
+  await clearTableIfExists("Attempt");
+  await clearTableIfExists("ItemPurchase");
+  await clearTableIfExists("CreditLedger");
+  await clearTableIfExists("ItemRound");
+  await clearTableIfExists("Item");
+
+  await prisma.$executeRawUnsafe(`PRAGMA foreign_keys = ON;`);
 
   const now = new Date();
 
