@@ -1,151 +1,144 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { compareScores } from "@/lib/gameRules";
+import { dayKeyZA } from "@/lib/time";
 
 export type SettleResult = {
   ok: boolean;
-  roundId: string;
+  dayKey: string;
   itemId: string;
   winnersPublished: boolean;
+  pct: number;
+  pctLabel: string;
   uniquePlayers: number;
   winnersCount: number;
+  cutoffRank: number;
 };
 
-const COMPLETED_ROUND_BONUSES = [0, 20, 10];
+const DEFAULT_TOP_PCT = 0.05;
+const DEFAULT_MIN_WINNERS = 1;
+const DEFAULT_MAX_WINNERS = 50;
 
-function validAttemptWhere() {
-  return {
-    OR: [{ flags: null }, { NOT: { flags: { contains: '"valid":false' } } }],
-  } as const;
+function clamp(n: number, lo: number, hi: number) {
+  return Math.max(lo, Math.min(hi, n));
 }
 
-export async function settleRound(roundId: string): Promise<SettleResult> {
-  const round = await prisma.itemRound.findUnique({
-    where: { id: roundId },
-    include: { item: true },
+function pctToLabel(pct: number) {
+  const v = Math.round(pct * 1000) / 10;
+  return Number.isInteger(v) ? `${v.toFixed(0)}%` : `${v}%`;
+}
+
+function validAttemptWhere(): Prisma.AttemptWhereInput {
+  return {
+    OR: [{ flags: null }, { NOT: { flags: { contains: "\"valid\":false" } } }],
+  };
+}
+
+export async function settleItemWinners(
+  itemId: string,
+  opts?: {
+    pct?: number;
+    minWinners?: number;
+    maxWinners?: number;
+    publishItem?: boolean;
+  }
+): Promise<SettleResult> {
+  const dayKey = dayKeyZA();
+  const pct = typeof opts?.pct === "number" ? opts.pct : DEFAULT_TOP_PCT;
+  const minWinners = typeof opts?.minWinners === "number" ? opts.minWinners : DEFAULT_MIN_WINNERS;
+  const maxWinners = typeof opts?.maxWinners === "number" ? opts.maxWinners : DEFAULT_MAX_WINNERS;
+  const publishItem = opts?.publishItem !== false;
+
+  const existing = await prisma.winner.findMany({
+    where: { itemId },
+    orderBy: [{ rank: "asc" }],
+    select: { rank: true },
   });
 
-  if (!round) {
-    return { ok: false, roundId, itemId: "", winnersPublished: false, uniquePlayers: 0, winnersCount: 0 };
-  }
-
-  const existing = await prisma.winner.findMany({ where: { roundId }, orderBy: [{ rank: "asc" }] });
   if (existing.length > 0) {
+    const uniquePlayersAgg = await prisma.attempt.groupBy({
+      by: ["userId"],
+      where: { itemId, ...validAttemptWhere() },
+    });
+
     return {
       ok: true,
-      roundId,
-      itemId: round.itemId,
+      dayKey,
+      itemId,
       winnersPublished: true,
-      uniquePlayers: existing.length,
+      pct,
+      pctLabel: pctToLabel(pct),
+      uniquePlayers: uniquePlayersAgg.length,
       winnersCount: existing.length,
+      cutoffRank: existing[existing.length - 1]?.rank ?? existing.length,
     };
   }
 
   const attempts = await prisma.attempt.findMany({
-    where: { roundId, ...validAttemptWhere() },
+    where: { itemId, ...validAttemptWhere() },
+    orderBy: [{ scoreMs: "asc" }, { createdAt: "asc" }],
     select: { userId: true, scoreMs: true, createdAt: true },
-    orderBy: [{ createdAt: "asc" }],
   });
 
   const bestByUser = new Map<string, { userId: string; scoreMs: number; createdAt: Date }>();
-  for (const attempt of attempts) {
-    const current = bestByUser.get(attempt.userId);
-    if (!current || compareScores(round.item.gameKey, attempt, current) < 0) {
-      bestByUser.set(attempt.userId, attempt);
-    }
+  for (const a of attempts) {
+    if (!bestByUser.has(a.userId)) bestByUser.set(a.userId, a);
   }
 
-  const ranked = Array.from(bestByUser.values())
-    .sort((a, b) => compareScores(round.item.gameKey, a, b))
-    .slice(0, 3);
+  const uniquePlayers = bestByUser.size;
+  if (uniquePlayers === 0) {
+    return {
+      ok: true,
+      dayKey,
+      itemId,
+      winnersPublished: false,
+      pct,
+      pctLabel: pctToLabel(pct),
+      uniquePlayers: 0,
+      winnersCount: 0,
+      cutoffRank: 0,
+    };
+  }
 
-  const users = ranked.length
-    ? await prisma.user.findMany({
-        where: { id: { in: ranked.map((r) => r.userId) } },
-        select: { id: true, alias: true, email: true },
-      })
-    : [];
-  const aliasById = new Map(users.map((u) => [u.id, (u.alias && u.alias.trim()) || (u.email?.split("@")[0] ?? "player")]));
+  const rawCount = Math.ceil(uniquePlayers * pct);
+  const winnersCount = clamp(rawCount, minWinners, maxWinners);
+  const ranked = Array.from(bestByUser.values()).slice(0, winnersCount);
 
-  await prisma.$transaction(async (tx) => {
-    for (let idx = 0; idx < ranked.length; idx++) {
-      const row = ranked[idx];
-      const bonus = COMPLETED_ROUND_BONUSES[idx] ?? 0;
-      const rewardType = idx === 0 ? "ITEM" : "CREDIT_BONUS";
-
-      await tx.winner.create({
-        data: {
-          itemId: round.itemId,
-          roundId,
-          dayKey: round.fundingStartsAt.toISOString().slice(0, 10),
-          userId: row.userId,
-          rank: idx + 1,
-          scoreMs: row.scoreMs,
-          alias: aliasById.get(row.userId) ?? "player",
-          rewardType,
-          rewardCredits: bonus,
-        },
-      });
-
-      if (bonus > 0) {
-        await tx.user.update({
-          where: { id: row.userId },
-          data: { paidCreditsBalance: { increment: bonus } },
-        });
-        await tx.creditLedger.create({
-          data: {
-            userId: row.userId,
-            itemId: round.itemId,
-            roundId,
-            kind: "RUNNER_UP_BONUS",
-            credits: bonus,
-            note: `${round.item.title} leaderboard bonus for rank ${idx + 1}`,
-          },
-        });
-      }
-    }
-
-    await tx.itemRound.update({
-      where: { id: roundId },
-      data: {
-        state: "PUBLISHED",
-        purchaseGraceEndsAt:
-          round.purchaseGraceEndsAt ?? new Date(Date.now() + round.item.purchaseGraceHours * 60 * 60 * 1000),
-        winnerUserId: ranked[0]?.userId ?? null,
-      },
-    });
-
-    await tx.item.update({
-      where: { id: round.itemId },
-      data: { state: "PUBLISHED", closesAt: round.closesAt ?? round.fundingEndsAt },
-    });
+  const users = await prisma.user.findMany({
+    where: { id: { in: ranked.map((w) => w.userId) } },
+    select: { id: true, alias: true, email: true },
   });
+
+  const aliasById = new Map(
+    users.map((u) => [u.id, (u.alias && u.alias.trim()) || (u.email?.split("@")[0] ?? "player")])
+  );
+
+  await prisma.winner.createMany({
+    data: ranked.map((w, idx) => ({
+      itemId,
+      userId: w.userId,
+      dayKey,
+      rank: idx + 1,
+      scoreMs: w.scoreMs,
+      alias: aliasById.get(w.userId) ?? "player",
+    })),
+  });
+
+  if (publishItem) {
+    await prisma.item.update({
+      where: { id: itemId },
+      data: { state: "PUBLISHED" },
+    });
+  }
 
   return {
     ok: true,
-    roundId,
-    itemId: round.itemId,
-    winnersPublished: ranked.length > 0,
-    uniquePlayers: bestByUser.size,
+    dayKey,
+    itemId,
+    winnersPublished: true,
+    pct,
+    pctLabel: pctToLabel(pct),
+    uniquePlayers,
     winnersCount: ranked.length,
+    cutoffRank: ranked.length,
   };
-}
-
-export async function settleItemWinners(itemId: string) {
-  const round = await prisma.itemRound.findFirst({
-    where: { itemId, state: "CLOSED" },
-    orderBy: [{ sequence: "desc" }],
-  });
-
-  if (!round) {
-    return {
-      ok: false,
-      roundId: "",
-      itemId,
-      winnersPublished: false,
-      uniquePlayers: 0,
-      winnersCount: 0,
-    } satisfies SettleResult;
-  }
-
-  return settleRound(round.id);
 }

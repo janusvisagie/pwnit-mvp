@@ -1,72 +1,104 @@
 import { prisma } from "@/lib/db";
 
 /**
- * CREDIT MODEL (MVP):
- * - LedgerTx.amount is positive for grants, negative for spends.
- * - Balance = SUM(amount) for the user.
- * - Types are informational (useful for rules/reporting).
+ * CREDIT MODEL (current schema):
+ * - freeCreditsBalance and paidCreditsBalance are stored directly on User.
+ * - Daily free credits top up the free balance once per day.
+ * - spendCredits consumes free balance first, then paid balance.
  */
 
 export async function getCreditBalance(userId: string) {
-  const rows = await prisma.ledgerTx.findMany({
-    where: { userId },
-    select: { amount: true },
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { freeCreditsBalance: true, paidCreditsBalance: true },
   });
-  return rows.reduce((sum, r) => sum + (r.amount ?? 0), 0);
+
+  return (user?.freeCreditsBalance ?? 0) + (user?.paidCreditsBalance ?? 0);
 }
 
-export async function grantCredits(userId: string, amount: number, memo?: string, type = "CREDIT_GRANT") {
-  if (!Number.isFinite(amount) || amount <= 0) throw new Error("grantCredits: amount must be > 0");
-  await prisma.ledgerTx.create({
+export async function grantCredits(userId: string, amount: number, _memo?: string, _type = "CREDIT_GRANT") {
+  const grant = Math.floor(amount);
+  if (!Number.isFinite(grant) || grant <= 0) {
+    throw new Error("grantCredits: amount must be > 0");
+  }
+
+  await prisma.user.update({
+    where: { id: userId },
     data: {
-      userId,
-      type,
-      amount: Math.floor(amount),
-      memo: memo ?? null,
+      paidCreditsBalance: {
+        increment: grant,
+      },
     },
   });
 }
 
-export async function spendCredits(userId: string, amount: number, memo?: string, type = "ATTEMPT_SPEND") {
+export async function spendCredits(userId: string, amount: number, _memo?: string, _type = "ATTEMPT_SPEND") {
   const spend = Math.floor(amount);
-  if (!Number.isFinite(spend) || spend <= 0) throw new Error("spendCredits: amount must be > 0");
+  if (!Number.isFinite(spend) || spend <= 0) {
+    throw new Error("spendCredits: amount must be > 0");
+  }
 
-  const balance = await getCreditBalance(userId);
-  if (balance < spend) throw new Error("insufficient_credits");
+  return prisma.$transaction(async (tx) => {
+    const user = await tx.user.findUnique({
+      where: { id: userId },
+      select: { freeCreditsBalance: true, paidCreditsBalance: true },
+    });
 
-  await prisma.ledgerTx.create({
-    data: {
-      userId,
-      type,
-      amount: -spend,
-      memo: memo ?? null,
-    },
+    const free = user?.freeCreditsBalance ?? 0;
+    const paid = user?.paidCreditsBalance ?? 0;
+    const balance = free + paid;
+
+    if (balance < spend) {
+      throw new Error("insufficient_credits");
+    }
+
+    const freeUsed = Math.min(free, spend);
+    const paidUsed = spend - freeUsed;
+
+    await tx.user.update({
+      where: { id: userId },
+      data: {
+        freeCreditsBalance: {
+          decrement: freeUsed,
+        },
+        paidCreditsBalance: {
+          decrement: paidUsed,
+        },
+      },
+    });
+
+    return { ok: true, balanceAfter: balance - spend, freeUsed, paidUsed };
   });
-
-  return { ok: true, balanceAfter: balance - spend };
 }
 
 /**
  * DAILY GRANT (idempotent):
- * Gives the user a fixed number of credits once per day.
- * This is safe to call from multiple pages without duplicating credits.
+ * Gives the user a fixed number of free credits once per day.
  */
 export async function ensureDailyCredits(userId: string, dayKey: string, amount = 30) {
-  const memo = `daily:${dayKey}`;
+  const grant = Math.floor(amount);
+  if (!Number.isFinite(grant) || grant <= 0) {
+    throw new Error("ensureDailyCredits: amount must be > 0");
+  }
 
-  const existing = await prisma.ledgerTx.findFirst({
-    where: { userId, type: "DAILY_GRANT", memo },
-    select: { id: true },
-  });
+  await prisma.$transaction(async (tx) => {
+    const user = await tx.user.findUnique({
+      where: { id: userId },
+      select: { lastDailyCreditsDayKey: true },
+    });
 
-  if (!existing) {
-    await prisma.ledgerTx.create({
+    if (user?.lastDailyCreditsDayKey === dayKey) {
+      return;
+    }
+
+    await tx.user.update({
+      where: { id: userId },
       data: {
-        userId,
-        type: "DAILY_GRANT",
-        amount,
-        memo,
+        freeCreditsBalance: {
+          increment: grant,
+        },
+        lastDailyCreditsDayKey: dayKey,
       },
     });
-  }
+  });
 }
