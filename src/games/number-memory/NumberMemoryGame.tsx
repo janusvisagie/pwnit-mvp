@@ -3,9 +3,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { GameProps } from "../types";
 
-const LEVEL_DIGITS = [4, 5, 6];
-const SHOW_MS = 1200;
+const LEVEL_DIGITS = [3, 4, 5, 6, 7, 8];
+const SHOW_MS = 1400;
 const COUNTDOWN_FROM = 3;
+
+type Phase = "READY" | "COUNTDOWN" | "SHOW" | "INPUT" | "DONE";
 
 function randDigits(len: number) {
   let s = "";
@@ -16,7 +18,7 @@ function randDigits(len: number) {
 export default function NumberMemoryGame({ onFinish, disabled }: GameProps) {
   const [levelIndex, setLevelIndex] = useState(0);
   const [secret, setSecret] = useState<string | null>(null);
-  const [phase, setPhase] = useState<"BOOT" | "COUNTDOWN" | "SHOW" | "INPUT" | "DONE">("BOOT");
+  const [phase, setPhase] = useState<Phase>("READY");
   const [count, setCount] = useState(COUNTDOWN_FROM);
   const [value, setValue] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
@@ -28,7 +30,7 @@ export default function NumberMemoryGame({ onFinish, disabled }: GameProps) {
 
   const digits = useMemo(() => LEVEL_DIGITS[levelIndex] ?? LEVEL_DIGITS[LEVEL_DIGITS.length - 1], [levelIndex]);
 
-  function startLevel(nextLevel = 0) {
+  function beginLevel(nextLevel = 0) {
     if (disabled) return;
     const nextDigits = LEVEL_DIGITS[nextLevel] ?? LEVEL_DIGITS[LEVEL_DIGITS.length - 1];
     setLevelIndex(nextLevel);
@@ -40,17 +42,16 @@ export default function NumberMemoryGame({ onFinish, disabled }: GameProps) {
     startedAt.current = null;
   }
 
-  function playAgain() {
+  function resetRun() {
     totalScoreRef.current = 0;
     setScore(null);
-    startLevel(0);
+    setMsg(null);
+    setValue("");
+    setSecret(null);
+    setLevelIndex(0);
+    setCount(COUNTDOWN_FROM);
+    setPhase("READY");
   }
-
-  useEffect(() => {
-    if (phase !== "BOOT") return;
-    playAgain();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase]);
 
   useEffect(() => {
     if (phase !== "COUNTDOWN") return;
@@ -116,7 +117,7 @@ export default function NumberMemoryGame({ onFinish, disabled }: GameProps) {
 
     setMsg("Correct — next code.");
     setPhase("DONE");
-    setTimeout(() => startLevel(levelIndex + 1), 600);
+    setTimeout(() => beginLevel(levelIndex + 1), 650);
   }
 
   return (
@@ -124,7 +125,7 @@ export default function NumberMemoryGame({ onFinish, disabled }: GameProps) {
       <div className="flex flex-wrap items-center justify-between gap-2.5">
         <div>
           <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500 sm:text-xs">Objective</div>
-          <div className="mt-1 text-sm font-semibold text-slate-700">Memorise each code, then enter it as fast as you can over three levels.</div>
+          <div className="mt-1 text-sm font-semibold text-slate-700">Memorise each code, then enter it as fast as you can across six levels.</div>
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-right shadow-sm">
           <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">Level</div>
@@ -132,7 +133,15 @@ export default function NumberMemoryGame({ onFinish, disabled }: GameProps) {
         </div>
       </div>
 
-      {phase === "COUNTDOWN" ? (
+      {phase === "READY" ? (
+        <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm sm:rounded-[28px] sm:p-6">
+          <div className="text-[10px] font-bold uppercase tracking-[0.22em] text-slate-500 sm:text-[11px]">Memory Sprint</div>
+          <div className="mt-2 text-sm leading-6 text-slate-700">A fresh code appears on every level. Memorise it, then type it back from memory to build your score.</div>
+          <button onClick={() => beginLevel(0)} disabled={disabled} className={["mt-4 inline-flex min-h-[44px] items-center justify-center rounded-2xl px-5 py-3 text-sm font-extrabold shadow-sm transition", disabled ? "bg-slate-200 text-slate-500" : "bg-slate-900 text-white hover:-translate-y-0.5 hover:bg-slate-800"].join(" ")}>
+            Start memory sprint
+          </button>
+        </div>
+      ) : phase === "COUNTDOWN" ? (
         <div className="rounded-[24px] border border-slate-200 bg-slate-950 p-5 text-center text-white shadow-sm sm:rounded-[28px] sm:p-6">
           <div className="text-[10px] font-bold uppercase tracking-[0.22em] text-slate-400 sm:text-[11px]">Get ready</div>
           <div className="mt-3 text-5xl font-black tabular-nums tracking-tight sm:text-6xl">{count}</div>
@@ -157,6 +166,7 @@ export default function NumberMemoryGame({ onFinish, disabled }: GameProps) {
               onKeyDown={(e) => {
                 if (e.key === "Enter") submit();
               }}
+              autoFocus={phase === "INPUT"}
               inputMode="numeric"
               pattern="\d*"
               placeholder={`${digits} digits`}
@@ -168,9 +178,7 @@ export default function NumberMemoryGame({ onFinish, disabled }: GameProps) {
               disabled={disabled || phase !== "INPUT"}
               className={[
                 "w-full shrink-0 rounded-2xl px-5 py-3 text-sm font-extrabold shadow-sm transition sm:w-auto",
-                disabled || phase !== "INPUT"
-                  ? "bg-slate-200 text-slate-500"
-                  : "bg-slate-900 text-white hover:-translate-y-0.5 hover:bg-slate-800",
+                disabled || phase !== "INPUT" ? "bg-slate-200 text-slate-500" : "bg-slate-900 text-white hover:-translate-y-0.5 hover:bg-slate-800",
               ].join(" ")}
             >
               Enter
@@ -193,11 +201,7 @@ export default function NumberMemoryGame({ onFinish, disabled }: GameProps) {
         </div>
       )}
 
-      <button
-        onClick={playAgain}
-        disabled={disabled}
-        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-900 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50"
-      >
+      <button onClick={resetRun} disabled={disabled} className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-900 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50">
         Restart memory sprint
       </button>
     </div>

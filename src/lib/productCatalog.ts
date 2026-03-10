@@ -8,7 +8,7 @@ export type ProductContent = {
 
 const catalog: Record<string, ProductContent> = {
   "Nintendo Switch OLED": {
-    imageUrl: "https://assets.nintendo.com/image/upload/f_auto/q_auto/dpr_1.5/ncom/en_US/switch/videos/heg001-07060600/posters/oled-model",
+    imageUrl: "/products/nintendo-switch-oled.svg",
     officialUrl: "https://www.nintendo.com/us/gaming-systems/switch/oled-model/",
     kicker: "Official product highlights",
     description:

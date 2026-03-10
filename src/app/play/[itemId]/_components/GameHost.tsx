@@ -148,14 +148,14 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2.5">
       <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-start">
         <div className="flex flex-wrap items-center gap-2">
           <div className="text-sm font-semibold text-slate-900">{entry.title}</div>
-          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-700 ring-1 ring-slate-200">
+          <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-semibold text-slate-700 ring-1 ring-slate-200 sm:px-2.5 sm:text-[11px]">
             {playCost} credits / play
           </span>
-          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-700 ring-1 ring-slate-200">
+          <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-semibold text-slate-700 ring-1 ring-slate-200 sm:px-2.5 sm:text-[11px]">
             Wallet {credits}
           </span>
         </div>
@@ -206,7 +206,7 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
         </div>
       ) : null}
 
-      <div className="relative rounded-2xl border border-slate-200 bg-slate-50 p-2.5 sm:p-4">
+      <div className="relative rounded-2xl border border-slate-200 bg-slate-50 p-2 sm:p-4">
         <ConfettiOverlay show={!practiceMode && status?.state === "WINNING"} />
         <Game disabled={submitting} onFinish={(r: any) => submitAttempt({ scoreMs: r.scoreMs, meta: r.meta })} />
       </div>

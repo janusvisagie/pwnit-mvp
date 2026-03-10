@@ -60,7 +60,7 @@ export default async function PlayPage({ params }: { params: { itemId: string } 
     const creditsTotal = free + paid;
 
     return (
-      <main className="mx-auto max-w-5xl space-y-2 px-3 pb-4 sm:px-4">
+      <main className="mx-auto max-w-5xl space-y-2 px-2 pb-3 sm:px-4">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
             <div className="text-xl font-extrabold tracking-tight sm:text-2xl">{item.title}</div>
@@ -87,7 +87,7 @@ export default async function PlayPage({ params }: { params: { itemId: string } 
           </div>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-2 shadow-sm sm:p-3">
+        <div className="rounded-2xl border border-slate-200 bg-white p-1.5 shadow-sm sm:p-3">
           <GameHost itemId={item.id} gameKey={(item.gameKey as any) ?? "precision-timer"} playCost={playCost} credits={creditsTotal} />
         </div>
       </main>

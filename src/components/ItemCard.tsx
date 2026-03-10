@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo } from "react";
 import { CountdownChip } from "@/components/CountdownChip";
-import { getProductContent } from "@/lib/productCatalog";
+import { getFallbackProductImage, getProductContent } from "@/lib/productCatalog";
 import { activationStageLabel } from "@/lib/playCost";
 import { ProductImage } from "@/components/ProductImage";
 
@@ -42,6 +42,7 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
   const href = item.state === "PUBLISHED" ? `/item/${item.id}/leaderboard` : `/item/${item.id}`;
   const gLabel = gameLabel(item.gameKey);
   const product = getProductContent(item.title, item.imageUrl);
+  const fallbackImage = getFallbackProductImage(item.title, item.imageUrl);
   const hot = useMemo(() => !isClosed && !isActivated && pct >= 75, [isClosed, isActivated, pct]);
 
   const statusTone = isClosed
@@ -60,7 +61,7 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
       <div className="relative flex min-h-[156px] items-center justify-center overflow-hidden bg-gradient-to-b from-slate-50 to-white p-3 sm:min-h-[176px] md:min-h-[188px]">
         <ProductImage
           primarySrc={item.imageUrl}
-          fallbackSrc={product?.imageUrl ?? null}
+          fallbackSrc={fallbackImage}
           alt={item.title}
           className="flex items-center justify-center"
           imgClassName="max-h-[126px] max-w-full object-contain transition duration-300 group-hover:scale-[1.03] sm:max-h-[142px] md:max-h-[154px]"
