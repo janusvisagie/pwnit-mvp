@@ -51,7 +51,7 @@ export default function TargetGridGame({ onFinish, disabled }: GameProps) {
   const currentTarget = targets[turn] ?? 0;
 
   return (
-    <div className="space-y-2.5">
+    <div className="space-y-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">Target Grid</div>
@@ -72,7 +72,7 @@ export default function TargetGridGame({ onFinish, disabled }: GameProps) {
         </div>
       ) : null}
 
-      <div className="mx-auto grid max-w-[280px] grid-cols-3 gap-1.5 sm:max-w-[300px] sm:gap-2">
+      <div className="mx-auto grid max-w-[260px] grid-cols-3 gap-1 sm:max-w-[300px] sm:gap-2">
         {Array.from({ length: 9 }).map((_, idx) => {
           const active = phase === "RUNNING" && currentTarget === idx;
           const flashed = flash === idx;
@@ -105,7 +105,7 @@ export default function TargetGridGame({ onFinish, disabled }: GameProps) {
       ) : null}
 
       <button
-        className="w-full rounded-2xl bg-slate-900 px-4 py-2.5 text-sm font-extrabold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-800 disabled:opacity-50"
+        className="w-full rounded-2xl bg-slate-900 px-4 py-3 text-sm font-extrabold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-800 disabled:opacity-50"
         onClick={begin}
         disabled={!!disabled || phase === "RUNNING"}
       >

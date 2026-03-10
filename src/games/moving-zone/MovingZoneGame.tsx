@@ -76,15 +76,15 @@ export default function MovingZoneGame({ onFinish, disabled }: GameProps) {
   }
 
   return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="space-y-3 sm:space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-2.5">
         <div>
-          <div className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Moving Zone Hold</div>
+          <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500 sm:text-xs">Moving Zone Hold</div>
           <div className="mt-1 text-sm font-semibold text-slate-700">Keep your pointer inside the moving band. The less you drift, the better your score.</div>
         </div>
-        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-right shadow-sm">
-          <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Time left</div>
-          <div className="mt-1 text-xl font-black tabular-nums text-slate-900">{Math.ceil(timeLeft / 1000)}s</div>
+        <div className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-right shadow-sm">
+          <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">Time left</div>
+          <div className="mt-0.5 text-lg font-black tabular-nums text-slate-900">{Math.ceil(timeLeft / 1000)}s</div>
         </div>
       </div>
 
@@ -92,11 +92,11 @@ export default function MovingZoneGame({ onFinish, disabled }: GameProps) {
         ref={areaRef}
         onPointerMove={(e) => phase === "RUNNING" && updateCursor(e.clientX)}
         onPointerDown={(e) => phase === "RUNNING" && updateCursor(e.clientX)}
-        className="relative h-28 touch-none overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm"
+        className="relative h-24 touch-none overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-sm sm:h-28 sm:rounded-[28px]"
       >
         <div className="absolute inset-y-0 w-[18%] -translate-x-1/2 rounded-2xl bg-emerald-100/90 ring-1 ring-emerald-300" style={{ left: `${targetX * 100}%` }} />
         <div className="absolute inset-y-4 w-3 -translate-x-1/2 rounded-full bg-slate-900 shadow-sm" style={{ left: `${cursorX * 100}%` }} />
-        <div className="absolute inset-x-0 bottom-4 text-center text-[11px] font-semibold text-slate-500">Move across the lane and stay inside the green band</div>
+        <div className="absolute inset-x-0 bottom-3 px-3 text-center text-[10px] font-semibold text-slate-500 sm:text-[11px]">Move across the lane and stay inside the green band</div>
       </div>
 
       {phase === "DONE" && score != null ? (

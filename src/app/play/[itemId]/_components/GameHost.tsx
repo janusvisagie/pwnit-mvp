@@ -149,18 +149,18 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-start">
         <div className="flex flex-wrap items-center gap-2">
           <div className="text-sm font-semibold text-slate-900">{entry.title}</div>
           <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-700 ring-1 ring-slate-200">
-            {playCost} {playCost === 1 ? "credit" : "credits"} / play
+            {playCost} credits / play
           </span>
           <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-700 ring-1 ring-slate-200">
-            You have {credits}
+            Wallet {credits}
           </span>
         </div>
 
-        <label className="inline-flex items-center gap-2 text-xs font-semibold text-slate-700">
+        <label className="inline-flex items-center gap-2 text-xs font-semibold text-slate-700 sm:justify-self-end">
           <input
             type="checkbox"
             checked={practiceMode || !canPay}
@@ -206,15 +206,15 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
         </div>
       ) : null}
 
-      <div className="relative rounded-2xl border border-slate-200 bg-slate-50 p-3 sm:p-4">
+      <div className="relative rounded-2xl border border-slate-200 bg-slate-50 p-2.5 sm:p-4">
         <ConfettiOverlay show={!practiceMode && status?.state === "WINNING"} />
         <Game disabled={submitting} onFinish={(r: any) => submitAttempt({ scoreMs: r.scoreMs, meta: r.meta })} />
       </div>
 
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="grid gap-2 sm:grid-cols-2 sm:gap-3">
         <button
           className={[
-            "inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold",
+            "inline-flex min-h-[44px] items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold",
             submitting ? "bg-slate-200 text-slate-500" : "bg-slate-900 text-white hover:bg-slate-800",
           ].join(" ")}
           onClick={() => router.push(`/item/${itemId}/leaderboard`)}
@@ -224,7 +224,7 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
         </button>
 
         <button
-          className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-slate-50"
+          className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-slate-50"
           onClick={() => router.push(`/item/${itemId}`)}
           disabled={submitting}
         >

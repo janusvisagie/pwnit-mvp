@@ -1,4 +1,13 @@
-export type SupportedGameKey = "tap-speed" | "target-hold" | "number-memory" | "flash-count";
+export type SupportedGameKey =
+  | "tap-speed"
+  | "target-hold"
+  | "number-memory"
+  | "flash-count"
+  | "memory-sprint"
+  | "quick-stop"
+  | "moving-zone"
+  | "trace-run"
+  | "target-grid";
 
 type GameMeta = {
   label: string;
@@ -37,12 +46,37 @@ export const GAME_META: Record<string, GameMeta> = {
     label: "Memory Sprint",
     higherIsBetter: true,
     description: "Memorise longer sequences and finish quickly for a stronger score.",
-    formatScore: (score) => {
-      const v = Math.max(0, Math.floor(Number(score || 0)));
-      const level = Math.max(1, Math.floor(v / 10000));
-      const bonus = v % 10000;
-      return `Lvl ${level} • ${bonus.toLocaleString("en-ZA")} bonus`;
-    },
+    formatScore: (score) => `${Math.max(0, Math.floor(Number(score || 0))).toLocaleString("en-ZA")} pts`,
+  },
+  "memory-sprint": {
+    label: "Memory Sprint",
+    higherIsBetter: true,
+    description: "Memorise longer sequences and finish quickly for a stronger score.",
+    formatScore: (score) => `${Math.max(0, Math.floor(Number(score || 0))).toLocaleString("en-ZA")} pts`,
+  },
+  "quick-stop": {
+    label: "Quick Stop",
+    higherIsBetter: false,
+    description: "Stop as close to centre as you can. Lower score wins.",
+    formatScore: (score) => `${Math.max(0, Math.floor(Number(score || 0))).toLocaleString("en-ZA")} pts`,
+  },
+  "moving-zone": {
+    label: "Moving Zone Hold",
+    higherIsBetter: false,
+    description: "Stay inside the moving band. Less drift gives a better score.",
+    formatScore: (score) => `${Math.max(0, Math.floor(Number(score || 0))).toLocaleString("en-ZA")} pts`,
+  },
+  "trace-run": {
+    label: "Trace Run",
+    higherIsBetter: false,
+    description: "Follow the marker as tightly as you can. Lower score wins.",
+    formatScore: (score) => `${Math.max(0, Math.floor(Number(score || 0))).toLocaleString("en-ZA")} pts`,
+  },
+  "target-grid": {
+    label: "Target Grid",
+    higherIsBetter: false,
+    description: "Hit the target square quickly and cleanly. Lower score wins.",
+    formatScore: (score) => `${Math.max(0, Math.floor(Number(score || 0))).toLocaleString("en-ZA")} pts`,
   },
 };
 

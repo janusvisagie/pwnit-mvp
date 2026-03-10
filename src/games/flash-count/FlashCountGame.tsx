@@ -168,67 +168,67 @@ export default function FlashCountGame({ onFinish, disabled }: GameProps) {
   }
 
   return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="space-y-3 sm:space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-2.5">
         <div>
-          <div className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Flash Count</div>
+          <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Flash Count</div>
           <div className="mt-1 text-sm font-semibold text-slate-700">Count the target colour as fast and accurately as you can.</div>
         </div>
-        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-right shadow-sm">
-          <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Round</div>
-          <div className="mt-1 text-xl font-black tabular-nums text-slate-900">{Math.min(roundIndex + 1, ROUNDS)} / {ROUNDS}</div>
+        <div className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-right shadow-sm">
+          <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">Round</div>
+          <div className="mt-1 text-lg font-black tabular-nums text-slate-900">{Math.min(roundIndex + 1, ROUNDS)} / {ROUNDS}</div>
         </div>
       </div>
 
       {phase === "IDLE" ? (
-        <div className="rounded-[28px] border border-slate-200 bg-white p-6 text-center shadow-sm">
-          <div className="text-[11px] font-bold uppercase tracking-[0.24em] text-slate-500">Ready?</div>
-          <div className="mt-3 text-3xl font-black tracking-tight text-slate-900">Count the target colour you see</div>
+        <div className="rounded-[24px] border border-slate-200 bg-white p-4 text-center shadow-sm sm:rounded-[28px] sm:p-6">
+          <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-500">Ready?</div>
+          <div className="mt-3 text-2xl font-black sm:text-3xl tracking-tight text-slate-900">Count the target colour you see</div>
           <div className="mt-3 text-sm text-slate-600">Watch the flashes, count the right colour, then answer quickly.</div>
           <button
             onClick={startRun}
             disabled={disabled}
-            className="mt-6 rounded-2xl bg-slate-900 px-5 py-3 text-sm font-extrabold text-white transition hover:-translate-y-0.5 hover:bg-slate-800 disabled:opacity-50"
+            className="mt-5 w-full rounded-2xl sm:mt-6 sm:w-auto bg-slate-900 px-5 py-3 text-sm font-extrabold text-white transition hover:-translate-y-0.5 hover:bg-slate-800 disabled:opacity-50"
           >
             Start flash count
           </button>
         </div>
       ) : (
         <>
-          <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm sm:rounded-[28px] sm:p-5">
             <div className="flex items-center justify-between gap-3 text-xs font-semibold text-slate-500">
               <span>Target colour</span>
               <span>Higher score is better</span>
             </div>
-            <div className="mt-4 flex items-center justify-between gap-3">
+            <div className="mt-4 flex items-center justify-between gap-2.5">
               <div className="text-2xl font-black text-slate-900">{current?.target.label}</div>
               <div className={`h-6 w-6 rounded-full ${current?.target.cls ?? "bg-slate-300"}`} />
             </div>
-            <div className="mt-5 flex h-28 items-center justify-center rounded-[24px] bg-slate-50">
+            <div className="mt-4 flex h-24 sm:mt-5 sm:h-28 items-center justify-center rounded-[24px] bg-slate-50">
               {phase === "INTRO" ? (
                 <div className="text-center">
-                  <div className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Count this colour</div>
-                  <div className="mt-2 flex items-center justify-center gap-3">
+                  <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Count this colour</div>
+                  <div className="mt-2 flex items-center justify-center gap-2.5">
                     <div className={`h-7 w-7 rounded-full ${current?.target.cls ?? "bg-slate-300"}`} />
                     <div className="text-2xl font-black text-slate-900">{current?.target.label}</div>
                   </div>
                 </div>
               ) : activeFlash ? (
-                <div className={`h-20 w-20 rounded-[22px] shadow-sm ${activeFlash.cls}`} />
+                <div className={`h-16 w-16 sm:h-20 sm:w-20 rounded-[22px] shadow-sm ${activeFlash.cls}`} />
               ) : (
                 <div className="text-sm font-semibold text-slate-400">{phase === "SHOW" ? "Watch closely" : "How many did you see?"}</div>
               )}
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-3 gap-2.5">
             {choices.map((n) => (
               <button
                 key={n}
                 onClick={() => submitAnswer(n)}
                 disabled={disabled || phase !== "INPUT"}
                 className={[
-                  "rounded-2xl px-4 py-3 text-base font-black shadow-sm transition",
+                  "rounded-2xl px-3 py-3 text-sm sm:px-4 sm:text-base font-black shadow-sm transition",
                   phase !== "INPUT"
                     ? "bg-slate-100 text-slate-400"
                     : selected === n

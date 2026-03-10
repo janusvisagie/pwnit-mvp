@@ -8,8 +8,7 @@ export type ProductContent = {
 
 const catalog: Record<string, ProductContent> = {
   "Nintendo Switch OLED": {
-    imageUrl:
-      "https://assets.nintendo.com/image/upload/f_auto/q_auto/dpr_1.5/ncom/en_US/switch/videos/heg001-07060600/posters/oled-model",
+    imageUrl: "https://assets.nintendo.com/image/upload/f_auto/q_auto/dpr_1.5/ncom/en_US/switch/videos/heg001-07060600/posters/oled-model",
     officialUrl: "https://www.nintendo.com/us/gaming-systems/switch/oled-model/",
     kicker: "Official product highlights",
     description:
@@ -22,8 +21,7 @@ const catalog: Record<string, ProductContent> = {
     ],
   },
   "Sony WH-1000XM5 Headphones": {
-    imageUrl:
-      "https://www.sony.com/image/6145c1d32e6ac8e63a46c912dc33c5bb?bgc=FFFFFF&bgcolor=FFFFFF&fmt=pjpeg&wid=1200",
+    imageUrl: "https://www.sony.com/image/6145c1d32e6ac8e63a46c912dc33c5bb?bgc=FFFFFF&bgcolor=FFFFFF&fmt=pjpeg&wid=1200",
     officialUrl: "https://www.sony.com/za/electronics/headband-headphones/wh-1000xm5",
     kicker: "Official product highlights",
     description:
@@ -73,7 +71,7 @@ const catalog: Record<string, ProductContent> = {
       "Exact redemption terms depend on the final voucher issued",
     ],
   },
-  "Petrol Voucher": {
+  "Fuel Voucher": {
     imageUrl: "/products/petrol-voucher.svg",
     kicker: "Voucher details",
     description:
@@ -87,15 +85,32 @@ const catalog: Record<string, ProductContent> = {
   },
 };
 
+const reliableFallbacks: Record<string, string> = {
+  "Nintendo Switch OLED": "/products/nintendo-switch-oled.svg",
+  "Sony WH-1000XM5 Headphones": "/products/sony-xm5-headphones.svg",
+  "GoPro HERO13 Black": "/products/gopro-hero.svg",
+  "Takealot Voucher": "/products/takealot-voucher.svg",
+  "Checkers Voucher": "/products/checkers-voucher.svg",
+  "Fuel Voucher": "/products/petrol-voucher.svg",
+};
+
 export function getProductContent(title: string, fallbackImageUrl?: string | null): ProductContent | null {
   const hit = catalog[title];
+  const reliable = reliableFallbacks[title] ?? fallbackImageUrl ?? null;
   if (!hit) {
-    if (!fallbackImageUrl) return null;
+    if (!reliable) return null;
     return {
-      imageUrl: fallbackImageUrl,
+      imageUrl: reliable,
       description: "Prize details coming soon.",
       highlights: ["More information will be added soon."],
     };
   }
-  return hit;
+  return {
+    ...hit,
+    imageUrl: hit.imageUrl || reliable || hit.imageUrl,
+  };
+}
+
+export function getFallbackProductImage(title: string, fallbackImageUrl?: string | null) {
+  return reliableFallbacks[title] ?? fallbackImageUrl ?? null;
 }

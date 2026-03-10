@@ -79,15 +79,15 @@ export default function TraceRunGame({ onFinish, disabled }: GameProps) {
   }
 
   return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="space-y-3 sm:space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-2.5">
         <div>
-          <div className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Trace Run</div>
+          <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500 sm:text-xs">Trace Run</div>
           <div className="mt-1 text-sm font-semibold text-slate-700">Follow the moving marker as tightly as you can. Smaller drift wins.</div>
         </div>
-        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-right shadow-sm">
-          <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Time left</div>
-          <div className="mt-1 text-xl font-black tabular-nums text-slate-900">{Math.ceil(timeLeft / 1000)}s</div>
+        <div className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-right shadow-sm">
+          <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">Time left</div>
+          <div className="mt-0.5 text-lg font-black tabular-nums text-slate-900">{Math.ceil(timeLeft / 1000)}s</div>
         </div>
       </div>
 
@@ -95,17 +95,17 @@ export default function TraceRunGame({ onFinish, disabled }: GameProps) {
         ref={areaRef}
         onPointerMove={(e) => phase === "RUNNING" && updateCursor(e.clientX, e.clientY)}
         onPointerDown={(e) => phase === "RUNNING" && updateCursor(e.clientX, e.clientY)}
-        className="relative h-56 touch-none overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm"
+        className="relative h-44 touch-none overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-sm sm:h-56 sm:rounded-[28px]"
       >
         <div
-          className="absolute h-7 w-7 -translate-x-1/2 -translate-y-1/2 rounded-full bg-emerald-500 shadow-lg"
+          className="absolute h-6 w-6 -translate-x-1/2 -translate-y-1/2 rounded-full bg-emerald-500 shadow-lg sm:h-7 sm:w-7"
           style={{ left: `${dot.x * 100}%`, top: `${dot.y * 100}%` }}
         />
         <div
           className="absolute h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full bg-slate-900/85 ring-4 ring-slate-900/10"
           style={{ left: `${cursor.x * 100}%`, top: `${cursor.y * 100}%` }}
         />
-        <div className="absolute inset-x-0 bottom-4 text-center text-[11px] font-semibold text-slate-500">Keep your pointer glued to the green marker</div>
+        <div className="absolute inset-x-0 bottom-3 px-3 text-center text-[10px] font-semibold text-slate-500 sm:text-[11px]">Keep your pointer glued to the green marker</div>
       </div>
 
       {phase === "DONE" && score != null ? (

@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { CountdownChip } from "@/components/CountdownChip";
 import { getProductContent } from "@/lib/productCatalog";
 import { activationStageLabel } from "@/lib/playCost";
+import { ProductImage } from "@/components/ProductImage";
 
 export type ItemCardModel = {
   id: string;
@@ -35,13 +36,12 @@ function gameLabel(k?: string | null) {
 }
 
 export function ItemCard({ item }: { item: ItemCardModel }) {
-  const [imgOk, setImgOk] = useState(true);
   const pct = Math.max(0, Math.min(100, Number(item.activationPct ?? 0)));
   const isClosed = item.state === "CLOSED" || item.state === "PUBLISHED";
   const isActivated = item.state === "ACTIVATED";
   const href = item.state === "PUBLISHED" ? `/item/${item.id}/leaderboard` : `/item/${item.id}`;
   const gLabel = gameLabel(item.gameKey);
-  const displayImage = getProductContent(item.title, item.imageUrl)?.imageUrl ?? item.imageUrl;
+  const product = getProductContent(item.title, item.imageUrl);
   const hot = useMemo(() => !isClosed && !isActivated && pct >= 75, [isClosed, isActivated, pct]);
 
   const statusTone = isClosed
@@ -57,18 +57,14 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
       href={href}
       className="group relative h-full overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg"
     >
-      <div className="relative flex min-h-[164px] items-center justify-center overflow-hidden bg-gradient-to-b from-slate-50 to-white p-3 sm:min-h-[176px] md:min-h-[188px]">
-        {displayImage && imgOk ? (
-          <img
-            src={displayImage}
-            alt={item.title}
-            className="max-h-[132px] max-w-full object-contain transition duration-300 group-hover:scale-[1.03] sm:max-h-[142px] md:max-h-[154px]"
-            onError={() => setImgOk(false)}
-            referrerPolicy="no-referrer"
-          />
-        ) : (
-          <div className="text-sm font-semibold text-slate-400">Image unavailable</div>
-        )}
+      <div className="relative flex min-h-[156px] items-center justify-center overflow-hidden bg-gradient-to-b from-slate-50 to-white p-3 sm:min-h-[176px] md:min-h-[188px]">
+        <ProductImage
+          primarySrc={item.imageUrl}
+          fallbackSrc={product?.imageUrl ?? null}
+          alt={item.title}
+          className="flex items-center justify-center"
+          imgClassName="max-h-[126px] max-w-full object-contain transition duration-300 group-hover:scale-[1.03] sm:max-h-[142px] md:max-h-[154px]"
+        />
 
         <div className="absolute left-3 top-3 rounded-full bg-white/95 px-3 py-1 text-[11px] font-extrabold text-slate-900 shadow ring-1 ring-slate-200">
           {formatZAR(item.prizeValueZAR)}
