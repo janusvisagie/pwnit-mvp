@@ -108,12 +108,16 @@ export async function settleRound(roundId: string): Promise<SettleResult> {
       where: { id: roundId },
       data: {
         state: "PUBLISHED",
-        purchaseGraceEndsAt: round.purchaseGraceEndsAt ?? new Date(Date.now() + round.item.purchaseGraceHours * 60 * 60 * 1000),
+        purchaseGraceEndsAt:
+          round.purchaseGraceEndsAt ?? new Date(Date.now() + round.item.purchaseGraceHours * 60 * 60 * 1000),
         winnerUserId: ranked[0]?.userId ?? null,
       },
     });
 
-    await tx.item.update({ where: { id: round.itemId }, data: { state: "PUBLISHED", closesAt: round.closesAt ?? round.fundingEndsAt } });
+    await tx.item.update({
+      where: { id: round.itemId },
+      data: { state: "PUBLISHED", closesAt: round.closesAt ?? round.fundingEndsAt },
+    });
   });
 
   return {
@@ -124,4 +128,24 @@ export async function settleRound(roundId: string): Promise<SettleResult> {
     uniquePlayers: bestByUser.size,
     winnersCount: ranked.length,
   };
+}
+
+export async function settleItemWinners(itemId: string) {
+  const round = await prisma.itemRound.findFirst({
+    where: { itemId, state: "CLOSED" },
+    orderBy: [{ sequence: "desc" }],
+  });
+
+  if (!round) {
+    return {
+      ok: false,
+      roundId: "",
+      itemId,
+      winnersPublished: false,
+      uniquePlayers: 0,
+      winnersCount: 0,
+    } satisfies SettleResult;
+  }
+
+  return settleRound(round.id);
 }
