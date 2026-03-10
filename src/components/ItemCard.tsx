@@ -55,14 +55,14 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
   return (
     <Link
       href={href}
-      className="group relative overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg"
+      className="group relative h-full overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg"
     >
-      <div className="relative flex h-[148px] items-center justify-center overflow-hidden bg-gradient-to-b from-slate-50 to-white p-3">
+      <div className="relative flex min-h-[164px] items-center justify-center overflow-hidden bg-gradient-to-b from-slate-50 to-white p-3 sm:min-h-[176px] md:min-h-[188px]">
         {displayImage && imgOk ? (
           <img
             src={displayImage}
             alt={item.title}
-            className="max-h-full max-w-full object-contain transition duration-300 group-hover:scale-[1.03]"
+            className="max-h-[132px] max-w-full object-contain transition duration-300 group-hover:scale-[1.03] sm:max-h-[142px] md:max-h-[154px]"
             onError={() => setImgOk(false)}
             referrerPolicy="no-referrer"
           />
@@ -92,27 +92,23 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
 
         {isClosed ? (
           <div className="pointer-events-none absolute inset-0 overflow-hidden">
-            <div className="absolute left-[-24%] top-[42%] w-[148%] -rotate-12 bg-slate-900/95 px-4 py-2 text-center text-xs font-extrabold tracking-wide text-white shadow-xl">
+            <div className="absolute left-[-24%] top-[42%] w-[148%] -rotate-12 bg-slate-900/95 px-4 py-2 text-center text-[10px] font-extrabold tracking-wide text-white shadow-xl sm:text-xs">
               PRIZE WON • NEXT PRIZE LOADING
             </div>
           </div>
         ) : null}
       </div>
 
-      <div className="space-y-2 p-3">
+      <div className="space-y-2.5 p-3 sm:p-4">
         <div className="min-w-0">
-          <h3 className="truncate text-[15px] font-extrabold text-slate-900">{item.title}</h3>
-          <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-slate-600">
+          <h3 className="truncate text-[15px] font-extrabold text-slate-900 sm:text-base">{item.title}</h3>
+          <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-slate-600 sm:text-xs">
             {gLabel ? (
               <span className="rounded-full bg-slate-100 px-2.5 py-1 font-semibold text-slate-700 ring-1 ring-slate-200">
                 {gLabel}
               </span>
             ) : null}
-            {typeof item.playCostCredits === "number" ? (
-              <span>
-                {item.playCostCredits} {item.playCostCredits === 1 ? "credit" : "credits"}/play
-              </span>
-            ) : null}
+            {typeof item.playCostCredits === "number" ? <span>{item.playCostCredits} credits/play</span> : null}
           </div>
         </div>
 

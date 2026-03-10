@@ -63,15 +63,15 @@ export default async function HomePage() {
   const anyActivated = refreshed.some((it) => it.state === "ACTIVATED");
 
   return (
-    <main className="flex h-full min-h-0 flex-col gap-2 overflow-hidden">
+    <main className="flex flex-col gap-3 md:h-full md:min-h-0 md:overflow-hidden">
       <WelcomeModal />
       <AutoRefreshActivated enabled={anyActivated} everyMs={10_000} />
 
-      <div className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+      <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
         Logged in as <span className="font-bold text-slate-900 normal-case tracking-normal">{user.email}</span>
       </div>
 
-      <div className="grid flex-1 min-h-0 grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 md:min-h-0 md:auto-rows-fr">
         {refreshed.map((it) => {
           const paidSpent = paidMap.get(it.id) ?? 0;
           const progress = activationProgress(it.prizeValueZAR, paidSpent);

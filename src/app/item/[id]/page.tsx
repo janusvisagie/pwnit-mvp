@@ -2,7 +2,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { getOrCreateDemoUser } from "@/lib/auth";
-import { dayKeyZA } from "@/lib/time";
 import { CountdownChip } from "@/components/CountdownChip";
 import { BuyNowButton } from "@/components/BuyNowButton";
 import { getProductContent } from "@/lib/productCatalog";
@@ -43,14 +42,18 @@ export default async function ItemPage({ params }: { params: { id: string } }) {
   const displayImage = product?.imageUrl ?? item.imageUrl ?? null;
 
   return (
-    <main className="mx-auto max-w-6xl space-y-3 p-3 md:p-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+    <main className="mx-auto w-full max-w-6xl space-y-3">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0">
-          <h1 className="truncate text-2xl font-extrabold leading-tight text-slate-900 md:text-3xl">{item.title}</h1>
-          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-700">
+          <h1 className="text-2xl font-extrabold leading-tight text-slate-900 md:text-3xl">{item.title}</h1>
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] font-semibold text-slate-700 sm:text-xs">
             <span className="rounded-full bg-white px-3 py-1 ring-1 ring-slate-200">{stateLabel(item.state)}</span>
-            <span className="rounded-full bg-white px-3 py-1 ring-1 ring-slate-200">Prize: <span className="text-slate-900">{formatZAR(item.prizeValueZAR)}</span></span>
-            <span className="rounded-full bg-white px-3 py-1 ring-1 ring-slate-200">Cost: <span className="text-slate-900">{playCost}</span> credits / play</span>
+            <span className="rounded-full bg-white px-3 py-1 ring-1 ring-slate-200">
+              Prize: <span className="text-slate-900">{formatZAR(item.prizeValueZAR)}</span>
+            </span>
+            <span className="rounded-full bg-white px-3 py-1 ring-1 ring-slate-200">
+              Cost: <span className="text-slate-900">{playCost}</span> credits / play
+            </span>
             {item.state === "ACTIVATED" && closesAtIso ? (
               <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 ring-1 ring-slate-200">
                 <span className="text-slate-500">Ends in</span>
@@ -60,7 +63,7 @@ export default async function ItemPage({ params }: { params: { id: string } }) {
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:gap-3">
           <Link className="text-sm font-semibold text-slate-900 hover:underline" href={`/item/${itemId}/leaderboard`}>
             Leaderboard
           </Link>
@@ -74,10 +77,9 @@ export default async function ItemPage({ params }: { params: { id: string } }) {
 
       <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
         <div className="grid gap-0 lg:grid-cols-[1.08fr_0.92fr]">
-          <div className="flex min-h-[300px] items-center justify-center bg-gradient-to-br from-slate-100 to-white p-5 md:min-h-[360px] md:p-6">
+          <div className="flex min-h-[220px] items-center justify-center bg-gradient-to-br from-slate-100 to-white p-4 md:min-h-[320px] md:p-6">
             {displayImage ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={displayImage} alt={item.title} className="max-h-[300px] w-auto object-contain md:max-h-[330px]" referrerPolicy="no-referrer" />
+              <img src={displayImage} alt={item.title} className="max-h-[220px] w-auto object-contain md:max-h-[330px]" referrerPolicy="no-referrer" />
             ) : (
               <div className="text-sm text-slate-500">Image coming soon</div>
             )}
@@ -92,7 +94,7 @@ export default async function ItemPage({ params }: { params: { id: string } }) {
               <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-slate-200">
                 <div className="h-full rounded-full bg-slate-900 transition-all duration-500" style={{ width: `${pct}%` }} />
               </div>
-              <div className="mt-2 flex items-center justify-between text-sm">
+              <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-sm">
                 <span className="font-semibold text-slate-900">{item.state === "ACTIVATED" ? "This prize is live." : "Community momentum is building."}</span>
                 <span className="text-slate-600">{item.state === "ACTIVATED" ? "Countdown running" : pct >= 75 ? "Close" : "Not live yet"}</span>
               </div>

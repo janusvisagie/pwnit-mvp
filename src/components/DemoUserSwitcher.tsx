@@ -17,8 +17,6 @@ export function DemoUserSwitcher({ current }: { current: string }) {
       body: JSON.stringify({ demoKey }),
     });
 
-    // Important: switching demo users does not change the URL,
-    // so client components (like CreditsPill) need an explicit signal.
     window.dispatchEvent(new Event("pwnit:userChanged"));
     window.dispatchEvent(new Event("pwnit:credits"));
 
@@ -27,11 +25,12 @@ export function DemoUserSwitcher({ current }: { current: string }) {
 
   return (
     <div className="flex items-center gap-2">
-      <div className="text-[12px] font-semibold text-slate-600">Demo user</div>
+      <div className="hidden text-[12px] font-semibold text-slate-600 sm:block">Demo user</div>
       <select
         value={val}
         onChange={(e) => setDemo(e.target.value)}
-        className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+        className="min-w-[90px] rounded-xl border border-slate-300 bg-white px-2.5 py-2 text-sm font-semibold text-slate-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+        aria-label="Demo user"
       >
         <option value="demo1">demo1</option>
         <option value="demo2">demo2</option>
