@@ -65,7 +65,7 @@ export default async function PlayPage({ params }: { params: { itemId: string } 
           <div className="text-xl font-extrabold tracking-tight sm:text-2xl">{item.title}</div>
           <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-slate-600">
             <span>
-              Play costs <span className="font-semibold text-slate-900">{playCost}</span> {playCost === 1 ? "credit" : "credits"}
+              Play costs <span className="font-semibold text-slate-900">{playCost}</span> credits
             </span>
             {closesAtIso ? (
               <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-800 ring-1 ring-slate-200">
@@ -87,7 +87,7 @@ export default async function PlayPage({ params }: { params: { itemId: string } 
       </div>
 
       <div className="rounded-2xl border border-slate-200 bg-white p-2 shadow-sm sm:p-3">
-        <GameHost itemId={item.id} gameKey={(item.gameKey as any) ?? "quick-stop"} playCost={playCost} credits={creditsTotal} />
+        <GameHost itemId={item.id} gameKey={(item.gameKey as any) ?? "precision-timer"} playCost={playCost} credits={creditsTotal} />
       </div>
     </main>
   );
