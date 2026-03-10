@@ -12,3 +12,6 @@ prisma/dev.db
 *.db
 *.sqlite
 *.sqlite3
+
+.vercel
+.env*.local
