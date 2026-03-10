@@ -1,88 +1,52 @@
+// prisma/schema.prisma
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
 model User {
-  id                      String         @id @default(cuid())
-  createdAt               DateTime       @default(now())
-  email                   String         @unique
-  alias                   String?
-  referralCode            String?
-  isGuest                 Boolean        @default(false)
-  tier                    Int            @default(1)
-  freeCreditsBalance      Int            @default(0)
-  paidCreditsBalance      Int            @default(0)
+  id                     String    @id @default(cuid())
+  createdAt              DateTime  @default(now())
+  email                  String    @unique
+  alias                  String?
+  aliasSetByUser         Boolean   @default(false)
+  referralCode           String?
+  isGuest                Boolean   @default(false)
+  tier                   Int       @default(1)
+  freeCreditsBalance      Int       @default(0)
+  paidCreditsBalance      Int       @default(0)
   lastDailyCreditsDayKey  String?
 
   attempts   Attempt[]
   purchases  ItemPurchase[]
   winners    Winner[]
-  ledgers    CreditLedger[]
 }
 
 model Item {
-  id                    String       @id @default(cuid())
-  createdAt             DateTime     @default(now())
+  id                    String    @id @default(cuid())
+  createdAt             DateTime  @default(now())
   title                 String
-  tier                  Int          @default(1)
+  tier                  Int       @default(1)
   prizeType             String
-  prizeValueZAR         Int          @default(0)
-  landedCostZAR         Int          @default(0)
-  allowedSubsidyCredits Int          @default(0)
-  playCostCredits       Int          @default(5)
-  fundingWindowHours    Int          @default(48)
-  purchaseGraceHours    Int          @default(24)
-  sortOrder             Int          @default(0)
-  isHero                Boolean      @default(false)
+  prizeValueZAR         Int       @default(0)
   imageUrl              String?
   shortDesc             String?
   productUrl            String?
-  state                 String       @default("OPEN") // OPEN | ACTIVATED | CLOSED | PUBLISHED | FAILED
-  activationGoalEntries Int          @default(3) // legacy field; no longer used for v2 activation
-  countdownMinutes      Int          @default(120)
+  state                 String    @default("OPEN") // OPEN | ACTIVATED | CLOSED | PUBLISHED
+  activationGoalEntries Int       @default(3)
+  countdownMinutes      Int       @default(5)
   opensAt               DateTime?
   closesAt              DateTime?
-  subscriberOnly        Boolean      @default(false)
+  subscriberOnly        Boolean   @default(false)
   gameKey               String?
 
   attempts  Attempt[]
   winners   Winner[]
   purchases ItemPurchase[]
-  rounds    ItemRound[]
-  ledgers   CreditLedger[]
-}
-
-model ItemRound {
-  id                     String         @id @default(cuid())
-  createdAt              DateTime       @default(now())
-  updatedAt              DateTime       @updatedAt
-  itemId                 String
-  sequence               Int            @default(1)
-  state                  String         @default("BUILDING") // BUILDING | ACTIVATED | CLOSED | PUBLISHED | FAILED | REFUNDED
-  fundingStartsAt        DateTime       @default(now())
-  fundingEndsAt          DateTime
-  activatedAt            DateTime?
-  closesAt               DateTime?
-  purchaseGraceEndsAt    DateTime?
-  activationTargetCredits Int          @default(0)
-  paidCreditsCollected   Int            @default(0)
-  freeCreditsCollected   Int            @default(0)
-  attemptCount           Int            @default(0)
-  winnerUserId           String?
-
-  item       Item           @relation(fields: [itemId], references: [id])
-  attempts   Attempt[]
-  winners    Winner[]
-  purchases  ItemPurchase[]
-  ledgers    CreditLedger[]
-
-  @@index([itemId, state])
-  @@unique([itemId, sequence])
 }
 
 model Attempt {
@@ -90,57 +54,52 @@ model Attempt {
   createdAt        DateTime  @default(now())
   userId           String
   itemId           String
-  roundId          String?
   dayKey           String
-  costCredits      Int       @default(0)
-  freeUsed         Int       @default(0)
-  paidUsed         Int       @default(0)
-  isPaid           Boolean   @default(false)
+
+  // Payment attribution (for exact "buy the difference" math)
+  costCredits      Int       @default(0) // total credits charged for this attempt
+  freeUsed         Int       @default(0) // portion taken from free balance
+  paidUsed         Int       @default(0) // portion taken from paid balance
+  isPaid           Boolean   @default(false) // true if any paid credits were used
+
   scoreMs          Int
   flags            String?
   clientSentAt     DateTime?
   serverReceivedAt DateTime  @default(now())
 
-  user  User       @relation(fields: [userId], references: [id])
-  item  Item       @relation(fields: [itemId], references: [id])
-  round ItemRound? @relation(fields: [roundId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+  item Item @relation(fields: [itemId], references: [id])
 
   @@index([itemId, dayKey])
   @@index([userId, dayKey])
   @@index([itemId, dayKey, userId])
-  @@index([roundId, itemId])
 }
 
 model Winner {
-  id           String     @id @default(cuid())
-  createdAt    DateTime   @default(now())
-  itemId       String
-  roundId      String?
-  dayKey       String
-  userId       String
-  rank         Int
-  scoreMs      Int
-  alias        String?
-  rewardType   String     @default("ITEM") // ITEM | CREDIT_BONUS
-  rewardCredits Int       @default(0)
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  itemId    String
+  dayKey    String
+  userId    String
+  rank      Int
+  scoreMs   Int
+  alias     String?
 
-  item  Item       @relation(fields: [itemId], references: [id])
-  user  User       @relation(fields: [userId], references: [id])
-  round ItemRound? @relation(fields: [roundId], references: [id])
+  item Item @relation(fields: [itemId], references: [id])
+  user User @relation(fields: [userId], references: [id])
 
   @@index([itemId, dayKey])
   @@index([userId, dayKey])
-  @@index([roundId, rank])
   @@unique([itemId, dayKey, userId])
 }
 
 model ItemPurchase {
-  id              String     @id @default(cuid())
-  createdAt       DateTime   @default(now())
+  id             String   @id @default(cuid())
+  createdAt       DateTime @default(now())
   itemId          String
-  roundId         String?
   userId          String
   dayKey          String
+
   priceCredits    Int
   spentCredits    Int
   discountPct     Int
@@ -148,30 +107,10 @@ model ItemPurchase {
   payCredits      Int
   tierKey         String
 
-  item  Item       @relation(fields: [itemId], references: [id])
-  user  User       @relation(fields: [userId], references: [id])
-  round ItemRound? @relation(fields: [roundId], references: [id])
+  item Item @relation(fields: [itemId], references: [id])
+  user User @relation(fields: [userId], references: [id])
 
   @@index([itemId, dayKey])
   @@index([userId, dayKey])
-  @@index([roundId, userId])
   @@unique([itemId, dayKey, userId])
-}
-
-model CreditLedger {
-  id        String     @id @default(cuid())
-  createdAt DateTime   @default(now())
-  userId    String
-  itemId    String?
-  roundId   String?
-  kind      String
-  credits   Int
-  note      String?
-
-  user  User      @relation(fields: [userId], references: [id])
-  item  Item?     @relation(fields: [itemId], references: [id])
-  round ItemRound? @relation(fields: [roundId], references: [id])
-
-  @@index([userId, createdAt])
-  @@index([roundId, kind])
 }

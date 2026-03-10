@@ -11,7 +11,8 @@
     "prisma": "prisma",
     "db:push": "prisma db push",
     "db:seed": "node prisma/seed.mjs",
-    "db:seed:demo": "node prisma/seed.demo.mjs"
+    "db:seed:demo": "node prisma/seed.demo.mjs",
+    "postinstall": "prisma generate"
   },
   "prisma": {
     "seed": "node prisma/seed.mjs"
