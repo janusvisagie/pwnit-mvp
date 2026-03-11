@@ -1,16 +1,21 @@
-PwnIt homepage fit patch v3
+PwnIt patch - full file replacements
 
-Replace these full files in the repo:
+Replace these files in your repo with the versions in this ZIP:
+
 - src/app/layout.tsx
 - src/app/page.tsx
+- src/app/globals.css
+- src/app/icon.svg
 - src/components/ItemCard.tsx
+- src/components/WelcomeModal.tsx
+- src/games/number-memory/NumberMemoryGame.tsx
+- src/games/moving-zone/MovingZoneGame.tsx
+- src/games/trace-run/TraceRunGame.tsx
 
 What this patch changes:
-- frees a little more vertical space in the header/footer shell
-- makes the homepage grid consume available height more cleanly on desktop
-- slightly reduces item-card height so the bottom frame and activation bar remain visible
-
-What this patch does not change:
-- product photos
-- Alphabet Sprint logic
-- preview/production seeding
+- fixes the welcome modal so the full text and Start button fit on mobile
+- rebalances the desktop homepage so it fills the screen without clipping the cards
+- adds a proper browser tab icon
+- restores Memory Sprint to a manual start with multiple rounds
+- puts the Moving Zone start button inside the zone on top of the cursor
+- makes Trace Run touch-friendly by adding a separate phone touch pad below the arena
