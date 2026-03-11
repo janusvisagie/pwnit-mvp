@@ -9,6 +9,7 @@ import MovingZoneGame from "@/games/moving-zone/MovingZoneGame";
 import TraceRunGame from "@/games/trace-run/TraceRunGame";
 import FlashCountGame from "@/games/flash-count/FlashCountGame";
 import TargetGridGame from "@/games/target-grid/TargetGridGame";
+import AlphabetSprintGame from "@/games/alphabet-sprint/AlphabetSprintGame";
 
 type GameKey =
   | "memory-sprint"
@@ -17,6 +18,7 @@ type GameKey =
   | "trace-run"
   | "flash-count"
   | "target-grid"
+  | "alphabet-sprint"
   | "number-memory"
   | "precision-timer"
   | "rhythm-hold"
@@ -32,6 +34,7 @@ const GAME_REGISTRY: Record<GameKey, { title: string; Component: any }> = {
   "trace-run": { title: "Trace Run", Component: TraceRunGame },
   "flash-count": { title: "Flash Count", Component: FlashCountGame },
   "target-grid": { title: "Target Grid", Component: TargetGridGame },
+  "alphabet-sprint": { title: "Alphabet Sprint", Component: AlphabetSprintGame },
   "number-memory": { title: "Memory Sprint", Component: NumberMemoryGame },
   "precision-timer": { title: "Quick Stop", Component: QuickStopGame },
   "rhythm-hold": { title: "Moving Zone Hold", Component: MovingZoneGame },

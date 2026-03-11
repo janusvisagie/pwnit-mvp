@@ -4,6 +4,9 @@ import { getOrCreateDemoUser } from "@/lib/auth";
 import { AliasEditor } from "@/components/AliasEditor";
 import { CountdownChip } from "@/components/CountdownChip";
 import { BuyNowButton } from "@/components/BuyNowButton";
+import { compareScores, getGameMeta } from "@/lib/gameRules";
+
+const INVALID_FLAG_FRAGMENT = '"valid":false';
 
 export default async function ItemLeaderboardPage({ params }: { params: { id: string } }) {
   const me = await getOrCreateDemoUser();
@@ -22,6 +25,7 @@ export default async function ItemLeaderboardPage({ params }: { params: { id: st
   }
 
   const closesAtIso = item.closesAt ? item.closesAt.toISOString() : null;
+  const meta = getGameMeta(item.gameKey);
 
   const winners = await prisma.winner.findMany({
     where: { itemId },
@@ -32,18 +36,24 @@ export default async function ItemLeaderboardPage({ params }: { params: { id: st
 
   const meWon = winners.some((w) => w.userId === me.id);
 
-  const best = await prisma.attempt.groupBy({
-    by: ["userId"],
+  const attempts = await prisma.attempt.findMany({
     where: {
       itemId,
-      OR: [{ flags: null }, { NOT: { flags: { contains: '"valid":false' } } }],
+      OR: [{ flags: null }, { NOT: { flags: { contains: INVALID_FLAG_FRAGMENT } } }],
     },
-    _min: { scoreMs: true },
-    orderBy: { _min: { scoreMs: "asc" } },
-    take: 100,
+    orderBy: [{ createdAt: "asc" }],
+    select: { userId: true, scoreMs: true, createdAt: true },
   });
 
-  const userIds = best.map((b) => b.userId);
+  const bestByUser = new Map<string, { userId: string; scoreMs: number; createdAt: Date }>();
+  for (const attempt of attempts) {
+    const current = bestByUser.get(attempt.userId);
+    if (!current || compareScores(item.gameKey, attempt, current) < 0) {
+      bestByUser.set(attempt.userId, attempt);
+    }
+  }
+
+  const userIds = Array.from(bestByUser.keys());
   const users = userIds.length
     ? await prisma.user.findMany({
         where: { id: { in: userIds } },
@@ -53,14 +63,17 @@ export default async function ItemLeaderboardPage({ params }: { params: { id: st
 
   const aliasMap = new Map(users.map((u) => [u.id, (u.alias && u.alias.trim()) || (u.email?.split("@")[0] ?? "Anonymous")]));
 
-  const rows = best
-    .filter((b) => typeof b._min.scoreMs === "number")
-    .map((b, idx) => ({
+  const rows = Array.from(bestByUser.values())
+    .sort((a, b) => compareScores(item.gameKey, a, b))
+    .map((row, idx) => ({
       rank: idx + 1,
-      userId: b.userId,
-      alias: aliasMap.get(b.userId) ?? "Anonymous",
-      scoreMs: b._min.scoreMs as number,
-      isMe: b.userId === me.id,
+      userId: row.userId,
+      alias:
+        row.userId === me.id
+          ? ((me as any).alias?.trim() || aliasMap.get(row.userId) || "Anonymous")
+          : aliasMap.get(row.userId) || "Anonymous",
+      scoreMs: row.scoreMs,
+      isMe: row.userId === me.id,
     }));
 
   return (
@@ -79,7 +92,10 @@ export default async function ItemLeaderboardPage({ params }: { params: { id: st
             ← Item
           </Link>
           {(item.state === "OPEN" || item.state === "ACTIVATED") ? (
-            <Link className="inline-flex items-center justify-center rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-extrabold text-white shadow-sm hover:bg-slate-800" href={`/play/${itemId}`}>
+            <Link
+              className="inline-flex items-center justify-center rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-extrabold text-white shadow-sm hover:bg-slate-800"
+              href={`/play/${itemId}`}
+            >
               Play
             </Link>
           ) : null}
@@ -91,10 +107,13 @@ export default async function ItemLeaderboardPage({ params }: { params: { id: st
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
         <div className="border-b border-slate-200 bg-slate-50 px-4 py-3">
           <div className="font-extrabold">Live scores (best per player)</div>
-          <div className="text-xs text-slate-600">Lower score is better • Players: <span className="font-semibold text-slate-900">{rows.length}</span></div>
+          <div className="text-xs text-slate-600">
+            {meta.higherIsBetter ? "Higher score is better" : "Lower score is better"} • Players:{" "}
+            <span className="font-semibold text-slate-900">{rows.length}</span>
+          </div>
         </div>
 
-        <div className="grid grid-cols-[80px_1fr_110px] px-4 py-2 text-xs font-bold text-slate-600">
+        <div className="grid grid-cols-[80px_1fr_120px] px-4 py-2 text-xs font-bold text-slate-600">
           <div>Rank</div>
           <div>Player</div>
           <div className="text-right">Best score</div>
@@ -104,10 +123,23 @@ export default async function ItemLeaderboardPage({ params }: { params: { id: st
           <div className="px-4 py-4 text-sm text-slate-600">No scores yet.</div>
         ) : (
           rows.map((r) => (
-            <div key={r.userId} className={["grid grid-cols-[80px_1fr_110px] items-center border-t border-slate-100 px-4 py-3", r.isMe ? "bg-slate-50" : ""].join(" ")}>
+            <div
+              key={r.userId}
+              className={[
+                "grid grid-cols-[80px_1fr_120px] items-center border-t border-slate-100 px-4 py-3",
+                r.isMe ? "bg-slate-50" : "",
+              ].join(" ")}
+            >
               <div className="font-semibold">#{r.rank}</div>
-              <div className="font-semibold text-slate-900">{r.alias}{r.isMe ? <span className="ml-2 rounded-full bg-slate-900 px-2 py-0.5 text-[11px] font-extrabold text-white">YOU</span> : null}</div>
-              <div className="text-right font-semibold tabular-nums">{r.scoreMs}</div>
+              <div className="font-semibold text-slate-900">
+                {r.alias}
+                {r.isMe ? (
+                  <span className="ml-2 rounded-full bg-slate-900 px-2 py-0.5 text-[11px] font-extrabold text-white">
+                    YOU
+                  </span>
+                ) : null}
+              </div>
+              <div className="text-right font-semibold tabular-nums">{meta.formatScore(r.scoreMs)}</div>
             </div>
           ))
         )}

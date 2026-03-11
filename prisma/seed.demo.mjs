@@ -2,8 +2,8 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-const GAME_ASSIGNMENTS = [
-  "burst-match",
+const LIVE_GAME_ASSIGNMENTS = [
+  "flash-count",
   "memory-sprint",
   "target-grid",
   "quick-stop",
@@ -18,14 +18,14 @@ async function main() {
     await prisma.item.update({
       where: { id: items[idx].id },
       data: {
-        gameKey: GAME_ASSIGNMENTS[idx],
+        gameKey: LIVE_GAME_ASSIGNMENTS[idx],
         state: "OPEN",
         closesAt: null,
       },
     });
   }
 
-  console.log("Demo seed refreshed with 6 distinct games.");
+  console.log("Demo seed refreshed with the live 6-game mix.");
 }
 
 main()

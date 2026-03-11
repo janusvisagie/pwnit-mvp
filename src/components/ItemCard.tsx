@@ -27,6 +27,7 @@ function formatZAR(v: number) {
 function gameLabel(k?: string | null) {
   if (!k) return null;
   if (k === "memory-sprint" || k === "number-memory") return "Memory Sprint";
+  if (k === "alphabet-sprint") return "Alphabet Sprint";
   if (k === "quick-stop" || k === "precision-timer" || k === "stop-zero") return "Quick Stop";
   if (k === "moving-zone" || k === "rhythm-hold") return "Moving Zone Hold";
   if (k === "trace-run") return "Trace Run";
@@ -60,8 +61,8 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
     >
       <div className="relative flex min-h-[156px] items-center justify-center overflow-hidden bg-gradient-to-b from-slate-50 to-white p-3 sm:min-h-[176px] md:min-h-[188px]">
         <ProductImage
-          primarySrc={item.imageUrl}
-          fallbackSrc={fallbackImage}
+          primarySrc={fallbackImage ?? item.imageUrl}
+          fallbackSrc={item.imageUrl}
           alt={item.title}
           className="flex items-center justify-center"
           imgClassName="max-h-[126px] max-w-full object-contain transition duration-300 group-hover:scale-[1.03] sm:max-h-[142px] md:max-h-[154px]"

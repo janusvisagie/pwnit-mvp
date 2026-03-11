@@ -4,6 +4,7 @@ export type SupportedGameKey =
   | "number-memory"
   | "flash-count"
   | "memory-sprint"
+  | "alphabet-sprint"
   | "quick-stop"
   | "moving-zone"
   | "trace-run"
@@ -52,6 +53,12 @@ export const GAME_META: Record<string, GameMeta> = {
     label: "Memory Sprint",
     higherIsBetter: true,
     description: "Memorise longer sequences and finish quickly for a stronger score.",
+    formatScore: (score) => `${Math.max(0, Math.floor(Number(score || 0))).toLocaleString("en-ZA")} pts`,
+  },
+  "alphabet-sprint": {
+    label: "Alphabet Sprint",
+    higherIsBetter: true,
+    description: "Run from A to Z by answering each clue with the correct starting letter before time slips away.",
     formatScore: (score) => `${Math.max(0, Math.floor(Number(score || 0))).toLocaleString("en-ZA")} pts`,
   },
   "quick-stop": {
