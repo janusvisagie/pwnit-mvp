@@ -1,30 +1,20 @@
-Repo-specific patch for janusvisagie/pwnit-mvp
+This patch contains full-file replacements only.
 
-Included changes
-- Restores repo-local image assets for Nintendo / Sony / GoPro by:
-  - adding local PNG showcase assets under public/products/
-  - updating src/lib/productCatalog.ts to use those local files
-  - updating prisma/seed.mjs so future fresh seeds use local assets
-  - updating src/components/ItemCard.tsx to prefer the repo-local fallback asset first
-- Adds Alphabet Sprint as a new playable game:
-  - src/games/alphabet-sprint/AlphabetSprintGame.tsx
-  - src/app/play/[itemId]/_components/GameHost.tsx
-  - src/lib/gameRules.ts
-  - src/components/ItemCard.tsx
-- Adds preview-only seeding without touching the live production 6-game mix:
-  - prisma/seed.preview.mjs
-  - package.json script: npm run db:seed:preview
-  - prisma/seed.demo.mjs corrected to the current live 6-game mix
+Replace these files in the repo:
+- src/lib/productCatalog.ts
+- src/components/ItemCard.tsx
+- prisma/seed.mjs
+- prisma/seed.demo.mjs
 
-Recommended apply / test flow
-1. Merge these files into the repo.
-2. For Preview or local dev, seed as usual:
-   npm run db:seed
-3. Then switch Preview/local to the preview mix:
-   npm run db:seed:preview
-4. Verify Alphabet Sprint appears on slot 2 (replacing Memory Sprint only in Preview/local).
-5. Production stays on the current 6-game mix unless someone explicitly runs the preview seed with an override.
+What this repatch does:
+- restores the exact Nintendo / Sony / GoPro photo-style display by pointing product catalog entries back to the exact remote photo URLs
+- keeps local SVG assets as the fallback path for those three products
+- makes the marketplace card prefer the catalog photo first and fall back to the repo-local SVG if the remote image fails
+- keeps the production 6-item game mix unchanged
+- keeps Alphabet Sprint preview-only via the existing prisma/seed.preview.mjs flow
+- fixes prisma/seed.demo.mjs so it matches the live supported 6-game mix
 
-Notes
-- The current public repo no longer contains the earlier Nintendo / Sony / GoPro photo binaries, so this patch adds repo-local replacement showcase assets rather than the exact original photo files.
-- The leaderboard page was also updated to respect higher-is-better games, so Alphabet Sprint ranks correctly in Preview.
+Recommended after replacing files:
+- redeploy the app
+- if you want already-seeded local/preview databases to use the SVG fallback image paths in item.imageUrl, re-run: npm run db:seed
+- only run npm run db:seed:preview in preview/local, never in production

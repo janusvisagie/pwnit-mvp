@@ -44,6 +44,7 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
   const gLabel = gameLabel(item.gameKey);
   const product = getProductContent(item.title, item.imageUrl);
   const fallbackImage = getFallbackProductImage(item.title, item.imageUrl);
+  const primaryImage = product?.imageUrl ?? item.imageUrl ?? fallbackImage;
   const hot = useMemo(() => !isClosed && !isActivated && pct >= 75, [isClosed, isActivated, pct]);
 
   const statusTone = isClosed
@@ -61,8 +62,8 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
     >
       <div className="relative flex min-h-[156px] items-center justify-center overflow-hidden bg-gradient-to-b from-slate-50 to-white p-3 sm:min-h-[176px] md:min-h-[188px]">
         <ProductImage
-          primarySrc={fallbackImage ?? item.imageUrl}
-          fallbackSrc={item.imageUrl}
+          primarySrc={primaryImage}
+          fallbackSrc={fallbackImage}
           alt={item.title}
           className="flex items-center justify-center"
           imgClassName="max-h-[126px] max-w-full object-contain transition duration-300 group-hover:scale-[1.03] sm:max-h-[142px] md:max-h-[154px]"

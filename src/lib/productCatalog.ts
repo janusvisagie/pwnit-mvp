@@ -8,7 +8,8 @@ export type ProductContent = {
 
 const catalog: Record<string, ProductContent> = {
   "Nintendo Switch OLED": {
-    imageUrl: "/products/nintendo-switch-oled.png",
+    imageUrl:
+      "https://assets.nintendo.com/image/upload/f_auto/q_auto/dpr_1.5/ncom/en_US/switch/videos/heg001-07060600/posters/oled-model",
     officialUrl: "https://www.nintendo.com/us/gaming-systems/switch/oled-model/",
     kicker: "Official product highlights",
     description:
@@ -21,7 +22,8 @@ const catalog: Record<string, ProductContent> = {
     ],
   },
   "Sony WH-1000XM5 Headphones": {
-    imageUrl: "/products/sony-wh-1000xm5.png",
+    imageUrl:
+      "https://www.sony.com/image/6145c1d32e6ac8e63a46c912dc33c5bb?bgc=FFFFFF&bgcolor=FFFFFF&fmt=pjpeg&wid=1200",
     officialUrl: "https://www.sony.com/za/electronics/headband-headphones/wh-1000xm5",
     kicker: "Official product highlights",
     description:
@@ -34,7 +36,8 @@ const catalog: Record<string, ProductContent> = {
     ],
   },
   "GoPro HERO13 Black": {
-    imageUrl: "/products/gopro-hero13-black.png",
+    imageUrl:
+      "https://static.gopro.com/assets/blta2b8522e5372af40/bltdcd3295493f2b049/66b0eba949df090a205ce45b/01-h13-hero-intro-1920.jpg?auto=webp&disable=upscale&quality=80&width=1920",
     officialUrl: "https://gopro.com/en/us/shop/cameras/learn/hero13black/CHDHX-131-master.html",
     kicker: "Official product highlights",
     description:
@@ -85,9 +88,9 @@ const catalog: Record<string, ProductContent> = {
 };
 
 const reliableFallbacks: Record<string, string> = {
-  "Nintendo Switch OLED": "/products/nintendo-switch-oled.png",
-  "Sony WH-1000XM5 Headphones": "/products/sony-wh-1000xm5.png",
-  "GoPro HERO13 Black": "/products/gopro-hero13-black.png",
+  "Nintendo Switch OLED": "/products/nintendo-switch-oled.svg",
+  "Sony WH-1000XM5 Headphones": "/products/sony-xm5-headphones.svg",
+  "GoPro HERO13 Black": "/products/gopro-hero.svg",
   "Takealot Voucher": "/products/takealot-voucher.svg",
   "Checkers Voucher": "/products/checkers-voucher.svg",
   "Fuel Voucher": "/products/petrol-voucher.svg",
