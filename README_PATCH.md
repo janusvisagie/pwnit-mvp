@@ -1,14 +1,7 @@
-Replace these files in your repo with the versions in this ZIP:
-
-- src/app/layout.tsx
+Replace these full files in your repo:
 - src/app/page.tsx
-- src/components/ItemCard.tsx
-- src/components/WelcomeModal.tsx
-- src/games/moving-zone/MovingZoneGame.tsx
-- src/lib/gameRules.ts
+- src/app/layout.tsx
 
-What this patch changes:
-- monitor / desktop home screen layout stretches the two card rows better on wide screens
-- welcome modal reverts to the fuller visual version while keeping all content visible
-- Moving Zone Hold now scores drift from the centre line, shows a red centre guide, and keeps the easier-to-grab black bar
-- Moving Zone Hold copy is updated to match the scoring logic
+What this refresh does:
+- fixes the build failure by passing progress.pct into ItemCard
+- keeps the homepage cards filling the available monitor height more naturally
