@@ -42,9 +42,10 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
   const pct = Math.max(0, Math.min(100, Number(item.activationPct ?? 0)));
   const isClosed = item.state === "CLOSED" || item.state === "PUBLISHED";
   const isActivated = item.state === "ACTIVATED";
-  const href = isClosed ? `/item/${item.id}/leaderboard` : `/item/${item.id}`;
 
+  const href = isClosed ? `/item/${item.id}/leaderboard` : `/item/${item.id}`;
   const gLabel = gameLabel(item.gameKey);
+
   const product = getProductContent(item.title, item.imageUrl);
   const fallbackImage = getFallbackProductImage(item.title, item.imageUrl);
   const primaryImage = product?.imageUrl ?? item.imageUrl ?? fallbackImage;
@@ -58,20 +59,19 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
       : "bg-slate-100 text-slate-700 ring-1 ring-slate-200";
 
   const statusText = isClosed ? "Won" : isActivated ? "Activated" : "Open";
-  const activationText = item.activationLabel ?? (isActivated ? "Activated" : activationStageLabel(pct));
 
   return (
     <Link
       href={href}
-      className="group relative flex h-full min-h-[205px] flex-col overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md sm:min-h-[214px] lg:min-h-0"
+      className="group relative flex h-full min-h-[218px] flex-col overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md lg:min-h-0"
     >
-      <div className="relative flex min-h-[104px] items-center justify-center overflow-hidden bg-gradient-to-b from-slate-50 to-white p-4 sm:min-h-[112px] lg:min-h-[clamp(86px,9vh,122px)] xl:min-h-[clamp(94px,10vh,138px)]">
+      <div className="relative flex min-h-[116px] items-center justify-center overflow-hidden bg-gradient-to-b from-slate-50 to-white p-4 sm:min-h-[126px] lg:min-h-[clamp(96px,11vh,138px)] xl:min-h-[clamp(108px,12.5vh,164px)]">
         <ProductImage
           primarySrc={primaryImage}
           fallbackSrc={fallbackImage}
           alt={item.title}
           className="flex items-center justify-center"
-          imgClassName="max-h-[82px] max-w-full object-contain transition duration-300 group-hover:scale-[1.03] sm:max-h-[90px] lg:max-h-[94px] xl:max-h-[108px] 2xl:max-h-[118px]"
+          imgClassName="max-h-[88px] max-w-full object-contain transition duration-300 group-hover:scale-[1.03] sm:max-h-[96px] lg:max-h-[102px] xl:max-h-[118px] 2xl:max-h-[128px]"
         />
 
         <div className="absolute left-3 top-3 rounded-full bg-white/95 px-2.5 py-1 text-[10px] font-extrabold text-slate-900 shadow ring-1 ring-slate-200 sm:text-[11px]">
@@ -90,7 +90,7 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
 
         {isActivated && item.closesAt ? (
           <div className="absolute bottom-3 right-3">
-            <CountdownChip state={item.state} closesAt={item.closesAt} labelWhenClosed="Closed" />
+            <CountdownChip state={item.state} closesAt={item.closesAt} />
           </div>
         ) : null}
 
@@ -101,9 +101,9 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
         ) : null}
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col justify-between gap-2 p-4 lg:p-[14px] xl:p-[16px]">
+      <div className="flex min-h-0 flex-1 flex-col justify-between gap-2.5 p-4 lg:p-[15px] xl:p-[18px]">
         <div className="min-w-0">
-          <h3 className="line-clamp-2 text-[15px] font-extrabold leading-tight text-slate-900 xl:text-[16px] 2xl:text-[17px]">
+          <h3 className="line-clamp-2 text-[15px] font-extrabold leading-tight text-slate-900 xl:text-[17px] 2xl:text-[18px]">
             {item.title}
           </h3>
 
@@ -122,7 +122,7 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
           <div className="space-y-1.5">
             <div className="flex items-center justify-between gap-2 text-[11px] font-semibold text-slate-600 sm:text-[12px] xl:text-[13px]">
               <span className="truncate">Activation progress</span>
-              <span className="shrink-0">{activationText}</span>
+              <span className="shrink-0">{isActivated ? "Activated" : activationStageLabel(pct)}</span>
             </div>
 
             <div className="h-2.5 overflow-hidden rounded-full bg-slate-200">
