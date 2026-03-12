@@ -20,7 +20,7 @@ export default function HowActivationWorksPage() {
 
       <section className="rounded-2xl border border-slate-200 bg-white p-4">
         <div className="text-sm font-extrabold text-slate-900">3) Play and score</div>
-        <p className="mt-1 text-sm text-slate-700">Play a quick skill game. You can use practice mode to warm up before spending credits. Each player’s best score stays on the leaderboard. 1st place wins the prize, while 2nd and 3rd place earn credit bonuses.</p>
+        <p className="mt-1 text-sm text-slate-700">Play a quick skill game. Practice mode is available anytime, before or between paid plays, so you can warm up, learn the controls, or retry without spending credits. Each player’s best score stays on the leaderboard. 1st place wins the prize, while 2nd and 3rd place earn credit bonuses.</p>
       </section>
 
       <section className="rounded-2xl border border-slate-200 bg-white p-4">

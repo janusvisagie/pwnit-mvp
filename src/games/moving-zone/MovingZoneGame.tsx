@@ -19,13 +19,45 @@ export default function MovingZoneGame({ onFinish, disabled }: GameProps) {
   const scoreRef = useRef(0);
   const lastTickRef = useRef(0);
   const cursorRef = useRef(0.5);
+  const activePointerIdRef = useRef<number | null>(null);
+  const draggingRef = useRef(false);
 
   function cleanup() {
     if (timerRef.current) window.clearInterval(timerRef.current);
     timerRef.current = null;
   }
 
+  function stopDragging() {
+    draggingRef.current = false;
+    activePointerIdRef.current = null;
+  }
+
   useEffect(() => cleanup, []);
+
+  useEffect(() => {
+    if (phase !== "RUNNING") return;
+
+    const handleMove = (event: PointerEvent) => {
+      if (!draggingRef.current) return;
+      if (activePointerIdRef.current != null && event.pointerId !== activePointerIdRef.current) return;
+      updateCursor(event.clientX);
+    };
+
+    const handleUp = (event: PointerEvent) => {
+      if (activePointerIdRef.current != null && event.pointerId !== activePointerIdRef.current) return;
+      stopDragging();
+    };
+
+    window.addEventListener("pointermove", handleMove, { passive: true });
+    window.addEventListener("pointerup", handleUp, { passive: true });
+    window.addEventListener("pointercancel", handleUp, { passive: true });
+
+    return () => {
+      window.removeEventListener("pointermove", handleMove);
+      window.removeEventListener("pointerup", handleUp);
+      window.removeEventListener("pointercancel", handleUp);
+    };
+  }, [phase]);
 
   function updateCursor(clientX: number) {
     const element = areaRef.current;
@@ -36,7 +68,7 @@ export default function MovingZoneGame({ onFinish, disabled }: GameProps) {
     setCursorX(x);
   }
 
-  function begin() {
+  function begin(initialClientX?: number) {
     if (disabled) return;
 
     cleanup();
@@ -50,6 +82,10 @@ export default function MovingZoneGame({ onFinish, disabled }: GameProps) {
     setCursorX(0.5);
     setTimeLeft(DURATION_MS);
     setPhase("RUNNING");
+
+    if (typeof initialClientX === "number") {
+      updateCursor(initialClientX);
+    }
 
     timerRef.current = window.setInterval(() => {
       const now = performance.now();
@@ -72,6 +108,7 @@ export default function MovingZoneGame({ onFinish, disabled }: GameProps) {
         const finalScore = Math.round(scoreRef.current);
         setScore(finalScore);
         setPhase("DONE");
+        stopDragging();
         onFinish({ scoreMs: finalScore, meta: { game: "moving-zone", durationMs: DURATION_MS } });
         cleanup();
       }
@@ -80,12 +117,35 @@ export default function MovingZoneGame({ onFinish, disabled }: GameProps) {
 
   function reset() {
     cleanup();
+    stopDragging();
     setPhase("IDLE");
     setScore(null);
     setTargetX(0.5);
     cursorRef.current = 0.5;
     setCursorX(0.5);
     setTimeLeft(DURATION_MS);
+  }
+
+  function handleBarPointerDown(event: React.PointerEvent<HTMLButtonElement | HTMLDivElement>) {
+    event.preventDefault();
+    activePointerIdRef.current = event.pointerId;
+    draggingRef.current = true;
+    updateCursor(event.clientX);
+
+    try {
+      event.currentTarget.setPointerCapture(event.pointerId);
+    } catch {
+      // pointer capture is best-effort only
+    }
+
+    if (phase !== "RUNNING") {
+      begin(event.clientX);
+    }
+  }
+
+  function handleBarPointerUp(event: React.PointerEvent<HTMLButtonElement | HTMLDivElement>) {
+    if (activePointerIdRef.current != null && event.pointerId !== activePointerIdRef.current) return;
+    stopDragging();
   }
 
   const cursorLeft = `${cursorX * 100}%`;
@@ -95,9 +155,7 @@ export default function MovingZoneGame({ onFinish, disabled }: GameProps) {
     <div className="space-y-4">
       <div>
         <div className="text-xs font-black uppercase tracking-[0.28em] text-slate-500">Moving Zone Hold</div>
-        <p className="mt-2 text-sm leading-6 text-slate-700">
-          Click on the black bar / pointer to start the Game.
-        </p>
+        <p className="mt-2 text-sm leading-6 text-slate-700">Click on the black bar / pointer to start the Game.</p>
       </div>
 
       <div className="rounded-2xl bg-slate-50 px-4 py-3">
@@ -120,18 +178,27 @@ export default function MovingZoneGame({ onFinish, disabled }: GameProps) {
         {phase === "IDLE" ? (
           <button
             type="button"
-            onClick={begin}
+            onPointerDown={handleBarPointerDown}
+            onPointerUp={handleBarPointerUp}
+            onPointerCancel={handleBarPointerUp}
             disabled={disabled}
-            className="absolute top-1/2 z-20 h-12 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-slate-950 shadow-lg ring-4 ring-white transition hover:bg-slate-800 disabled:bg-slate-300"
+            className="absolute top-1/2 z-20 flex h-14 w-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-transparent transition disabled:opacity-50"
             style={{ left: cursorLeft }}
             aria-label="Start moving zone"
             title="Start moving zone"
-          />
+          >
+            <span className="h-12 w-3 rounded-full bg-slate-950 shadow-lg ring-4 ring-white transition hover:bg-slate-800" />
+          </button>
         ) : (
           <div
-            className="absolute top-1/2 z-10 h-12 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-slate-950 shadow-lg ring-4 ring-white transition-all"
+            className="absolute top-1/2 z-10 flex h-14 w-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-transparent"
             style={{ left: cursorLeft }}
-          />
+            onPointerDown={handleBarPointerDown}
+            onPointerUp={handleBarPointerUp}
+            onPointerCancel={handleBarPointerUp}
+          >
+            <span className="h-12 w-3 rounded-full bg-slate-950 shadow-lg ring-4 ring-white transition-all" />
+          </div>
         )}
       </div>
 
