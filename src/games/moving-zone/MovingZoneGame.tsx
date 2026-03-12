@@ -78,6 +78,16 @@ export default function MovingZoneGame({ onFinish, disabled }: GameProps) {
     }, 16);
   }
 
+  function reset() {
+    cleanup();
+    setPhase("IDLE");
+    setScore(null);
+    setTargetX(0.5);
+    cursorRef.current = 0.5;
+    setCursorX(0.5);
+    setTimeLeft(DURATION_MS);
+  }
+
   const cursorLeft = `${cursorX * 100}%`;
   const targetLeft = `${targetX * 100}%`;
 
@@ -86,7 +96,7 @@ export default function MovingZoneGame({ onFinish, disabled }: GameProps) {
       <div>
         <div className="text-xs font-black uppercase tracking-[0.28em] text-slate-500">Moving Zone Hold</div>
         <p className="mt-2 text-sm leading-6 text-slate-700">
-          Keep your pointer inside the moving green band. The start button sits on the cursor, already inside the band.
+          Click on the black bar / pointer to start the Game.
         </p>
       </div>
 
@@ -106,25 +116,26 @@ export default function MovingZoneGame({ onFinish, disabled }: GameProps) {
           className="absolute top-1/2 h-9 -translate-y-1/2 -translate-x-1/2 rounded-full bg-emerald-200/90 ring-2 ring-emerald-300 transition-all"
           style={{ left: targetLeft, width: `${BAND_WIDTH * 100}%` }}
         />
-        <div
-          className="absolute top-1/2 z-10 h-7 w-7 -translate-x-1/2 -translate-y-1/2 rounded-full bg-slate-950 shadow-lg ring-4 ring-white transition-all"
-          style={{ left: cursorLeft }}
-        />
 
         {phase === "IDLE" ? (
           <button
             type="button"
             onClick={begin}
             disabled={disabled}
-            className="absolute top-1/2 z-20 -translate-x-1/2 -translate-y-1/2 rounded-full bg-slate-950 px-4 py-2 text-xs font-extrabold text-white shadow-lg transition hover:bg-slate-800 disabled:bg-slate-300"
+            className="absolute top-1/2 z-20 h-12 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-slate-950 shadow-lg ring-4 ring-white transition hover:bg-slate-800 disabled:bg-slate-300"
             style={{ left: cursorLeft }}
-          >
-            Start
-          </button>
-        ) : null}
+            aria-label="Start moving zone"
+            title="Start moving zone"
+          />
+        ) : (
+          <div
+            className="absolute top-1/2 z-10 h-12 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-slate-950 shadow-lg ring-4 ring-white transition-all"
+            style={{ left: cursorLeft }}
+          />
+        )}
       </div>
 
-      <p className="text-sm text-slate-600">Move across the lane and stay inside the green band.</p>
+      <p className="text-sm text-slate-600">Keep the black bar inside the moving green band for the full run.</p>
 
       {phase === "DONE" && score != null ? (
         <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-900">
@@ -134,7 +145,7 @@ export default function MovingZoneGame({ onFinish, disabled }: GameProps) {
 
       <button
         type="button"
-        onClick={begin}
+        onClick={reset}
         disabled={disabled}
         className="inline-flex min-h-[44px] items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-extrabold text-slate-800 shadow-sm transition hover:bg-slate-50 disabled:bg-slate-100 disabled:text-slate-400"
       >

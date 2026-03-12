@@ -74,9 +74,9 @@ export const GAME_META: Record<string, GameMeta> = {
     formatScore: (score) => `${Math.max(0, Math.floor(Number(score || 0))).toLocaleString("en-ZA")} pts`,
   },
   "trace-run": {
-    label: "Trace Run",
-    higherIsBetter: false,
-    description: "Follow the marker as tightly as you can. Lower score wins.",
+    label: "Alphabet Sprint",
+    higherIsBetter: true,
+    description: "Run from A to Z by answering each clue with the correct starting letter before time slips away.",
     formatScore: (score) => `${Math.max(0, Math.floor(Number(score || 0))).toLocaleString("en-ZA")} pts`,
   },
   "target-grid": {
@@ -91,7 +91,11 @@ export function getGameMeta(gameKey?: string | null): GameMeta {
   return (gameKey && GAME_META[gameKey]) || DEFAULT_META;
 }
 
-export function compareScores(gameKey: string | null | undefined, a: { scoreMs: number; createdAt?: Date | string | null }, b: { scoreMs: number; createdAt?: Date | string | null }) {
+export function compareScores(
+  gameKey: string | null | undefined,
+  a: { scoreMs: number; createdAt?: Date | string | null },
+  b: { scoreMs: number; createdAt?: Date | string | null }
+) {
   const meta = getGameMeta(gameKey);
   const diff = meta.higherIsBetter ? b.scoreMs - a.scoreMs : a.scoreMs - b.scoreMs;
   if (diff !== 0) return diff;
@@ -100,7 +104,10 @@ export function compareScores(gameKey: string | null | undefined, a: { scoreMs: 
   return aTime - bTime;
 }
 
-export function getBestScore(gameKey: string | null | undefined, scores: Array<{ scoreMs: number; createdAt?: Date | string | null }>) {
+export function getBestScore(
+  gameKey: string | null | undefined,
+  scores: Array<{ scoreMs: number; createdAt?: Date | string | null }>
+) {
   if (!scores.length) return null;
   return [...scores].sort((a, b) => compareScores(gameKey, a, b))[0];
 }

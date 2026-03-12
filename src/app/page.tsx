@@ -3,11 +3,7 @@ import { getOrCreateDemoUser } from "@/lib/auth";
 import { AutoRefreshActivated } from "@/components/AutoRefreshActivated";
 import { settleItemWinners } from "@/lib/settle";
 import { ItemCard } from "@/components/ItemCard";
-import {
-  activationProgress,
-  activationTargetPaidCredits,
-  playCostForPrize,
-} from "@/lib/playCost";
+import { activationProgress, activationTargetPaidCredits, playCostForPrize } from "@/lib/playCost";
 import { WelcomeModal } from "@/components/WelcomeModal";
 
 export default async function HomePage() {
@@ -23,17 +19,13 @@ export default async function HomePage() {
     by: ["itemId"],
     _sum: { paidUsed: true },
   });
-  const paidMap = new Map(
-    paidAgg.map((entry) => [entry.itemId, Number(entry._sum.paidUsed ?? 0)]),
-  );
+  const paidMap = new Map(paidAgg.map((c) => [c.itemId, Number(c._sum.paidUsed ?? 0)]));
 
   const winnerCounts = await prisma.winner.groupBy({
     by: ["itemId"],
     _count: { _all: true },
   });
-  const winnersMap = new Map(
-    winnerCounts.map((entry) => [entry.itemId, entry._count._all]),
-  );
+  const winnersMap = new Map(winnerCounts.map((w) => [w.itemId, w._count._all]));
 
   for (const item of items) {
     const paidSpent = paidMap.get(item.id) ?? 0;
@@ -50,10 +42,7 @@ export default async function HomePage() {
     }
 
     if (item.state === "ACTIVATED" && item.closesAt && now > item.closesAt) {
-      await prisma.item.update({
-        where: { id: item.id },
-        data: { state: "CLOSED" },
-      });
+      await prisma.item.update({ where: { id: item.id }, data: { state: "CLOSED" } });
       item.state = "CLOSED";
     }
 
@@ -71,44 +60,41 @@ export default async function HomePage() {
     take: 6,
   });
 
-  const anyActivated = refreshed.some((item) => item.state === "ACTIVATED");
+  const anyActivated = refreshed.some((it) => it.state === "ACTIVATED");
 
   return (
-    <main className="mx-auto flex min-h-[calc(100dvh-9.75rem)] w-full max-w-[1380px] flex-col px-4 pb-3 pt-2 sm:px-6 lg:px-8">
+    <main className="flex flex-col gap-2">
       <WelcomeModal />
-      {anyActivated ? <AutoRefreshActivated /> : null}
+      <AutoRefreshActivated enabled={anyActivated} everyMs={10_000} />
 
-      <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500 sm:mb-3">
-        Logged in as <span className="font-black text-slate-800">{user.email}</span>
+      <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 sm:text-[11px]">
+        Logged in as <span className="font-bold text-slate-900 normal-case tracking-normal">{user.email}</span>
       </div>
 
-      <section className="grid flex-1 grid-cols-1 gap-3 md:grid-cols-3 md:grid-rows-2 xl:gap-4">
-        {refreshed.map((item) => {
-          const paidSpent = paidMap.get(item.id) ?? 0;
-          const progress = activationProgress(item.prizeValueZAR, paidSpent);
-
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:gap-3">
+        {refreshed.map((it) => {
+          const paidSpent = paidMap.get(it.id) ?? 0;
+          const progress = activationProgress(it.prizeValueZAR, paidSpent);
           return (
             <ItemCard
-              key={item.id}
+              key={it.id}
               item={{
-                id: item.id,
-                title: item.title,
-                prizeValueZAR: item.prizeValueZAR,
-                state: item.state,
-                imageUrl: item.imageUrl,
-                closesAt: item.closesAt?.toISOString() ?? null,
-                playCostCredits:
-                  typeof item.playCostCredits === "number"
-                    ? item.playCostCredits
-                    : playCostForPrize(item.prizeValueZAR),
-                gameKey: item.gameKey,
-                activationPct: progress,
-                activationLabel: progress >= 100 ? "Activated" : undefined,
+                id: it.id,
+                title: it.title,
+                prizeValueZAR: it.prizeValueZAR,
+                state: it.state,
+                imageUrl: it.imageUrl ?? null,
+                closesAt: it.closesAt ? it.closesAt.toISOString() : null,
+                playCostCredits: playCostForPrize(it.prizeValueZAR),
+                gameKey: it.gameKey ?? null,
+                activationPct: typeof progress === "number" ? progress : progress.pct,
+                activationLabel:
+                  (typeof progress === "number" ? progress : progress.pct) >= 100 ? "Activated" : undefined,
               }}
             />
           );
         })}
-      </section>
+      </div>
     </main>
   );
 }

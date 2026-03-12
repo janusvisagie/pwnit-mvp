@@ -146,22 +146,14 @@ export default function AlphabetSprintGame({ onFinish, disabled }: GameProps) {
     if (!cleaned) return;
 
     if (!cleaned.startsWith(current.letter.toLowerCase())) {
-      finishRun(
-        totalScoreRef.current,
-        `Wrong starting letter. You needed ${current.letter}.`,
-        correctCount
-      );
+      finishRun(totalScoreRef.current, `Wrong starting letter. You needed ${current.letter}.`, correctCount);
       return;
     }
 
     const accepted = current.accepted.includes(cleaned);
     if (!accepted) {
       const example = current.accepted[0];
-      finishRun(
-        totalScoreRef.current,
-        `Not accepted for ${current.letter}. One valid answer was ${example}.`,
-        correctCount
-      );
+      finishRun(totalScoreRef.current, `Not accepted for ${current.letter}. One valid answer was ${example}.`, correctCount);
       return;
     }
 

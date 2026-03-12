@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import NumberMemoryGame from "@/games/number-memory/NumberMemoryGame";
 import QuickStopGame from "@/games/quick-stop/QuickStopGame";
 import MovingZoneGame from "@/games/moving-zone/MovingZoneGame";
-import TraceRunGame from "@/games/trace-run/TraceRunGame";
 import FlashCountGame from "@/games/flash-count/FlashCountGame";
 import TargetGridGame from "@/games/target-grid/TargetGridGame";
 import AlphabetSprintGame from "@/games/alphabet-sprint/AlphabetSprintGame";
@@ -31,7 +30,7 @@ const GAME_REGISTRY: Record<GameKey, { title: string; Component: any }> = {
   "memory-sprint": { title: "Memory Sprint", Component: NumberMemoryGame },
   "quick-stop": { title: "Quick Stop", Component: QuickStopGame },
   "moving-zone": { title: "Moving Zone Hold", Component: MovingZoneGame },
-  "trace-run": { title: "Trace Run", Component: TraceRunGame },
+  "trace-run": { title: "Alphabet Sprint", Component: AlphabetSprintGame },
   "flash-count": { title: "Flash Count", Component: FlashCountGame },
   "target-grid": { title: "Target Grid", Component: TargetGridGame },
   "alphabet-sprint": { title: "Alphabet Sprint", Component: AlphabetSprintGame },

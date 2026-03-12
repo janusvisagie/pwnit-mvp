@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import "./globals.css";
+
 import HeaderNav, { HeaderNav as HeaderNavNamed } from "@/components/HeaderNav";
 import { DemoUserSwitcherShell } from "@/components/DemoUserSwitcherShell";
 import { CreditsPill } from "@/components/CreditsPill";
@@ -8,57 +8,52 @@ import { CreditsPill } from "@/components/CreditsPill";
 export const metadata: Metadata = {
   title: "PwnIt",
   description: "Pick. Play. PwnIt.",
-  icons: {
-    icon: "/icon.svg",
-    shortcut: "/icon.svg",
-    apple: "/icon.svg",
-  },
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   const Nav = (HeaderNav as any) || (HeaderNavNamed as any);
 
   return (
     <html lang="en">
-      <body className="min-h-screen bg-slate-100 text-slate-950 antialiased">
+      <body className="min-h-screen overflow-x-hidden bg-slate-50 text-slate-900 antialiased">
         <div className="flex min-h-screen flex-col">
           <header className="border-b border-slate-200 bg-white/95 backdrop-blur">
-            <div className="mx-auto flex max-w-[1380px] flex-wrap items-center gap-3 px-4 py-3 sm:px-6 lg:px-8">
-              <Link
-                href="/"
-                className="mr-auto inline-flex items-center gap-2 text-lg font-black tracking-tight text-slate-950"
-              >
-                <span className="text-slate-700">Pick. Play.</span>
-                <span>PwnIt.</span>
-              </Link>
+            <div className="mx-auto w-full max-w-[1500px] px-3 py-2.5 sm:px-4 sm:py-3 lg:px-6">
+              <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:gap-3">
+                  <div className="text-[13px] font-semibold leading-tight text-slate-900 sm:text-sm">
+                    Pick. Play. <span className="text-[19px] font-extrabold sm:text-lg">PwnIt</span>.
+                  </div>
 
-              <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
-                <span className="text-slate-500">Demo user</span>
-                <DemoUserSwitcherShell />
-              </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <DemoUserSwitcherShell />
+                    <CreditsPill />
+                  </div>
+                </div>
 
-              <CreditsPill />
-            </div>
-
-            <div className="border-t border-slate-100 bg-white/90">
-              <div className="mx-auto flex max-w-[1380px] justify-end px-4 py-2 sm:px-6 lg:px-8">
-                <Nav />
+                <div className="-mx-1 overflow-x-auto px-1 lg:mx-0 lg:px-0">
+                  <Nav />
+                </div>
               </div>
             </div>
           </header>
 
-          <div className="flex-1">{children}</div>
+          <main className="mx-auto w-full max-w-[1500px] flex-1 px-3 py-2.5 sm:px-4 sm:py-3 lg:px-6">
+            {children}
+          </main>
 
           <footer className="border-t border-slate-200 bg-white">
-            <div className="mx-auto flex max-w-[1380px] flex-wrap items-center justify-between gap-3 px-4 py-3 text-sm text-slate-600 sm:px-6 lg:px-8">
-              <div className="font-medium text-slate-900">Contact</div>
-              <div className="flex flex-wrap items-center gap-4">
-                <span>WhatsApp: +27 00 000 0000 (demo)</span>
-                <span>Email: support@pwnit.local (demo)</span>
+            <div className="mx-auto w-full max-w-[1500px] px-3 py-2 text-[11px] text-slate-600 sm:px-4 sm:text-xs lg:px-6">
+              <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between">
+                <div className="font-semibold text-slate-900">Contact</div>
+                <div className="flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-4 sm:gap-y-1">
+                  <span>
+                    WhatsApp: <span className="font-semibold text-slate-900">+27 00 000 0000</span> (demo)
+                  </span>
+                  <span>
+                    Email: <span className="font-semibold text-slate-900">support@pwnit.local</span> (demo)
+                  </span>
+                </div>
               </div>
             </div>
           </footer>
