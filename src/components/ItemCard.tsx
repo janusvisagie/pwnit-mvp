@@ -30,7 +30,9 @@ function gameLabel(k?: string | null) {
   if (k === "alphabet-sprint" || k === "trace-run") return "Alphabet Sprint";
   if (k === "quick-stop" || k === "precision-timer" || k === "stop-zero") return "Quick Stop";
   if (k === "moving-zone" || k === "rhythm-hold") return "Moving Zone Hold";
-  if (k === "flash-count" || k === "burst-match" || k === "tap-speed" || k === "tap-pattern") return "Flash Count";
+  if (k === "flash-count" || k === "burst-match" || k === "tap-speed" || k === "tap-pattern") {
+    return "Flash Count";
+  }
   if (k === "target-grid" || k === "target-hold") return "Target Grid";
   return k;
 }
@@ -44,6 +46,7 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
   const product = getProductContent(item.title, item.imageUrl);
   const fallbackImage = getFallbackProductImage(item.title, item.imageUrl);
   const primaryImage = product?.imageUrl ?? item.imageUrl ?? fallbackImage;
+
   const hot = useMemo(() => !isClosed && !isActivated && pct >= 75, [isClosed, isActivated, pct]);
 
   const statusTone = isClosed
@@ -57,73 +60,76 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
   return (
     <Link
       href={href}
-      className="group relative flex h-full min-h-0 flex-col overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg"
+      className="group relative flex h-full min-h-[228px] flex-col overflow-hidden rounded-[26px] border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md xl:min-h-[250px]"
     >
-      <div className="relative flex min-h-[116px] items-center justify-center overflow-hidden bg-gradient-to-b from-slate-50 to-white p-3 sm:min-h-[126px] md:min-h-[134px] xl:min-h-[144px]">
+      <div className="relative flex min-h-[132px] items-center justify-center overflow-hidden bg-gradient-to-b from-slate-50 to-white p-4 sm:min-h-[142px] md:min-h-[154px] xl:min-h-[170px]">
         <ProductImage
           primarySrc={primaryImage}
           fallbackSrc={fallbackImage}
           alt={item.title}
           className="flex items-center justify-center"
-          imgClassName="max-h-[86px] max-w-full object-contain transition duration-300 group-hover:scale-[1.03] sm:max-h-[96px] md:max-h-[104px] xl:max-h-[112px]"
+          imgClassName="max-h-[94px] max-w-full object-contain transition duration-300 group-hover:scale-[1.03] sm:max-h-[104px] md:max-h-[116px] xl:max-h-[130px]"
         />
 
-        <div className="absolute left-2.5 top-2.5 rounded-full bg-white/95 px-2.5 py-1 text-[10px] font-extrabold text-slate-900 shadow ring-1 ring-slate-200">
+        <div className="absolute left-3 top-3 rounded-full bg-white/95 px-2.5 py-1 text-[10px] font-extrabold text-slate-900 shadow ring-1 ring-slate-200 sm:text-[11px]">
           {formatZAR(item.prizeValueZAR)}
         </div>
 
-        <div className={`absolute right-2.5 top-2.5 rounded-full px-2.5 py-1 text-[10px] font-extrabold shadow-sm ${statusTone}`}>
+        <div className={`absolute right-3 top-3 rounded-full px-2.5 py-1 text-[10px] font-extrabold shadow-sm sm:text-[11px] ${statusTone}`}>
           {statusText}
         </div>
 
         {hot ? (
-          <div className="absolute left-2.5 bottom-2.5 rounded-full bg-amber-300 px-2.5 py-1 text-[10px] font-extrabold text-slate-900 shadow">
+          <div className="absolute bottom-3 left-3 rounded-full bg-amber-300 px-2.5 py-1 text-[10px] font-extrabold text-slate-900 shadow sm:text-[11px]">
             Hot
           </div>
         ) : null}
 
         {isActivated && item.closesAt ? (
-          <div className="absolute bottom-2.5 right-2.5 rounded-full bg-white/95 px-2.5 py-1 text-[10px] font-semibold text-slate-800 shadow ring-1 ring-slate-200">
-            Ends in <CountdownChip state={item.state} closesAt={item.closesAt} />
+          <div className="absolute bottom-3 right-3">
+            <CountdownChip label="Ends in" endsAt={item.closesAt} />
           </div>
         ) : null}
 
         {isClosed ? (
-          <div className="pointer-events-none absolute inset-0 overflow-hidden">
-            <div className="absolute left-[-24%] top-[42%] w-[148%] -rotate-12 bg-slate-900/95 px-4 py-2 text-center text-[10px] font-extrabold tracking-wide text-white shadow-xl sm:text-xs">
-              PRIZE WON • NEXT PRIZE LOADING
-            </div>
+          <div className="absolute left-[-24%] top-[42%] w-[148%] -rotate-12 bg-slate-900/95 px-4 py-2 text-center text-[10px] font-extrabold tracking-wide text-white shadow-xl sm:text-xs">
+            PRIZE WON • NEXT PRIZE LOADING
           </div>
         ) : null}
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col justify-between gap-2 p-3.5 xl:p-4">
+      <div className="flex min-h-0 flex-1 flex-col justify-between gap-3 p-4 xl:p-[18px]">
         <div className="min-w-0">
-          <h3 className="line-clamp-2 text-[14px] font-extrabold leading-tight text-slate-900 sm:text-[15px] md:line-clamp-1 xl:text-[16px]">
+          <h3 className="line-clamp-2 text-[16px] font-extrabold leading-tight text-slate-900 xl:text-[18px]">
             {item.title}
           </h3>
-          <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[10px] leading-tight text-slate-600 sm:text-[11px] xl:text-[12px]">
+
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] leading-tight text-slate-600 sm:text-[12px] xl:text-[13px]">
             {gLabel ? (
-              <span className="rounded-full bg-slate-100 px-2 py-0.5 font-semibold text-slate-700 ring-1 ring-slate-200">
+              <span className="rounded-full bg-slate-100 px-2.5 py-0.5 font-semibold text-slate-700 ring-1 ring-slate-200">
                 {gLabel}
               </span>
             ) : null}
+
             {typeof item.playCostCredits === "number" ? <span>{item.playCostCredits} credits/play</span> : null}
           </div>
         </div>
 
         {!isClosed ? (
           <div className="space-y-1.5">
-            <div className="flex items-center justify-between gap-2 text-[10px] font-semibold text-slate-600 sm:text-[11px] xl:text-[12px]">
+            <div className="flex items-center justify-between gap-2 text-[11px] font-semibold text-slate-600 sm:text-[12px] xl:text-[13px]">
               <span className="truncate">Activation progress</span>
               <span className="shrink-0">{isActivated ? "Activated" : activationStageLabel(pct)}</span>
             </div>
-            <div className="h-2 overflow-hidden rounded-full bg-slate-200">
+
+            <div className="h-2.5 overflow-hidden rounded-full bg-slate-200">
               <div className="h-full rounded-full bg-slate-900 transition-all duration-500" style={{ width: `${pct}%` }} />
             </div>
           </div>
         ) : (
-          <div className="text-[10px] text-slate-500 sm:text-[11px] xl:text-[12px]">View results or buy the prize if you didn’t win.</div>
+          <div className="text-[11px] text-slate-500 sm:text-[12px] xl:text-[13px]">
+            View results or buy the prize if you didn’t win.
+          </div>
         )}
       </div>
     </Link>

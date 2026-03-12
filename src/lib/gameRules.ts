@@ -70,7 +70,7 @@ export const GAME_META: Record<string, GameMeta> = {
   "moving-zone": {
     label: "Moving Zone Hold",
     higherIsBetter: false,
-    description: "Stay inside the moving band. Less drift gives a better score.",
+    description: "Track the red centre line inside the moving green band. Less centre-line drift gives a better score.",
     formatScore: (score) => `${Math.max(0, Math.floor(Number(score || 0))).toLocaleString("en-ZA")} pts`,
   },
   "trace-run": {
@@ -94,11 +94,13 @@ export function getGameMeta(gameKey?: string | null): GameMeta {
 export function compareScores(
   gameKey: string | null | undefined,
   a: { scoreMs: number; createdAt?: Date | string | null },
-  b: { scoreMs: number; createdAt?: Date | string | null }
+  b: { scoreMs: number; createdAt?: Date | string | null },
 ) {
   const meta = getGameMeta(gameKey);
   const diff = meta.higherIsBetter ? b.scoreMs - a.scoreMs : a.scoreMs - b.scoreMs;
+
   if (diff !== 0) return diff;
+
   const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
   const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
   return aTime - bTime;
@@ -106,7 +108,7 @@ export function compareScores(
 
 export function getBestScore(
   gameKey: string | null | undefined,
-  scores: Array<{ scoreMs: number; createdAt?: Date | string | null }>
+  scores: Array<{ scoreMs: number; createdAt?: Date | string | null }>,
 ) {
   if (!scores.length) return null;
   return [...scores].sort((a, b) => compareScores(gameKey, a, b))[0];

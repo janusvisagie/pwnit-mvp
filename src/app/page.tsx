@@ -3,7 +3,11 @@ import { getOrCreateDemoUser } from "@/lib/auth";
 import { AutoRefreshActivated } from "@/components/AutoRefreshActivated";
 import { settleItemWinners } from "@/lib/settle";
 import { ItemCard } from "@/components/ItemCard";
-import { activationProgress, activationTargetPaidCredits, playCostForPrize } from "@/lib/playCost";
+import {
+  activationProgress,
+  activationTargetPaidCredits,
+  playCostForPrize,
+} from "@/lib/playCost";
 import { WelcomeModal } from "@/components/WelcomeModal";
 
 export default async function HomePage() {
@@ -63,18 +67,20 @@ export default async function HomePage() {
   const anyActivated = refreshed.some((it) => it.state === "ACTIVATED");
 
   return (
-    <main className="flex flex-col gap-2.5 xl:gap-3">
+    <section className="flex w-full flex-1 flex-col gap-3 xl:gap-4">
       <WelcomeModal />
       <AutoRefreshActivated enabled={anyActivated} everyMs={10_000} />
 
       <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 sm:text-[11px]">
-        Logged in as <span className="font-bold text-slate-900 normal-case tracking-normal">{user.email}</span>
+        Logged in as{" "}
+        <span className="font-bold normal-case tracking-normal text-slate-900">{user.email}</span>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:gap-4 2xl:gap-5">
+      <div className="grid flex-1 auto-rows-fr grid-cols-1 gap-3 sm:grid-cols-2 lg:gap-4 xl:min-h-[calc(100svh-230px)] xl:grid-cols-3 2xl:gap-5">
         {refreshed.map((it) => {
           const paidSpent = paidMap.get(it.id) ?? 0;
           const progress = activationProgress(it.prizeValueZAR, paidSpent);
+
           return (
             <ItemCard
               key={it.id}
@@ -83,18 +89,17 @@ export default async function HomePage() {
                 title: it.title,
                 prizeValueZAR: it.prizeValueZAR,
                 state: it.state,
-                imageUrl: it.imageUrl ?? null,
-                closesAt: it.closesAt ? it.closesAt.toISOString() : null,
+                imageUrl: it.imageUrl,
+                closesAt: it.closesAt?.toISOString() ?? null,
                 playCostCredits: playCostForPrize(it.prizeValueZAR),
-                gameKey: it.gameKey ?? null,
-                activationPct: typeof progress === "number" ? progress : progress.pct,
-                activationLabel:
-                  (typeof progress === "number" ? progress : progress.pct) >= 100 ? "Activated" : undefined,
+                gameKey: it.gameKey,
+                activationPct: progress,
+                activationLabel: progress >= 100 ? "Activated" : undefined,
               }}
             />
           );
         })}
       </div>
-    </main>
+    </section>
   );
 }
