@@ -1,9 +1,7 @@
-Replace these files in your repo with the versions from this ZIP:
-
+Replace these files in your repo with the versions in this ZIP:
 - src/app/layout.tsx
 - src/app/page.tsx
 - src/components/ItemCard.tsx
 
-This patch does two things:
-1. Forces the homepage to use fresh live item states so closed/won items show correctly with the banner instead of still looking open.
-2. Rebalances the homepage grid/card sizing so it fills desktop height better without oversizing the cards on smaller laptop screens.
+This patch fixes the current Vercel build error, restores live item-state syncing on the homepage,
+and makes the desktop/laptop card grid fill the available height more naturally.

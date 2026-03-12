@@ -1,4 +1,5 @@
 import { unstable_noStore as noStore } from "next/cache";
+
 import { prisma } from "@/lib/db";
 import { getOrCreateDemoUser } from "@/lib/auth";
 import { AutoRefreshActivated } from "@/components/AutoRefreshActivated";
@@ -16,7 +17,12 @@ export const revalidate = 0;
 
 type HomeItem = Awaited<ReturnType<typeof prisma.item.findMany>>[number];
 
-async function syncItemState(item: HomeItem, now: Date, paidSpent: number, winnerCount: number) {
+async function syncItemState(
+  item: HomeItem,
+  now: Date,
+  paidSpent: number,
+  winnerCount: number,
+) {
   let state = item.state;
   let closesAt = item.closesAt;
 
@@ -30,19 +36,23 @@ async function syncItemState(item: HomeItem, now: Date, paidSpent: number, winne
   }
 
   if (state === "ACTIVATED" && closesAt && now > closesAt) {
-    await prisma.item.update({ where: { id: item.id }, data: { state: "CLOSED" } });
+    await prisma.item.update({
+      where: { id: item.id },
+      data: { state: "CLOSED" },
+    });
     state = "CLOSED";
   }
 
   if (state === "CLOSED") {
     if (winnerCount === 0) {
       await settleItemWinners(item.id);
-      await prisma.item.update({ where: { id: item.id }, data: { state: "PUBLISHED" } });
-      state = "PUBLISHED";
-    } else {
-      await prisma.item.update({ where: { id: item.id }, data: { state: "PUBLISHED" } });
-      state = "PUBLISHED";
     }
+
+    await prisma.item.update({
+      where: { id: item.id },
+      data: { state: "PUBLISHED" },
+    });
+    state = "PUBLISHED";
   }
 
   return {
@@ -76,13 +86,15 @@ export default async function HomePage() {
   const winnersMap = new Map(winnerCounts.map((row) => [row.itemId, row._count._all]));
 
   const synced = await Promise.all(
-    items.map((item) => syncItemState(item, now, paidMap.get(item.id) ?? 0, winnersMap.get(item.id) ?? 0)),
+    items.map((item) =>
+      syncItemState(item, now, paidMap.get(item.id) ?? 0, winnersMap.get(item.id) ?? 0),
+    ),
   );
 
   const anyActivated = synced.some((item) => item.state === "ACTIVATED");
 
   return (
-    <section className="flex min-h-0 w-full flex-1 flex-col gap-3 lg:gap-4">
+    <main className="flex h-full min-h-0 flex-1 flex-col gap-2.5 xl:gap-3">
       <WelcomeModal />
       <AutoRefreshActivated enabled={anyActivated} everyMs={10_000} />
 
@@ -91,10 +103,11 @@ export default async function HomePage() {
         <span className="font-bold normal-case tracking-normal text-slate-900">{user.email}</span>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:flex-1 lg:min-h-0 lg:grid-cols-3 lg:grid-rows-2 lg:content-stretch xl:gap-4 2xl:gap-5">
+      <div className="grid flex-1 min-h-0 auto-rows-fr grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:gap-4">
         {synced.map((item) => {
           const paidSpent = paidMap.get(item.id) ?? 0;
           const progress = activationProgress(item.prizeValueZAR, paidSpent);
+          const pct = typeof progress === "number" ? progress : progress.pct;
 
           return (
             <ItemCard
@@ -104,17 +117,17 @@ export default async function HomePage() {
                 title: item.title,
                 prizeValueZAR: item.prizeValueZAR,
                 state: item.state,
-                imageUrl: item.imageUrl,
-                closesAt: item.closesAt?.toISOString() ?? null,
+                imageUrl: item.imageUrl ?? null,
+                closesAt: item.closesAt ? item.closesAt.toISOString() : null,
                 playCostCredits: playCostForPrize(item.prizeValueZAR),
-                gameKey: item.gameKey,
-                activationPct: progress.pct,
-                activationLabel: progress.pct >= 100 ? "Activated" : undefined,
+                gameKey: item.gameKey ?? null,
+                activationPct: pct,
+                activationLabel: pct >= 100 ? "Activated" : undefined,
               }}
             />
           );
         })}
       </div>
-    </section>
+    </main>
   );
 }
