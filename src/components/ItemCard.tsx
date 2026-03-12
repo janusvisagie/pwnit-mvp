@@ -41,7 +41,7 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
   const pct = Math.max(0, Math.min(100, Number(item.activationPct ?? 0)));
   const isClosed = item.state === "CLOSED" || item.state === "PUBLISHED";
   const isActivated = item.state === "ACTIVATED";
-  const href = item.state === "PUBLISHED" ? `/item/${item.id}/leaderboard` : `/item/${item.id}`;
+  const href = isClosed ? `/item/${item.id}/leaderboard` : `/item/${item.id}`;
   const gLabel = gameLabel(item.gameKey);
   const product = getProductContent(item.title, item.imageUrl);
   const fallbackImage = getFallbackProductImage(item.title, item.imageUrl);
@@ -60,15 +60,15 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
   return (
     <Link
       href={href}
-      className="group relative flex h-full min-h-[228px] flex-col overflow-hidden rounded-[26px] border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md xl:min-h-[250px]"
+      className="group relative flex h-full min-h-[218px] flex-col overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md lg:min-h-0"
     >
-      <div className="relative flex min-h-[132px] items-center justify-center overflow-hidden bg-gradient-to-b from-slate-50 to-white p-4 sm:min-h-[142px] md:min-h-[154px] xl:min-h-[170px]">
+      <div className="relative flex min-h-[116px] items-center justify-center overflow-hidden bg-gradient-to-b from-slate-50 to-white p-4 sm:min-h-[126px] lg:min-h-[clamp(96px,11vh,138px)] xl:min-h-[clamp(108px,12.5vh,164px)]">
         <ProductImage
           primarySrc={primaryImage}
           fallbackSrc={fallbackImage}
           alt={item.title}
           className="flex items-center justify-center"
-          imgClassName="max-h-[94px] max-w-full object-contain transition duration-300 group-hover:scale-[1.03] sm:max-h-[104px] md:max-h-[116px] xl:max-h-[130px]"
+          imgClassName="max-h-[88px] max-w-full object-contain transition duration-300 group-hover:scale-[1.03] sm:max-h-[96px] lg:max-h-[102px] xl:max-h-[118px] 2xl:max-h-[128px]"
         />
 
         <div className="absolute left-3 top-3 rounded-full bg-white/95 px-2.5 py-1 text-[10px] font-extrabold text-slate-900 shadow ring-1 ring-slate-200 sm:text-[11px]">
@@ -98,9 +98,9 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
         ) : null}
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col justify-between gap-3 p-4 xl:p-[18px]">
+      <div className="flex min-h-0 flex-1 flex-col justify-between gap-2.5 p-4 lg:p-[15px] xl:p-[18px]">
         <div className="min-w-0">
-          <h3 className="line-clamp-2 text-[16px] font-extrabold leading-tight text-slate-900 xl:text-[18px]">
+          <h3 className="line-clamp-2 text-[15px] font-extrabold leading-tight text-slate-900 xl:text-[17px] 2xl:text-[18px]">
             {item.title}
           </h3>
 
