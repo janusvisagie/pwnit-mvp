@@ -16,10 +16,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
   return (
     <html lang="en">
-      <body className="min-h-screen overflow-x-hidden bg-slate-50 text-slate-900 antialiased">
-        <div className="flex min-h-screen flex-col">
+      <body className="min-h-dvh overflow-x-hidden bg-slate-50 text-slate-900 antialiased">
+        <div className="grid min-h-dvh grid-rows-[auto_1fr_auto]">
           <header className="border-b border-slate-200 bg-white/95 backdrop-blur">
-            <div className="mx-auto w-full max-w-[1760px] px-3 py-2 sm:px-4 sm:py-2.5 lg:px-6 xl:px-8">
+            <div className="mx-auto w-full max-w-[1920px] px-3 py-2 sm:px-4 sm:py-2.5 lg:px-6 xl:px-8">
               <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
                 <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:gap-3">
                   <div className="text-[13px] font-semibold leading-tight text-slate-900 sm:text-sm">
@@ -39,12 +39,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </div>
           </header>
 
-          <main className="mx-auto flex w-full max-w-[1760px] flex-1 min-h-0 px-3 py-2 sm:px-4 sm:py-2.5 lg:px-6 xl:px-8">
+          <main className="mx-auto flex min-h-0 w-full max-w-[1920px] px-3 py-2 sm:px-4 sm:py-2.5 lg:px-6 xl:px-8">
             {children}
           </main>
 
           <footer className="border-t border-slate-200 bg-white">
-            <div className="mx-auto w-full max-w-[1760px] px-3 py-1.5 text-[11px] text-slate-600 sm:px-4 sm:text-xs lg:px-6 xl:px-8">
+            <div className="mx-auto w-full max-w-[1920px] px-3 py-1.5 text-[11px] text-slate-600 sm:px-4 sm:text-xs lg:px-6 xl:px-8">
               <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                 <div className="font-semibold text-slate-900">Contact</div>
                 <div className="flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-4 sm:gap-y-1">

@@ -103,7 +103,7 @@ export default async function HomePage() {
         <span className="font-bold normal-case tracking-normal text-slate-900">{user.email}</span>
       </div>
 
-      <div className="grid flex-1 min-h-0 auto-rows-fr grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:gap-4">
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 [grid-auto-rows:minmax(0,1fr)] sm:grid-cols-2 lg:grid-cols-3 lg:grid-rows-2 xl:gap-4">
         {synced.map((item) => {
           const paidSpent = paidMap.get(item.id) ?? 0;
           const progress = activationProgress(item.prizeValueZAR, paidSpent);
