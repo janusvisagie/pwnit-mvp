@@ -1,4 +1,3 @@
-// src/components/DemoUserSwitcher.tsx
 "use client";
 
 import { useState } from "react";
@@ -29,7 +28,7 @@ export function DemoUserSwitcher({ current }: { current: string }) {
       <select
         value={val}
         onChange={(e) => setDemo(e.target.value)}
-        className="min-w-[90px] rounded-xl border border-slate-300 bg-white px-2.5 py-2 text-sm font-semibold text-slate-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+        className="min-w-[102px] rounded-full border border-slate-200/80 bg-white px-3.5 py-2 text-sm font-bold text-slate-900 shadow-sm ring-1 ring-white/70 focus:outline-none focus:ring-2 focus:ring-cyan-200"
         aria-label="Demo user"
       >
         <option value="demo1">demo1</option>

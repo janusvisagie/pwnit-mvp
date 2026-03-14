@@ -1,14 +1,67 @@
 @import "tailwindcss";
 
+:root {
+  color-scheme: light;
+}
+
 html,
 body {
-  height: 100%;
+  min-height: 100%;
 }
 
 body {
   margin: 0;
+  background:
+    radial-gradient(circle at top left, rgba(34, 211, 238, 0.16), transparent 28%),
+    radial-gradient(circle at top right, rgba(168, 85, 247, 0.12), transparent 24%),
+    linear-gradient(180deg, #f8fbff 0%, #f8fafc 45%, #f1f5f9 100%);
 }
 
 * {
   box-sizing: border-box;
+}
+
+@keyframes pwnit-float {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes pwnit-pulse-soft {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.04);
+    opacity: 0.92;
+  }
+}
+
+@keyframes pwnit-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.animate-pwnit-float {
+  animation: pwnit-float 4s ease-in-out infinite;
+}
+
+.animate-pwnit-pulse-soft {
+  animation: pwnit-pulse-soft 2.4s ease-in-out infinite;
+}
+
+.pwnit-shimmer {
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.2) 10%, rgba(255, 255, 255, 0.65) 50%, rgba(255, 255, 255, 0.2) 90%);
+  background-size: 200% 100%;
+  animation: pwnit-shimmer 2.6s linear infinite;
 }

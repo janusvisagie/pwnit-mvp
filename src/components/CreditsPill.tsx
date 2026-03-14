@@ -101,12 +101,16 @@ export function CreditsPill(props?: { free?: number; paid?: number }) {
   }, [discount, newPrice]);
 
   return (
-    <span className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-2 text-[11px] font-semibold text-slate-900 shadow-sm sm:gap-2 sm:text-xs">
-      <span className="hidden sm:inline">Credits:</span>
-      <span className="rounded-full bg-slate-900 px-2 py-0.5 text-white">{f == null && p == null ? "—" : total}</span>
+    <span className="inline-flex max-w-full items-center gap-2 rounded-full border border-slate-200/80 bg-white px-3 py-2 text-[11px] font-semibold text-slate-900 shadow-sm ring-1 ring-white/70 sm:text-xs">
+      <span className="hidden sm:inline text-slate-500">Credits</span>
+      <span className="rounded-full bg-[linear-gradient(135deg,#020617_0%,#1e3a8a_100%)] px-2.5 py-0.5 font-extrabold text-white shadow-sm">
+        {f == null && p == null ? "—" : total}
+      </span>
       <span className="hidden md:inline text-slate-600">{details}</span>
       {discountText ? (
-        <span className="hidden lg:inline rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-slate-700">{discountText}</span>
+        <span className="hidden lg:inline rounded-full border border-cyan-100 bg-cyan-50 px-2.5 py-0.5 text-cyan-800">
+          {discountText}
+        </span>
       ) : null}
     </span>
   );

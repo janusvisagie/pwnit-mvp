@@ -43,14 +43,14 @@ export function CountdownChip({ state, closesAt }: Props) {
     }
 
     return (
-      <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-extrabold text-slate-900 ring-1 ring-slate-200">
+      <span className="rounded-full border border-slate-200 bg-white/95 px-3 py-1.5 text-[11px] font-extrabold text-slate-900 shadow-sm ring-1 ring-white">
         Closed
       </span>
     );
   }
 
   return (
-    <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-extrabold tabular-nums text-slate-900 ring-1 ring-slate-200">
+    <span className="rounded-full bg-slate-950 px-3 py-1.5 text-[11px] font-extrabold tabular-nums text-white shadow-lg shadow-slate-950/20 ring-1 ring-white/10">
       {formatMs(remaining)}
     </span>
   );
