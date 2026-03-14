@@ -17,52 +17,45 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body className="min-h-dvh overflow-x-hidden text-slate-900 antialiased">
-        <div className="grid min-h-dvh grid-rows-[auto_1fr_auto]">
-          <header className="sticky top-0 z-40 border-b border-white/70 bg-white/85 backdrop-blur-xl">
-            <div className="mx-auto w-full max-w-[1920px] px-3 py-2.5 sm:px-4 sm:py-3 lg:px-6 xl:px-8">
-              <div className="rounded-[26px] border border-slate-200/80 bg-white/80 px-3 py-3 shadow-[0_12px_40px_rgba(15,23,42,0.06)] ring-1 ring-white/70 sm:px-4 lg:px-5">
-                <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-                  <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-3.5">
-                    <div className="rounded-[20px] bg-[linear-gradient(135deg,#020617_0%,#0f172a_45%,#1d4ed8_100%)] px-4 py-3 text-white shadow-lg shadow-slate-900/10">
-                      <div className="text-[10px] font-black uppercase tracking-[0.28em] text-white/70 sm:text-[11px]">
-                        Live marketplace
-                      </div>
-                      <div className="mt-1 text-base font-black tracking-tight sm:text-lg">
-                        Pick. Play. <span className="text-cyan-300">PwnIt.</span>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-2.5">
-                      <DemoUserSwitcherShell />
-                      <CreditsPill />
-                    </div>
+        <div className="flex min-h-dvh flex-col">
+          <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur">
+            <div className="mx-auto w-full max-w-7xl px-4 py-3 lg:px-8">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-6">
+                  <div className="text-sm font-semibold leading-tight text-slate-900 sm:text-base">
+                    Pick. Play.{" "}
+                    <span className="bg-gradient-to-r from-cyan-500 to-blue-500 bg-clip-text text-2xl font-black text-transparent">
+                      PwnIt
+                    </span>
+                    .
                   </div>
 
-                  <div className="-mx-1 overflow-x-auto px-1 xl:mx-0 xl:px-0">
-                    <Nav />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <DemoUserSwitcherShell />
+                    <CreditsPill />
                   </div>
+                </div>
+
+                <div className="overflow-x-auto scrollbar-hide">
+                  <Nav />
                 </div>
               </div>
             </div>
           </header>
 
-          <main className="mx-auto flex min-h-0 w-full max-w-[1920px] px-3 py-3 sm:px-4 sm:py-4 lg:px-6 xl:px-8">
-            {children}
-          </main>
+          <main className="mx-auto flex w-full max-w-7xl flex-1 px-4 py-6 lg:px-8">{children}</main>
 
-          <footer className="border-t border-white/70 bg-white/85 backdrop-blur">
-            <div className="mx-auto w-full max-w-[1920px] px-3 py-2 text-[11px] text-slate-600 sm:px-4 sm:text-xs lg:px-6 xl:px-8">
-              <div className="rounded-[22px] border border-slate-200/80 bg-white/85 px-3 py-2.5 shadow-[0_8px_24px_rgba(15,23,42,0.05)] sm:px-4">
-                <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="font-semibold text-slate-900">Contact</div>
-                  <div className="flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-4 sm:gap-y-1">
-                    <span>
-                      WhatsApp: <span className="font-semibold text-slate-900">+27 00 000 0000</span> (demo)
-                    </span>
-                    <span>
-                      Email: <span className="font-semibold text-slate-900">support@pwnit.local</span> (demo)
-                    </span>
-                  </div>
+          <footer className="border-t border-slate-200 bg-white">
+            <div className="mx-auto w-full max-w-7xl px-4 py-4 lg:px-8">
+              <div className="flex flex-col gap-2 text-xs text-slate-600 sm:flex-row sm:items-center sm:justify-between">
+                <div className="font-semibold text-slate-900">Contact</div>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-6">
+                  <span>
+                    WhatsApp: <span className="font-semibold text-slate-900">+27 00 000 0000</span> (demo)
+                  </span>
+                  <span>
+                    Email: <span className="font-semibold text-slate-900">support@pwnit.local</span> (demo)
+                  </span>
                 </div>
               </div>
             </div>

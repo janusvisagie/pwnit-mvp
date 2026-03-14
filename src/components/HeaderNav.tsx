@@ -6,15 +6,17 @@ import { usePathname } from "next/navigation";
 export function HeaderNav() {
   const pathname = usePathname() || "/";
 
-  const is = (p: string) => pathname === p;
-
   const Item = ({ href, label }: { href: string; label: string }) => {
-    if (is(href)) return null;
+    const active = pathname === href;
 
     return (
       <Link
-        className="inline-flex min-h-[42px] shrink-0 items-center rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:text-slate-950 hover:shadow-md"
+        className={[
+          "whitespace-nowrap text-sm font-semibold transition",
+          active ? "text-blue-600" : "text-slate-900 hover:text-blue-600",
+        ].join(" ")}
         href={href}
+        aria-current={active ? "page" : undefined}
       >
         {label}
       </Link>
@@ -22,7 +24,7 @@ export function HeaderNav() {
   };
 
   return (
-    <nav className="flex w-max items-center gap-2 whitespace-nowrap px-1 text-[15px] md:w-auto md:px-0">
+    <nav className="flex items-center gap-6 overflow-x-auto whitespace-nowrap text-sm font-semibold scrollbar-hide">
       <Item href="/" label="Home" />
       <Item href="/buy-credits" label="Buy credits" />
       <Item href="/how-activation-works" label="How it works" />

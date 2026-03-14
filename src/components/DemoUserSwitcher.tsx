@@ -23,19 +23,16 @@ export function DemoUserSwitcher({ current }: { current: string }) {
   }
 
   return (
-    <div className="flex items-center gap-2">
-      <div className="hidden text-[12px] font-semibold text-slate-600 sm:block">Demo user</div>
-      <select
-        value={val}
-        onChange={(e) => setDemo(e.target.value)}
-        className="min-w-[102px] rounded-full border border-slate-200/80 bg-white px-3.5 py-2 text-sm font-bold text-slate-900 shadow-sm ring-1 ring-white/70 focus:outline-none focus:ring-2 focus:ring-cyan-200"
-        aria-label="Demo user"
-      >
-        <option value="demo1">demo1</option>
-        <option value="demo2">demo2</option>
-        <option value="demo3">demo3</option>
-      </select>
-    </div>
+    <select
+      value={val}
+      onChange={(e) => setDemo(e.target.value)}
+      className="rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50"
+      aria-label="Demo user"
+    >
+      <option value="demo1">demo1@maketiyours.local</option>
+      <option value="demo2">demo2@maketiyours.local</option>
+      <option value="demo3">demo3@maketiyours.local</option>
+    </select>
   );
 }
 

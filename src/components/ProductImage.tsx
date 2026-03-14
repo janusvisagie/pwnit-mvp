@@ -11,13 +11,24 @@ type Props = {
   unavailableLabel?: string;
 };
 
-export function ProductImage({ primarySrc, fallbackSrc, alt, className = "", imgClassName = "", unavailableLabel = "Image unavailable" }: Props) {
+export function ProductImage({
+  primarySrc,
+  fallbackSrc,
+  alt,
+  className = "",
+  imgClassName = "",
+  unavailableLabel = "Image unavailable",
+}: Props) {
   const initial = useMemo(() => primarySrc || fallbackSrc || null, [primarySrc, fallbackSrc]);
   const [src, setSrc] = useState<string | null>(initial);
   const [triedFallback, setTriedFallback] = useState(false);
 
   if (!src) {
-    return <div className={className}><div className="text-sm font-semibold text-slate-400">{unavailableLabel}</div></div>;
+    return (
+      <div className={className}>
+        <div className="text-sm font-semibold text-slate-400">{unavailableLabel}</div>
+      </div>
+    );
   }
 
   return (
@@ -27,6 +38,9 @@ export function ProductImage({ primarySrc, fallbackSrc, alt, className = "", img
         alt={alt}
         className={imgClassName}
         referrerPolicy="no-referrer"
+        loading="lazy"
+        decoding="async"
+        draggable={false}
         onError={() => {
           if (!triedFallback && fallbackSrc && src !== fallbackSrc) {
             setTriedFallback(true);

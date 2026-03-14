@@ -1,27 +1,18 @@
-Apply these files over the matching paths in your existing pwnit-mvp repository.
+Apply these files over the matching paths in your local pwnit-mvp repo, then commit and push.
 
-Files changed:
+Changed files in this patch:
 - src/app/globals.css
 - src/app/layout.tsx
 - src/app/page.tsx
-- src/components/WelcomeModal.tsx
-- src/components/ItemCard.tsx
-- src/components/CountdownChip.tsx
-- src/components/HeaderNav.tsx
 - src/components/CreditsPill.tsx
 - src/components/DemoUserSwitcher.tsx
+- src/components/HeaderNav.tsx
+- src/components/ItemCard.tsx
+- src/components/ProductImage.tsx
 
-What this patch changes:
-- Visual shell and header polish
-- Stronger homepage hero section
-- More polished prize cards
-- Upgraded welcome modal styling
-- Better countdown and pill styling
-
-What this patch deliberately does NOT change:
-- Prisma/data logic
-- activation/winner settlement logic
-- routing targets
-- credits calculations
-- buy/play flows
-- API contracts
+What changed:
+- Simplified the overall shell and homepage to match the cleaner Genspark feel.
+- Reduced the “busy” hero treatment and reverted to a straightforward logged-in line + live alert + card grid.
+- Updated prize cards to a simpler product-first design.
+- Changed product image priority so the real item imageUrl is used first whenever available.
+- Kept all item state, countdown, winner settlement, navigation, credits refresh, and demo-user logic intact.
