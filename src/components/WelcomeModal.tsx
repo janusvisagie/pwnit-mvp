@@ -39,13 +39,13 @@ export function WelcomeModal() {
         <div className="w-full max-w-[760px] overflow-hidden rounded-[26px] border border-white/60 bg-white shadow-[0_24px_80px_rgba(2,6,23,0.28)] ring-1 ring-slate-200/70">
           <div className="bg-[radial-gradient(circle_at_top_right,_rgba(103,232,249,0.20),_transparent_36%),linear-gradient(135deg,#020617,#0f172a_62%,#1f2937)] px-4 py-4 text-white sm:px-6 sm:py-5">
             <p className="text-[10px] font-black uppercase tracking-[0.24em] text-white/75 sm:text-[11px]">
-              Welcome to PwnIt
+              Welcome to:
             </p>
             <h2 className="mt-1.5 text-[26px] font-black leading-none tracking-tight sm:text-[34px]">
               Pick. Play. <span className="text-cyan-400">PwnIt.</span>
             </h2>
             <p className="mt-2 max-w-[34rem] text-[13px] leading-5 text-white/82 sm:text-sm">
-              Choose a prize, play one quick skill game, and try to win before the timer ends.
+              Choose a prize, play a quick skill game, and win it.
             </p>
           </div>
 
@@ -69,7 +69,7 @@ export function WelcomeModal() {
             </div>
 
             <div className="rounded-[18px] border border-slate-200 bg-slate-50 px-3 py-2.5 text-center text-[12px] font-semibold leading-[1.05rem] text-slate-700 sm:px-4 sm:py-3 sm:text-sm">
-              Didn&apos;t win? Buy it at a discount.
+              Or buy it if you don&apos;t.
             </div>
 
             <button
