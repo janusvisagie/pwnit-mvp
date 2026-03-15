@@ -8,8 +8,7 @@ export type ProductContent = {
 
 const catalog: Record<string, ProductContent> = {
   "Nintendo Switch OLED": {
-    imageUrl:
-      "https://assets.nintendo.com/image/upload/f_auto/q_auto/dpr_1.5/ncom/en_US/switch/videos/heg001-07060600/posters/oled-model",
+    imageUrl: "/images/nintendo-switch.webp",
     officialUrl: "https://www.nintendo.com/us/gaming-systems/switch/oled-model/",
     kicker: "Official product highlights",
     description:
@@ -22,8 +21,7 @@ const catalog: Record<string, ProductContent> = {
     ],
   },
   "Sony WH-1000XM5 Headphones": {
-    imageUrl:
-      "https://www.sony.com/image/6145c1d32e6ac8e63a46c912dc33c5bb?bgc=FFFFFF&bgcolor=FFFFFF&fmt=pjpeg&wid=1200",
+    imageUrl: "/images/sony-headphones.webp",
     officialUrl: "https://www.sony.com/za/electronics/headband-headphones/wh-1000xm5",
     kicker: "Official product highlights",
     description:
@@ -36,8 +34,7 @@ const catalog: Record<string, ProductContent> = {
     ],
   },
   "GoPro HERO13 Black": {
-    imageUrl:
-      "https://static.gopro.com/assets/blta2b8522e5372af40/bltdcd3295493f2b049/66b0eba949df090a205ce45b/01-h13-hero-intro-1920.jpg?auto=webp&disable=upscale&quality=80&width=1920",
+    imageUrl: "/images/gopro-hero13.webp",
     officialUrl: "https://gopro.com/en/us/shop/cameras/learn/hero13black/CHDHX-131-master.html",
     kicker: "Official product highlights",
     description:
@@ -50,7 +47,7 @@ const catalog: Record<string, ProductContent> = {
     ],
   },
   "Takealot Voucher": {
-    imageUrl: "/products/takealot-voucher.svg",
+    imageUrl: "/images/takealot-voucher.webp",
     kicker: "Voucher details",
     description:
       "A digital shopping voucher aimed at broad, everyday online spend. It is a flexible prize for users who want practical value instead of a single fixed product.",
@@ -62,7 +59,7 @@ const catalog: Record<string, ProductContent> = {
     ],
   },
   "Checkers Voucher": {
-    imageUrl: "/products/checkers-voucher.svg",
+    imageUrl: "/images/checkers-voucher.webp",
     kicker: "Voucher details",
     description:
       "A practical grocery-focused prize with obvious household value. It works well as a lower-friction item because users immediately understand what the win can be used for.",
@@ -74,7 +71,7 @@ const catalog: Record<string, ProductContent> = {
     ],
   },
   "Fuel Voucher": {
-    imageUrl: "/products/petrol-voucher.svg",
+    imageUrl: "/images/fuel-voucher.webp",
     kicker: "Voucher details",
     description:
       "A fuel-focused utility prize that feels instantly valuable. It keeps the marketplace grounded with a practical option next to the bigger aspirational prizes.",
@@ -88,12 +85,12 @@ const catalog: Record<string, ProductContent> = {
 };
 
 const reliableFallbacks: Record<string, string> = {
-  "Nintendo Switch OLED": "/products/nintendo-switch-oled.svg",
-  "Sony WH-1000XM5 Headphones": "/products/sony-xm5-headphones.svg",
-  "GoPro HERO13 Black": "/products/gopro-hero.svg",
-  "Takealot Voucher": "/products/takealot-voucher.svg",
-  "Checkers Voucher": "/products/checkers-voucher.svg",
-  "Fuel Voucher": "/products/petrol-voucher.svg",
+  "Nintendo Switch OLED": "/images/nintendo-switch.webp",
+  "Sony WH-1000XM5 Headphones": "/images/sony-headphones.webp",
+  "GoPro HERO13 Black": "/images/gopro-hero13.webp",
+  "Takealot Voucher": "/images/takealot-voucher.webp",
+  "Checkers Voucher": "/images/checkers-voucher.webp",
+  "Fuel Voucher": "/images/fuel-voucher.webp",
 };
 
 export function getProductContent(title: string, fallbackImageUrl?: string | null): ProductContent | null {
