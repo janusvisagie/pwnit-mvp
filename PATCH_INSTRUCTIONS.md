@@ -1,18 +1,16 @@
-Apply this patch by copying these files into the matching paths in your local pwnit-mvp repo, then commit and push.
+Apply this patch by copying the included file into your repo root and overwriting the existing file:
 
-Files included:
-- src/components/ItemCard.tsx
-- src/app/page.tsx
-- src/app/layout.tsx
+- src/app/item/[id]/page.tsx
 
-What this patch changes:
-- Makes the local Genspark product images primary for the six catalog items.
-- Compresses the homepage card grid on large screens so six items are more likely to fit within one laptop viewport.
-- Slightly reduces large-screen header, main, and footer vertical spacing.
+What it changes:
+- Keeps all existing item-page logic intact
+- Compresses the desktop/laptop item page layout so it is more likely to fit within one screen
+- Leaves mobile behavior responsive
 
-What this patch does not change:
-- Credits logic
-- Countdown logic
-- Winner / closed-item logic
-- Welcome modal session behavior
-- Routing or API behavior
+What it does not change:
+- game logic
+- credits logic
+- winner logic
+- countdown logic
+- product catalog logic
+- leaderboard page
