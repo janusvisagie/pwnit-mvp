@@ -1,16 +1,10 @@
-Apply this patch by copying the included file into your repo root and overwriting the existing file:
+Apply this patch by copying the included file into the matching path in your repo, then commit and push.
 
+Changed file:
 - src/app/item/[id]/page.tsx
 
-What it changes:
-- Keeps all existing item-page logic intact
-- Compresses the desktop/laptop item page layout so it is more likely to fit within one screen
-- Leaves mobile behavior responsive
-
-What it does not change:
-- game logic
-- credits logic
-- winner logic
-- countdown logic
-- product catalog logic
-- leaderboard page
+What this patch does:
+- removes the height cap that was clipping some item-page content
+- keeps the page compact enough for typical laptop screens
+- reduces desktop image height and compresses spacing
+- keeps all existing item-page logic unchanged

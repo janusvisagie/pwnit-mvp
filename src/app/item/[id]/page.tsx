@@ -44,15 +44,15 @@ export default async function ItemPage({ params }: { params: { id: string } }) {
     const product = getProductContent(item.title, item.imageUrl);
     const fallbackImage = getFallbackProductImage(item.title, item.imageUrl);
     const primaryImage = product?.imageUrl ?? item.imageUrl ?? fallbackImage;
-    const highlights = (product?.highlights ?? []).slice(0, 3);
+    const highlights = product?.highlights ?? [];
     const detailText = product?.description ?? item.shortDesc ?? "Prize details coming soon.";
     const officialUrl = product?.officialUrl ?? item.productUrl ?? null;
 
     return (
-      <main className="mx-auto w-full max-w-6xl space-y-2 px-3 pb-4 sm:px-4 lg:pb-3">
+      <main className="mx-auto w-full max-w-6xl space-y-2 px-3 pb-4 pt-2 sm:px-4">
         <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
           <div className="min-w-0">
-            <h1 className="text-2xl font-extrabold leading-tight text-slate-900 md:text-[1.9rem]">
+            <h1 className="text-2xl font-extrabold leading-tight text-slate-900 md:text-[1.85rem]">
               {item.title}
             </h1>
             <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] font-semibold text-slate-700 sm:text-xs">
@@ -89,21 +89,21 @@ export default async function ItemPage({ params }: { params: { id: string } }) {
           </div>
         </div>
 
-        <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm lg:max-h-[calc(100vh-11.5rem)]">
-          <div className="grid gap-0 lg:grid-cols-[minmax(0,1.04fr)_minmax(360px,0.96fr)] lg:items-stretch">
-            <div className="flex min-h-[220px] items-center justify-center bg-gradient-to-br from-slate-100 to-white p-4 md:min-h-[280px] md:p-5 lg:min-h-[440px] lg:p-6">
+        <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+          <div className="grid gap-0 lg:grid-cols-[minmax(0,0.92fr)_minmax(360px,1.08fr)] lg:items-stretch">
+            <div className="flex min-h-[210px] items-center justify-center bg-gradient-to-br from-slate-100 to-white p-4 md:min-h-[250px] md:p-5 lg:min-h-[320px] lg:p-5">
               <ProductImage
                 primarySrc={primaryImage}
                 fallbackSrc={fallbackImage}
                 alt={item.title}
-                className="flex h-full min-h-[220px] w-full items-center justify-center md:min-h-[280px] lg:min-h-0"
-                imgClassName="max-h-[220px] w-auto object-contain md:max-h-[280px] lg:max-h-[340px]"
+                className="flex h-full min-h-[210px] w-full items-center justify-center md:min-h-[250px] lg:min-h-0"
+                imgClassName="max-h-[210px] w-auto object-contain md:max-h-[250px] lg:max-h-[285px]"
                 unavailableLabel="Image coming soon"
               />
             </div>
 
             <div className="grid gap-2 p-3 md:gap-3 md:p-4 lg:grid-rows-[auto_auto_1fr]">
-              <section className="rounded-2xl bg-slate-50 p-3 ring-1 ring-slate-200 md:p-4">
+              <section className="rounded-2xl bg-slate-50 p-3 ring-1 ring-slate-200">
                 <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wide text-slate-500">
                   <span>Activation progress</span>
                   <span>{item.state === "ACTIVATED" ? "Activated" : activationStageLabel(pct)}</span>
@@ -111,7 +111,7 @@ export default async function ItemPage({ params }: { params: { id: string } }) {
                 <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-200">
                   <div className="h-full rounded-full bg-slate-900 transition-all duration-500" style={{ width: `${pct}%` }} />
                 </div>
-                <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-sm">
+                <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-[13px]">
                   <span className="font-semibold text-slate-900">
                     {item.state === "ACTIVATED" ? "This prize is live." : "Community momentum is building."}
                   </span>
@@ -120,7 +120,7 @@ export default async function ItemPage({ params }: { params: { id: string } }) {
                   </span>
                 </div>
                 {item.state === "ACTIVATED" && closesAtIso ? (
-                  <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-800 ring-1 ring-slate-200">
+                  <div className="mt-2 inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-800 ring-1 ring-slate-200">
                     <span>Ends in</span>
                     <CountdownChip state={item.state} closesAt={closesAtIso} />
                   </div>
@@ -128,11 +128,11 @@ export default async function ItemPage({ params }: { params: { id: string } }) {
               </section>
 
               {meWinner ? (
-                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-900">
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-semibold text-emerald-900">
                   You won this prize. No purchase needed.
                 </div>
               ) : (
-                <section className="rounded-2xl border border-slate-200 bg-white p-3 md:p-4">
+                <section className="rounded-2xl border border-slate-200 bg-white p-3">
                   <div className="text-sm font-extrabold text-slate-900">
                     Didn’t win? Buy it by paying the difference.
                   </div>
@@ -145,35 +145,40 @@ export default async function ItemPage({ params }: { params: { id: string } }) {
                 </section>
               )}
 
-              <section className="rounded-2xl bg-slate-50 p-3 ring-1 ring-slate-200 md:p-4">
+              <section className="rounded-2xl bg-slate-50 p-3 ring-1 ring-slate-200">
                 <div className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
                   {product?.kicker ?? "Product details"}
                 </div>
-                <p className="mt-2 text-sm leading-5 text-slate-700 md:leading-6">{detailText}</p>
 
-                {highlights.length ? (
-                  <ul className="mt-3 grid gap-2 text-sm text-slate-700">
-                    {highlights.map((line) => (
-                      <li key={line} className="flex gap-2">
-                        <span className="mt-[6px] h-1.5 w-1.5 shrink-0 rounded-full bg-slate-900" />
-                        <span>{line}</span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : null}
-
-                {officialUrl ? (
-                  <div className="mt-4">
-                    <a
-                      href={officialUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center rounded-xl bg-white px-4 py-2 text-sm font-bold text-slate-900 ring-1 ring-slate-200 transition hover:bg-slate-100"
-                    >
-                      View official product page
-                    </a>
+                <div className="mt-2 grid gap-3 lg:grid-cols-[minmax(0,1.08fr)_minmax(220px,0.92fr)] lg:items-start">
+                  <div>
+                    <p className="text-sm leading-5 text-slate-700">{detailText}</p>
                   </div>
-                ) : null}
+
+                  <div className="space-y-3">
+                    {highlights.length ? (
+                      <ul className="grid gap-1.5 text-[13px] leading-5 text-slate-700">
+                        {highlights.map((line) => (
+                          <li key={line} className="flex gap-2">
+                            <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-slate-900" />
+                            <span>{line}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+
+                    {officialUrl ? (
+                      <a
+                        href={officialUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center rounded-xl bg-white px-4 py-2 text-sm font-bold text-slate-900 ring-1 ring-slate-200 transition hover:bg-slate-100"
+                      >
+                        View official product page
+                      </a>
+                    ) : null}
+                  </div>
+                </div>
               </section>
             </div>
           </div>
