@@ -1,31 +1,37 @@
-#!/usr/bin/env node
-import { loadEnvConfig } from "@next/env";
-import { PrismaClient } from "@prisma/client";
+import process from 'node:process';
+import envPkg from '@next/env';
+import { PrismaClient } from '@prisma/client';
 
+const { loadEnvConfig } = envPkg;
 loadEnvConfig(process.cwd());
 
 const prisma = new PrismaClient();
 
-function databaseHint() {
-  const raw = process.env.DATABASE_URL || "";
-  if (!raw) return "DATABASE_URL is not set";
+function sanitizeDbUrl(url) {
+  if (!url) return '(missing DATABASE_URL)';
   try {
-    const url = new URL(raw);
-    return `${url.protocol}//${url.hostname}${url.port ? `:${url.port}` : ""}${url.pathname || ""}`;
+    const u = new URL(url);
+    const dbName = u.pathname?.replace(/^\//, '') || '(no-db-name)';
+    return `${u.protocol}//${u.hostname}${u.port ? `:${u.port}` : ''}/${dbName}`;
   } catch {
-    return "DATABASE_URL is set (unable to parse safely)";
+    return '(unparseable DATABASE_URL)';
   }
 }
 
-try {
-  const items = await prisma.item.findMany({
-    orderBy: [{ tier: "asc" }, { createdAt: "asc" }],
-    select: { id: true, title: true, state: true, opensAt: true, closesAt: true },
-  });
-  console.log(`Database: ${databaseHint()}`);
+async function main() {
+  console.log(`DB target: ${sanitizeDbUrl(process.env.DATABASE_URL)}`);
+  const items = await prisma.item.findMany({ orderBy: { id: 'asc' } });
+  console.log(`Items found: ${items.length}`);
   for (const item of items) {
-    console.log(`${item.title} | ${item.state} | opensAt=${item.opensAt?.toISOString?.() ?? "null"} | closesAt=${item.closesAt?.toISOString?.() ?? "null"}`);
+    console.log(`${item.id}\t${item.title}\tstate=${item.state}\tclosesAt=${item.closesAt ? item.closesAt.toISOString() : 'null'}`);
   }
-} finally {
-  await prisma.$disconnect();
 }
+
+main()
+  .catch((err) => {
+    console.error(err?.stack || String(err));
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect().catch(() => {});
+  });
