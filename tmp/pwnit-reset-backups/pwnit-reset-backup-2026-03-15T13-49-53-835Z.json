@@ -1,0 +1,63 @@
+{
+  "generatedAt": "2026-03-15T13:49:53.832Z",
+  "items": [
+    {
+      "id": "cmmrm1v450000iinp40cambna",
+      "title": "Fuel Voucher",
+      "state": "OPEN",
+      "closesAt": null,
+      "opensAt": "2026-03-15T10:27:26.782Z"
+    },
+    {
+      "id": "cmmrm1vbc0001iinpt2uajs5o",
+      "title": "Checkers Voucher",
+      "state": "OPEN",
+      "closesAt": null,
+      "opensAt": "2026-03-15T10:27:26.782Z"
+    },
+    {
+      "id": "cmmrm1veq0002iinpmgic4rol",
+      "title": "Takealot Voucher",
+      "state": "OPEN",
+      "closesAt": null,
+      "opensAt": "2026-03-15T10:27:26.782Z"
+    },
+    {
+      "id": "cmmrm1vex0003iinpaseac5z3",
+      "title": "Sony WH-1000XM5 Headphones",
+      "state": "OPEN",
+      "closesAt": null,
+      "opensAt": "2026-03-15T10:27:26.782Z"
+    },
+    {
+      "id": "cmmrm1vhr0004iinpmfesez56",
+      "title": "Nintendo Switch OLED",
+      "state": "OPEN",
+      "closesAt": null,
+      "opensAt": "2026-03-15T10:27:26.782Z"
+    },
+    {
+      "id": "cmmrm1vj20005iinp11ky09bf",
+      "title": "GoPro HERO13 Black",
+      "state": "OPEN",
+      "closesAt": null,
+      "opensAt": "2026-03-15T10:27:26.782Z"
+    }
+  ],
+  "itemIds": [
+    "cmmrm1v450000iinp40cambna",
+    "cmmrm1vbc0001iinpt2uajs5o",
+    "cmmrm1veq0002iinpmgic4rol",
+    "cmmrm1vex0003iinpaseac5z3",
+    "cmmrm1vhr0004iinpmfesez56",
+    "cmmrm1vj20005iinp11ky09bf"
+  ],
+  "rounds": [],
+  "roundIds": [],
+  "attempts": [],
+  "winners": [],
+  "purchases": [],
+  "ledgers": [],
+  "users": [],
+  "refundByUser": {}
+}

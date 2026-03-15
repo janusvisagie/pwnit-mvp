@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 import fs from "node:fs/promises";
 import path from "node:path";
+import { loadEnvConfig } from "@next/env";
 import { PrismaClient } from "@prisma/client";
+
+loadEnvConfig(process.cwd());
 
 const prisma = new PrismaClient();
 
@@ -24,6 +27,17 @@ function parseArgs(argv) {
   return args;
 }
 
+function databaseHint() {
+  const raw = process.env.DATABASE_URL || "";
+  if (!raw) return "DATABASE_URL is not set";
+  try {
+    const url = new URL(raw);
+    return `${url.protocol}//${url.hostname}${url.port ? `:${url.port}` : ""}${url.pathname || ""}`;
+  } catch {
+    return "DATABASE_URL is set (unable to parse safely)";
+  }
+}
+
 function printHelp() {
   console.log(`
 PwnIt reset/reopen script
@@ -42,10 +56,6 @@ Safety:
   - Dry-run by default. Nothing changes unless you add --execute.
   - A JSON backup snapshot is written before any destructive full reset.
   - If item purchases exist, full-reset refuses to run unless you add --allow-purchases.
-
-Examples:
-  node scripts/reset-reopen-all-items.mjs --mode=reopen --execute
-  node scripts/reset-reopen-all-items.mjs --mode=full-reset --execute
 `);
 }
 
@@ -120,7 +130,8 @@ async function collectState() {
 }
 
 function printSummary(snapshot, mode) {
-  console.log(`\nMode: ${mode}`);
+  console.log(`\nDatabase: ${databaseHint()}`);
+  console.log(`Mode: ${mode}`);
   console.log(`Items: ${snapshot.items.length}`);
   console.log(`Rounds: ${snapshot.rounds.length}`);
   console.log(`Attempts: ${snapshot.attempts.length}`);
@@ -141,6 +152,13 @@ function printSummary(snapshot, mode) {
     console.log(`Attempt credits to refund -> free: ${refunds.free}, paid: ${refunds.paid}`);
   }
 
+  if (snapshot.items.length) {
+    console.log("\nCurrent item states:");
+    for (const item of snapshot.items) {
+      console.log(`- ${item.title}: ${item.state}${item.closesAt ? ` (closesAt ${item.closesAt.toISOString()})` : ""}`);
+    }
+  }
+
   if (snapshot.purchases.length) {
     console.log(
       `\nWarning: ${snapshot.purchases.length} item purchase record(s) exist. Full reset will refuse unless --allow-purchases is supplied.`,
@@ -154,6 +172,17 @@ async function writeBackup(snapshot, backupDir) {
   const filePath = path.join(backupDir, `pwnit-reset-backup-${stamp}.json`);
   await fs.writeFile(filePath, JSON.stringify(snapshot, null, 2), "utf8");
   return filePath;
+}
+
+async function printPostState() {
+  const items = await prisma.item.findMany({
+    orderBy: [{ tier: "asc" }, { createdAt: "asc" }],
+    select: { title: true, state: true, closesAt: true },
+  });
+  console.log("\nItem states after reset:");
+  for (const item of items) {
+    console.log(`- ${item.title}: ${item.state}${item.closesAt ? ` (closesAt ${item.closesAt.toISOString()})` : ""}`);
+  }
 }
 
 async function main() {
@@ -180,6 +209,7 @@ async function main() {
       data: { state: "OPEN", closesAt: null, opensAt: new Date() },
     });
     console.log(`\nRe-opened ${result.count} item(s).`);
+    await printPostState();
     return;
   }
 
@@ -233,6 +263,7 @@ async function main() {
   console.log("\nFull item reset completed.");
   console.log("All items are OPEN again and item-linked history has been cleared.");
   console.log("Attempt credits were refunded to user balances using Attempt.freeUsed and Attempt.paidUsed.");
+  await printPostState();
 }
 
 main()
