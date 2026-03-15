@@ -94,23 +94,23 @@ export default async function HomePage() {
   const anyActivated = synced.some((item) => item.state === "ACTIVATED");
 
   return (
-    <main className="flex w-full flex-col gap-4 md:gap-5">
+    <main className="flex h-full min-h-0 w-full flex-col gap-3 md:gap-4">
       <WelcomeModal />
       <AutoRefreshActivated enabled={anyActivated} everyMs={10_000} />
 
-      <section className="flex flex-col gap-4 fade-in">
-        <div className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+      <section className="fade-in flex min-h-0 flex-1 flex-col gap-3">
+        <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 lg:text-[10px]">
           Logged in as{" "}
           <span className="font-bold normal-case tracking-normal text-slate-900">{user.email}</span>
         </div>
 
         {anyActivated ? (
-          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-900">
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-900 lg:px-3 lg:py-2 lg:text-[13px]">
             Live prizes are active! Play now before time runs out.
           </div>
         ) : null}
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid min-h-0 grid-cols-1 gap-3 sm:grid-cols-2 lg:flex-1 lg:grid-cols-3 lg:grid-rows-2">
           {synced.map((item) => {
             const paidSpent = paidMap.get(item.id) ?? 0;
             const progress = activationProgress(item.prizeValueZAR, paidSpent);

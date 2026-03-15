@@ -1,18 +1,18 @@
-Apply this patch by copying these folders into your repo root and overwriting the matching files:
+Apply this patch by copying these files into the matching paths in your local pwnit-mvp repo, then commit and push.
 
-- src/components/WelcomeModal.tsx
-- src/lib/productCatalog.ts
-- public/images/*.webp
+Files included:
+- src/components/ItemCard.tsx
+- src/app/page.tsx
+- src/app/layout.tsx
 
-What this patch does:
-- Adds six new product images under public/images/
-- Updates productCatalog.ts to use those images first
-- Replaces the welcome modal with a tighter version that keeps the same sessionStorage logic
+What this patch changes:
+- Makes the local Genspark product images primary for the six catalog items.
+- Compresses the homepage card grid on large screens so six items are more likely to fit within one laptop viewport.
+- Slightly reduces large-screen header, main, and footer vertical spacing.
 
 What this patch does not change:
-- Homepage logic
-- Item activation or closing logic
-- Countdown logic
 - Credits logic
-- Winner logic
-- Routing
+- Countdown logic
+- Winner / closed-item logic
+- Welcome modal session behavior
+- Routing or API behavior
