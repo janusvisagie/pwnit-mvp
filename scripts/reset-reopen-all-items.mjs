@@ -1,8 +1,8 @@
-import path from 'node:path';
-import process from 'node:process';
-import fs from 'node:fs/promises';
-import envPkg from '@next/env';
-import { PrismaClient } from '@prisma/client';
+import path from "node:path";
+import process from "node:process";
+import fs from "node:fs/promises";
+import envPkg from "@next/env";
+import { PrismaClient } from "@prisma/client";
 
 const { loadEnvConfig } = envPkg;
 loadEnvConfig(process.cwd());
@@ -20,37 +20,37 @@ function hasFlag(name) {
 }
 
 function sanitizeDbUrl(url) {
-  if (!url) return '(missing DATABASE_URL)';
+  if (!url) return "(missing DATABASE_URL)";
   try {
     const u = new URL(url);
-    const dbName = u.pathname?.replace(/^\//, '') || '(no-db-name)';
-    return `${u.protocol}//${u.hostname}${u.port ? `:${u.port}` : ''}/${dbName}`;
+    const dbName = u.pathname?.replace(/^\//, "") || "(no-db-name)";
+    return `${u.protocol}//${u.hostname}${u.port ? `:${u.port}` : ""}/${dbName}`;
   } catch {
-    return '(unparseable DATABASE_URL)';
+    return "(unparseable DATABASE_URL)";
   }
 }
 
 async function backupSnapshot(snapshot) {
-  const dir = path.join(process.cwd(), 'tmp', 'pwnit-reset-backups');
+  const dir = path.join(process.cwd(), "tmp", "pwnit-reset-backups");
   await fs.mkdir(dir, { recursive: true });
-  const file = path.join(dir, `pwnit-reset-backup-${new Date().toISOString().replace(/[:.]/g, '-')}.json`);
-  await fs.writeFile(file, JSON.stringify(snapshot, null, 2), 'utf8');
+  const file = path.join(dir, `pwnit-reset-backup-${new Date().toISOString().replace(/[:.]/g, "-")}.json`);
+  await fs.writeFile(file, JSON.stringify(snapshot, null, 2), "utf8");
   return path.relative(process.cwd(), file);
 }
 
 async function main() {
-  const mode = getArg('mode', 'reopen');
-  const execute = hasFlag('execute');
-  const allowPurchases = hasFlag('allow-purchases');
+  const mode = getArg("mode", "reopen");
+  const execute = hasFlag("execute");
+  const allowPurchases = hasFlag("allow-purchases");
 
-  if (!['reopen', 'full-reset'].includes(mode)) {
+  if (!["reopen", "full-reset"].includes(mode)) {
     throw new Error(`Unsupported mode: ${mode}. Use --mode=reopen or --mode=full-reset`);
   }
 
   console.log(`DB target: ${sanitizeDbUrl(process.env.DATABASE_URL)}`);
 
   const [items, attempts, winners, rounds, purchases, itemLedgerRows] = await Promise.all([
-    prisma.item.findMany({ orderBy: { id: 'asc' } }),
+    prisma.item.findMany({ orderBy: { id: "asc" } }),
     prisma.attempt.findMany({}),
     prisma.winner.findMany({}),
     prisma.itemRound.findMany({}),
@@ -69,8 +69,8 @@ async function main() {
   const totalFreeRefund = [...refundByUser.values()].reduce((s, r) => s + r.freeCredits, 0);
   const totalPaidRefund = [...refundByUser.values()].reduce((s, r) => s + r.paidCredits, 0);
 
-  console.log('');
-  console.log(`Mode: ${mode}${execute ? ' (execute)' : ' (dry-run)'}`);
+  console.log("");
+  console.log(`Mode: ${mode}${execute ? " (execute)" : " (dry-run)"}`);
   console.log(`Items: ${items.length}`);
   console.log(`Rounds: ${rounds.length}`);
   console.log(`Attempts: ${attempts.length}`);
@@ -79,16 +79,16 @@ async function main() {
   console.log(`Item-linked ledger rows: ${itemLedgerRows.length}`);
   console.log(`Attempt credits to refund -> free: ${totalFreeRefund}, paid: ${totalPaidRefund}`);
 
-  if (mode === 'full-reset' && purchases.length > 0 && !allowPurchases) {
-    console.log('');
-    console.log('Refusing full-reset because purchases exist.');
-    console.log('Re-run with --allow-purchases only if you are sure you want to clear item-linked history even with purchases present.');
+  if (mode === "full-reset" && purchases.length > 0 && !allowPurchases) {
+    console.log("");
+    console.log("Refusing full-reset because purchases exist.");
+    console.log("Re-run with --allow-purchases only if you are sure you want to clear item-linked history even with purchases present.");
     process.exit(1);
   }
 
   if (!execute) {
-    console.log('');
-    console.log('Dry-run only. No changes were made.');
+    console.log("");
+    console.log("Dry-run only. No changes were made.");
     return;
   }
 
@@ -105,11 +105,11 @@ async function main() {
     refundByUser: Object.fromEntries(refundByUser.entries()),
   });
 
-  console.log('');
+  console.log("");
   console.log(`Backup written to ${backupPath}`);
 
   await prisma.$transaction(async (tx) => {
-    if (mode === 'full-reset') {
+    if (mode === "full-reset") {
       for (const [userId, refund] of refundByUser.entries()) {
         await tx.user.update({
           where: { id: userId },
@@ -129,28 +129,25 @@ async function main() {
 
     await tx.item.updateMany({
       data: {
-        state: 'OPEN',
+        state: "OPEN",
         closesAt: null,
-        winnerUserId: null,
-        winnerAttemptId: null,
-        finalScoreMs: null,
       },
     });
   });
 
-  console.log('');
-  if (mode === 'reopen') {
-    console.log('Reopen completed. All items are OPEN again.');
+  console.log("");
+  if (mode === "reopen") {
+    console.log("Reopen completed. All items are OPEN again.");
   } else {
-    console.log('Full item reset completed.');
-    console.log('All items are OPEN again and item-linked history has been cleared.');
-    console.log('Attempt credits were refunded to user balances using Attempt.freeUsed and Attempt.paidUsed.');
+    console.log("Full item reset completed.");
+    console.log("All items are OPEN again and item-linked history has been cleared.");
+    console.log("Attempt credits were refunded to user balances using Attempt.freeUsed and Attempt.paidUsed.");
   }
 }
 
 main()
   .catch((err) => {
-    console.error('');
+    console.error("");
     console.error(err?.stack || String(err));
     process.exit(1);
   })
