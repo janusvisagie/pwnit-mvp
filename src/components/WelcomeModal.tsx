@@ -5,9 +5,9 @@ import { useEffect, useState } from "react";
 const SESSION_KEY = "pwnit_welcome_seen_session";
 
 const steps = [
-  { icon: "🎯", title: "Pick", body: "Choose a prize you want to win." },
-  { icon: "⚡", title: "Play", body: "Post your best score before time runs out." },
-  { icon: "🏆", title: "Win", body: "Top the leaderboard and claim the prize." },
+  { icon: "🎯", title: "Pick", body: "Choose a prize you want." },
+  { icon: "⚡", title: "Play", body: "Post your best score." },
+  { icon: "🏆", title: "Win", body: "Top the leaderboard and win the prize." },
 ] as const;
 
 export function WelcomeModal() {
@@ -46,7 +46,7 @@ export function WelcomeModal() {
           </h2>
 
           <p className="mt-3 max-w-[34rem] text-sm leading-6 text-slate-600">
-            Choose a prize, play one quick skill game, and try to win before the timer ends.
+            Choose a prize, play a quick skill game, and try to win it.
           </p>
         </div>
 
