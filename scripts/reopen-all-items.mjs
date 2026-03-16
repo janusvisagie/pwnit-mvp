@@ -22,45 +22,17 @@ function parseEnvFile(filePath) {
 
 function loadEnvLikeNext(rootDir) {
   const mode = process.env.NODE_ENV === 'production' ? 'production' : 'development';
-  const order = [
-    `.env.${mode}.local`,
-    '.env.local',
-    `.env.${mode}`,
-    '.env',
-  ];
-  for (const name of order) {
-    Object.assign(process.env, parseEnvFile(path.join(rootDir, name)));
-  }
-}
-
-function maskDbTarget(url) {
-  try {
-    const u = new URL(url);
-    return `${u.protocol}//${u.hostname}:${u.port}${u.pathname}`;
-  } catch {
-    return '(unparseable DATABASE_URL)';
-  }
+  const order = [`.env.${mode}.local`, '.env.local', `.env.${mode}`, '.env'];
+  for (const name of order) Object.assign(process.env, parseEnvFile(path.join(rootDir, name)));
 }
 
 const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 loadEnvLikeNext(root);
-
-if (!process.env.DATABASE_URL) {
-  throw new Error('DATABASE_URL is not set after loading env files.');
-}
-
-console.log(`DB target: ${maskDbTarget(process.env.DATABASE_URL)}`);
-
 const prisma = new PrismaClient();
 try {
-  const items = await prisma.item.findMany({
-    orderBy: { sortOrder: 'asc' },
-    select: { id: true, title: true, state: true, closesAt: true },
-  });
-  console.log(`Items found: ${items.length}`);
-  for (const item of items) {
-    console.log(`${item.id}\t${item.title}\tstate=${item.state}\tclosesAt=${item.closesAt ? item.closesAt.toISOString() : 'null'}`);
-  }
+  const count = await prisma.item.count();
+  await prisma.item.updateMany({ data: { state: 'OPEN', closesAt: null } });
+  console.log(`Reopened ${count} item(s).`);
 } finally {
   await prisma.$disconnect();
 }
