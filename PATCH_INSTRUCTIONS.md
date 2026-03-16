@@ -1,4 +1,10 @@
-Replace this file in your repo:
-- src/app/play/[itemId]/page.tsx
+Apply by unzipping into your repo root and overwriting the matching files.
 
-Then commit and push.
+Files in this patch:
+- src/components/WelcomeModal.tsx
+- src/app/item/[id]/leaderboard/page.tsx
+
+What changed:
+- Welcome modal restyled to match the site’s slate / white / cyan palette
+- Leaderboard page restyled to match the home and item pages
+- No leaderboard logic or data flow was changed
