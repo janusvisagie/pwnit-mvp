@@ -155,7 +155,7 @@ export default async function ItemLeaderboardPage({
             <div className="mb-4 flex items-center justify-between gap-3">
               <div>
                 <h2 className="text-xl font-black tracking-tight text-slate-900">Live scores</h2>
-                <p className="mt-1 text-sm text-slate-600">Only each player&apos;s best score is shown.</p>
+                <p className="mt-1 text-sm text-slate-600">Each player&apos;s best score is shown.</p>
               </div>
             </div>
 

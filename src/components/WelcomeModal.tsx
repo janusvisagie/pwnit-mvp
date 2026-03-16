@@ -70,7 +70,7 @@ export function WelcomeModal() {
           </div>
 
           <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-center text-sm font-semibold text-slate-700">
-            Didn&apos;t win? You can still buy the item at a discount.
+            Or buy it if you don&apos;t.
           </div>
 
           <button
