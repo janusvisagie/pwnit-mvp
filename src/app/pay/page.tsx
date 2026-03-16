@@ -1,26 +1,37 @@
-// src/app/pay/page.tsx
 "use client";
 
 import Link from "next/link";
-import { useSearchParams, useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useMemo, useState } from "react";
 
 function formatZAR(v: number) {
   return `R${Number(v || 0).toLocaleString("en-ZA")}`;
 }
 
-export default function PayPage() {
+type Quote = {
+  priceCredits?: number;
+  discountCredits?: number;
+  voucherCredits?: number;
+  amountDueCredits?: number;
+  payCredits?: number;
+  balances?: {
+    paid?: number;
+  };
+};
+
+function PayPageInner() {
   const sp = useSearchParams();
   const router = useRouter();
-
   const itemId = sp.get("itemId") || "";
   const mode = (sp.get("mode") || "mix").toLowerCase();
-
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
-  const [quote, setQuote] = useState<any>(null);
+  const [quote, setQuote] = useState<Quote | null>(null);
 
-  const title = useMemo(() => (mode === "full" ? "Pay full amount" : "Use credits + top up"), [mode]);
+  const title = useMemo(
+    () => (mode === "full" ? "Pay full amount" : "Use credits + top up"),
+    [mode],
+  );
 
   async function loadQuote() {
     if (!itemId) {
@@ -36,9 +47,9 @@ export default function PayPage() {
         setMsg(data?.error || "Could not load quote");
         return;
       }
-      setQuote(data);
-    } catch (e: any) {
-      setMsg(e?.message || "Could not load quote");
+      setQuote(data as Quote);
+    } catch (e: unknown) {
+      setMsg(e instanceof Error ? e.message : "Could not load quote");
     } finally {
       setBusy(false);
     }
@@ -62,8 +73,8 @@ export default function PayPage() {
       window.dispatchEvent(new Event("pwnit:credits"));
       setMsg("Payment successful. Item purchased.");
       router.refresh();
-    } catch (e: any) {
-      setMsg(e?.message || "Payment failed (MVP)");
+    } catch (e: unknown) {
+      setMsg(e instanceof Error ? e.message : "Payment failed (MVP)");
     } finally {
       setBusy(false);
     }
@@ -73,78 +84,78 @@ export default function PayPage() {
   const discount = Number(quote?.discountCredits ?? quote?.voucherCredits ?? 0);
   const due = Number(quote?.amountDueCredits ?? quote?.payCredits ?? 0);
   const paidBal = Number(quote?.balances?.paid ?? 0);
-
   const usePaid = Math.min(paidBal, due);
   const topUp = Math.max(0, due - usePaid);
 
   return (
-    <main className="mx-auto max-w-3xl space-y-4 px-4 py-6">
-      <h1 className="text-2xl font-extrabold text-slate-900">{title}</h1>
+    <main className="mx-auto max-w-xl p-6 space-y-4">
+      <h1 className="text-2xl font-semibold">{title}</h1>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-4">
-        {!quote ? (
-          <button
-            onClick={loadQuote}
-            disabled={busy}
-            className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-extrabold text-white hover:bg-slate-800 disabled:opacity-50"
-          >
-            {busy ? "Loading…" : "Load payment details"}
-          </button>
-        ) : (
-          <>
-            <div className="grid gap-1 text-sm">
-              <div className="flex items-center justify-between">
-                <span className="text-slate-600">Price</span>
-                <span className="font-semibold">{formatZAR(price)}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-slate-600">Discount</span>
-                <span className="font-semibold">{formatZAR(discount)}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-slate-600">Amount due</span>
-                <span className="font-extrabold">{formatZAR(due)}</span>
-              </div>
-
-              {mode === "mix" ? (
-                <>
-                  <div className="mt-2 flex items-center justify-between">
-                    <span className="text-slate-600">Use paid credits</span>
-                    <span className="font-semibold">{formatZAR(usePaid)}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-600">Top up required</span>
-                    <span className="font-extrabold">{formatZAR(topUp)}</span>
-                  </div>
-                </>
-              ) : null}
+      {!quote ? (
+        <button
+          className="rounded-md bg-cyan-600 px-4 py-2 text-white disabled:opacity-60"
+          onClick={loadQuote}
+          disabled={busy}
+        >
+          {busy ? "Loading…" : "Load payment details"}
+        </button>
+      ) : (
+        <>
+          <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-2 shadow-sm">
+            <div className="flex items-center justify-between gap-4">
+              <span>Price</span>
+              <span className="font-medium">{formatZAR(price)}</span>
             </div>
-
-            <div className="mt-4 flex flex-wrap gap-2">
-              <button
-                onClick={complete}
-                disabled={busy}
-                className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-extrabold text-white hover:bg-slate-800 disabled:opacity-50"
-              >
-                {busy ? "Processing…" : "Complete payment (MVP)"}
-              </button>
-
-              <Link
-                href={itemId ? `/item/${itemId}` : "/"}
-                className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-slate-50"
-              >
-                Cancel
-              </Link>
+            <div className="flex items-center justify-between gap-4">
+              <span>Discount</span>
+              <span className="font-medium">{formatZAR(discount)}</span>
             </div>
-          </>
-        )}
+            <div className="flex items-center justify-between gap-4 border-t border-slate-200 pt-2">
+              <span>Amount due</span>
+              <span className="font-semibold">{formatZAR(due)}</span>
+            </div>
+            {mode === "mix" ? (
+              <>
+                <div className="flex items-center justify-between gap-4">
+                  <span>Use paid credits</span>
+                  <span className="font-medium">{formatZAR(usePaid)}</span>
+                </div>
+                <div className="flex items-center justify-between gap-4">
+                  <span>Top up required</span>
+                  <span className="font-medium">{formatZAR(topUp)}</span>
+                </div>
+              </>
+            ) : null}
+          </div>
 
-        {msg ? <div className="mt-3 text-sm font-semibold text-slate-700">{msg}</div> : null}
-      </section>
+          <div className="flex flex-wrap gap-3">
+            <button
+              className="rounded-md bg-cyan-600 px-4 py-2 text-white disabled:opacity-60"
+              onClick={complete}
+              disabled={busy}
+            >
+              {busy ? "Processing…" : "Complete payment (MVP)"}
+            </button>
+            <Link className="rounded-md border border-slate-300 px-4 py-2" href="/">
+              Cancel
+            </Link>
+          </div>
+        </>
+      )}
 
-      <p className="text-xs text-slate-500">
+      {msg ? <p className="rounded-md bg-slate-100 p-3 text-sm text-slate-700">{msg}</p> : null}
+
+      <p className="text-sm text-slate-500">
         Payments are still MVP placeholder — this page simulates a payment flow.
       </p>
     </main>
+  );
+}
+
+export default function PayPage() {
+  return (
+    <Suspense fallback={<main className="mx-auto max-w-xl p-6">Loading payment page…</main>}>
+      <PayPageInner />
+    </Suspense>
   );
 }
