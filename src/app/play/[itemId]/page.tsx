@@ -1,110 +1,136 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
-import GameHost from "./_components/GameHost";
-import { CountdownChip } from "@/components/CountdownChip";
 import { getOrCreateDemoUser } from "@/lib/auth";
+import { CountdownChip } from "@/components/CountdownChip";
 import { playCostForPrize } from "@/lib/playCost";
+import { ROUND_STATES, syncRoundLifecycle } from "@/lib/rounds";
+import GameHost from "./_components/GameHost";
+
+function shell(children: ReactNode) {
+  return (
+    <main className="mx-auto flex min-h-[70vh] w-full max-w-4xl flex-col gap-4 px-4 py-6 sm:px-6 lg:px-8">
+      {children}
+    </main>
+  );
+}
 
 export default async function PlayPage({ params }: { params: { itemId: string } }) {
   const itemId = params?.itemId;
-
   if (!itemId) {
-    return (
-      <main className="mx-auto max-w-3xl space-y-3 p-4">
-        <div className="text-lg font-bold">Missing item id</div>
-        <Link className="text-sm font-semibold hover:underline" href="/">
+    return shell(
+      <>
+        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+          <h1 className="text-xl font-bold text-slate-900">Missing item id</h1>
+        </div>
+        <Link href="/" className="text-sm font-semibold text-slate-700 underline-offset-4 hover:underline">
           ← Back to Home
         </Link>
-      </main>
+      </>,
     );
   }
 
   try {
-    const [me, item] = await Promise.all([getOrCreateDemoUser(), prisma.item.findUnique({ where: { id: itemId } })]);
+    const [me, item] = await Promise.all([
+      getOrCreateDemoUser(),
+      prisma.item.findUnique({ where: { id: itemId } }),
+    ]);
 
     if (!item) {
-      return (
-        <main className="mx-auto max-w-3xl space-y-3 p-4">
-          <div className="text-lg font-bold">Item not found</div>
-          <Link className="text-sm font-semibold hover:underline" href="/">
+      return shell(
+        <>
+          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h1 className="text-xl font-bold text-slate-900">Item not found</h1>
+          </div>
+          <Link href="/" className="text-sm font-semibold text-slate-700 underline-offset-4 hover:underline">
             ← Back to Home
           </Link>
-        </main>
+        </>,
       );
     }
 
-    const isPlayable = item.state === "OPEN" || item.state === "ACTIVATED";
-    if (!isPlayable) {
-      return (
-        <main className="mx-auto max-w-3xl space-y-3 p-4">
-          <div className="rounded-2xl border border-slate-200 bg-white p-4">
-            <div className="text-sm font-extrabold text-slate-900">This item is no longer playable.</div>
-            <div className="mt-1 text-sm text-slate-600">Results are available on the leaderboard.</div>
-            <div className="mt-3 flex flex-wrap gap-3">
-              <Link className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-extrabold text-white" href={`/item/${itemId}/leaderboard`}>
-                View results
-              </Link>
-              <Link className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-900" href={`/item/${itemId}`}>
-                Back to item
-              </Link>
-            </div>
+    const round = await syncRoundLifecycle(itemId);
+    const roundPlayable = round?.state === ROUND_STATES.BUILDING || round?.state === ROUND_STATES.ACTIVATED;
+
+    if (!roundPlayable) {
+      return shell(
+        <>
+          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h1 className="text-2xl font-black text-slate-900">This item is not accepting plays right now.</h1>
+            <p className="mt-3 text-sm text-slate-600">Please check the leaderboard or go back to the item page.</p>
           </div>
-        </main>
+          <div className="flex flex-wrap gap-3">
+            <Link
+              href={`/item/${itemId}/leaderboard`}
+              className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm"
+            >
+              View results
+            </Link>
+            <Link
+              href={`/item/${itemId}`}
+              className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm"
+            >
+              Back to item
+            </Link>
+          </div>
+        </>,
       );
     }
 
-    const closesAtIso = item.closesAt ? item.closesAt.toISOString() : null;
+    const closesAtIso = round?.closesAt ? round.closesAt.toISOString() : null;
     const playCost = playCostForPrize(item.prizeValueZAR);
     const free = Number((me as any).freeCreditsBalance ?? 0);
     const paid = Number((me as any).paidCreditsBalance ?? 0);
     const creditsTotal = free + paid;
+    const gameKey = (item.gameKey || "quick-stop") as any;
 
-    return (
-      <main className="mx-auto max-w-5xl space-y-2 px-2 pb-3 sm:px-4">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-          <div className="min-w-0">
-            <div className="text-xl font-extrabold tracking-tight sm:text-2xl">{item.title}</div>
-            <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-slate-600">
-              <span>
-                Play costs <span className="font-semibold text-slate-900">{playCost}</span> credits
-              </span>
-              {closesAtIso ? (
-                <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-800 ring-1 ring-slate-200">
-                  <span>Ends in</span>
-                  <CountdownChip state={item.state} closesAt={closesAtIso} />
-                </span>
-              ) : null}
+    return shell(
+      <>
+        <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-black tracking-tight text-slate-900">{item.title}</h1>
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-slate-600">
+                <span>Play costs {playCost} credits</span>
+                {closesAtIso ? (
+                  <>
+                    <span className="text-slate-300">•</span>
+                    <span className="inline-flex items-center gap-2">
+                      <span>Ends in</span>
+                      <CountdownChip iso={closesAtIso} />
+                    </span>
+                  </>
+                ) : null}
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Link href={`/item/${itemId}`} className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700">
+                Item
+              </Link>
+              <Link
+                href={`/item/${itemId}/leaderboard`}
+                className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700"
+              >
+                Leaderboard
+              </Link>
             </div>
           </div>
+        </section>
 
-          <div className="flex items-center gap-3 self-start sm:self-auto">
-            <Link className="text-sm font-semibold text-slate-900 hover:underline" href={`/item/${item.id}`}>
-              Item
-            </Link>
-            <Link className="text-sm font-semibold text-slate-900 hover:underline" href={`/item/${item.id}/leaderboard`}>
-              Leaderboard
-            </Link>
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-slate-200 bg-white p-1.5 shadow-sm sm:p-3">
-          <GameHost itemId={item.id} gameKey={(item.gameKey as any) ?? "precision-timer"} playCost={playCost} credits={creditsTotal} />
-        </div>
-      </main>
+        <GameHost itemId={itemId} gameKey={gameKey} playCost={playCost} credits={creditsTotal} />
+      </>,
     );
   } catch {
-    return (
-      <main className="mx-auto max-w-3xl space-y-3 p-4">
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="text-sm font-extrabold text-slate-900">We couldn’t load this game right now.</div>
-          <div className="mt-1 text-sm text-slate-600">Please go back and try again in a moment.</div>
-          <div className="mt-3 flex flex-wrap gap-3">
-            <Link className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-extrabold text-white" href="/">
-              Back to home
-            </Link>
-          </div>
+    return shell(
+      <>
+        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+          <h1 className="text-xl font-bold text-slate-900">We couldn’t load this game right now.</h1>
+          <p className="mt-3 text-sm text-slate-600">Please go back and try again in a moment.</p>
         </div>
-      </main>
+        <Link href="/" className="text-sm font-semibold text-slate-700 underline-offset-4 hover:underline">
+          Back to home
+        </Link>
+      </>,
     );
   }
 }
