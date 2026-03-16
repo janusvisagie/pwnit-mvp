@@ -50,11 +50,11 @@ const catalog: Record<string, ProductContent> = {
     imageUrl: "/images/takealot-voucher.webp",
     kicker: "Voucher details",
     description:
-      "A digital shopping voucher aimed at broad, everyday online spend. It is a flexible prize for users who want practical value instead of a single fixed product.",
+      "A digital shopping voucher for flexible online spending across a wide range of products on Takealot.",
     highlights: [
-      "Strong all-round prize for electronics, home, books, toys and daily essentials",
-      "Simple value proposition: one voucher, many product choices",
-      "Ideal for players who like the option to buy later using their earned discount",
+      "Useful for electronics, home items, books, toys and everyday essentials",
+      "Simple prize with plenty of choice for the winner",
+      "Digital voucher that is easy to use online",
       "Exact redemption terms depend on the final voucher issued",
     ],
   },
@@ -62,11 +62,11 @@ const catalog: Record<string, ProductContent> = {
     imageUrl: "/images/checkers-voucher.webp",
     kicker: "Voucher details",
     description:
-      "A practical grocery-focused prize with obvious household value. It works well as a lower-friction item because users immediately understand what the win can be used for.",
+      "A practical shopping voucher for groceries and household essentials at Checkers.",
     highlights: [
-      "Everyday utility prize with broad household appeal",
-      "Good fit for pantry, groceries and household shopping",
-      "Lower ticket item designed to activate faster and convert early participation",
+      "Great for everyday household shopping",
+      "Easy to understand and easy to use",
+      "Useful for groceries, pantry items and home basics",
       "Exact redemption terms depend on the final voucher issued",
     ],
   },
@@ -74,11 +74,11 @@ const catalog: Record<string, ProductContent> = {
     imageUrl: "/images/fuel-voucher.webp",
     kicker: "Voucher details",
     description:
-      "A fuel-focused utility prize that feels instantly valuable. It keeps the marketplace grounded with a practical option next to the bigger aspirational prizes.",
+      "A fuel voucher that gives the winner immediate everyday value at the pumps.",
     highlights: [
-      "Straightforward day-to-day value for drivers",
-      "Good utility-led alternative to retail and tech prizes",
-      "Helpful lower-tier prize for keeping the marketplace active and approachable",
+      "Straightforward value for drivers",
+      "Practical prize for day-to-day transport costs",
+      "Easy-to-understand utility reward",
       "Exact redemption terms depend on the final voucher issued",
     ],
   },
@@ -96,7 +96,6 @@ const reliableFallbacks: Record<string, string> = {
 export function getProductContent(title: string, fallbackImageUrl?: string | null): ProductContent | null {
   const hit = catalog[title];
   const reliable = reliableFallbacks[title] ?? fallbackImageUrl ?? null;
-
   if (!hit) {
     if (!reliable) return null;
     return {
@@ -105,7 +104,6 @@ export function getProductContent(title: string, fallbackImageUrl?: string | nul
       highlights: ["More information will be added soon."],
     };
   }
-
   return {
     ...hit,
     imageUrl: hit.imageUrl || reliable || hit.imageUrl,
