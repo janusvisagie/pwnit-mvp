@@ -13,6 +13,9 @@ export async function GET() {
   return NextResponse.json({
     ok: true,
     isGuest: me.isGuest,
+    isDemoUser: Boolean(me.isDemoUser),
+    isLocalDev: Boolean(me.isLocalDev),
+    demoUserKey: me.demoUserKey ?? null,
     actorLabel: me.actorLabel,
     email: me.email,
     alias: me.alias,

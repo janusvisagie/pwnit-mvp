@@ -39,15 +39,15 @@ export function AuthStatus({ initial }: { initial: Summary }) {
       const data = await response.json().catch(() => null);
       if (!response.ok || !data?.ok) return;
 
-      setSummary({
+      setSummary((current) => ({
         isGuest: Boolean(data.isGuest),
-        isDemoUser: Boolean(data.isDemoUser),
-        isLocalDev: Boolean(data.isLocalDev),
-        demoUserKey: data.demoUserKey ? String(data.demoUserKey) : null,
+        isDemoUser: data.isDemoUser === undefined ? Boolean(current.isDemoUser) : Boolean(data.isDemoUser),
+        isLocalDev: data.isLocalDev === undefined ? Boolean(current.isLocalDev) : Boolean(data.isLocalDev),
+        demoUserKey: data.demoUserKey === undefined ? current.demoUserKey ?? null : (data.demoUserKey ? String(data.demoUserKey) : null),
         actorLabel: String(data.actorLabel || (data.isGuest ? "Playing as Guest" : data.email || "Account")),
         email: data.email ? String(data.email) : null,
         emailVerified: Boolean(data.emailVerified),
-      });
+      }));
     } catch {
       // ignore refresh failures
     }
@@ -107,7 +107,9 @@ export function AuthStatus({ initial }: { initial: Summary }) {
     };
   }, []);
 
-  const demoSwitcher = summary.isLocalDev ? (
+  const showDemoSwitcher = Boolean(initial.isLocalDev || summary.isLocalDev);
+
+  const demoSwitcher = showDemoSwitcher ? (
     <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs shadow-sm">
       <label htmlFor="local-demo-user" className="font-semibold text-amber-900">
         Local test user:
