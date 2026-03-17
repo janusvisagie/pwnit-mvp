@@ -296,6 +296,36 @@ async function getOrCreateLocalDemoUser(demoUserKey: DemoUserKey): Promise<Actor
   });
 }
 
+async function applyLocalDemoCredits(user: ActorUser): Promise<ActorUser> {
+  const today = dayKeyZA();
+  const hasCredits = Number(user.freeCreditsBalance ?? 0) > 0;
+  const lastKey = String(user.lastDailyCreditsDayKey ?? "");
+
+  if (lastKey === today && hasCredits) return user;
+
+  const updated = await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      freeCreditsBalance: hasCredits ? Number(user.freeCreditsBalance ?? 0) : DAILY_FREE_CREDITS,
+      lastDailyCreditsDayKey: today,
+    } as any,
+    select: actorUserSelect,
+  });
+
+  if (!hasCredits) {
+    await prisma.creditLedger.create({
+      data: {
+        userId: user.id,
+        kind: "DAILY_FREE",
+        credits: DAILY_FREE_CREDITS,
+        note: `Local demo credits for ${today}`,
+      },
+    });
+  }
+
+  return toActorUser(updated)!;
+}
+
 async function applyDailyCredits(user: ActorUser, bucketKey: string): Promise<ActorUser> {
   const today = dayKeyZA();
   const lastKey = String(user.lastDailyCreditsDayKey ?? "");
@@ -375,7 +405,7 @@ export async function getCurrentActor(): Promise<CurrentActor> {
 
   if (demoUserKey) {
     return {
-      user: await applyDailyCredits(await getOrCreateLocalDemoUser(demoUserKey), bucketKey),
+      user: await applyLocalDemoCredits(await getOrCreateLocalDemoUser(demoUserKey)),
       isGuest: false,
       bucketKey,
       isLocalDev,

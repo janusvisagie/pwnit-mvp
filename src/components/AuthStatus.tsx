@@ -50,6 +50,11 @@ export function AuthStatus({ initial }: { initial: Summary }) {
   async function signOut() {
     setBusy(true);
     try {
+      if (summary.isDemoUser) {
+        setDemoUser(null);
+        return;
+      }
+
       await fetch("/api/auth/logout", { method: "POST" });
       window.dispatchEvent(new Event("pwnit:userChanged"));
       window.dispatchEvent(new Event("pwnit:credits"));
@@ -139,16 +144,14 @@ export function AuthStatus({ initial }: { initial: Summary }) {
       <div className="flex flex-wrap items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs shadow-sm">
         <span className="font-semibold text-slate-900">{summary.email || summary.actorLabel}</span>
         <span className="text-emerald-700">{summary.isDemoUser ? "Demo user" : "Signed in"}</span>
-        {!summary.isDemoUser ? (
-          <button
-            type="button"
-            onClick={signOut}
-            disabled={busy}
-            className="rounded-full border border-emerald-300 bg-white px-3 py-1.5 font-semibold text-slate-900 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {busy ? "Signing out…" : "Sign out"}
-          </button>
-        ) : null}
+        <button
+          type="button"
+          onClick={signOut}
+          disabled={busy}
+          className="rounded-full border border-emerald-300 bg-white px-3 py-1.5 font-semibold text-slate-900 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {busy ? (summary.isDemoUser ? "Leaving demo…" : "Signing out…") : (summary.isDemoUser ? "Use Guest" : "Sign out")}
+        </button>
       </div>
     </div>
   );
