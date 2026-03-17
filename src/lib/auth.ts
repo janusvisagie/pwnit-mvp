@@ -24,6 +24,21 @@ type ActorUser = {
   lastDailyCreditsDayKey?: string | null;
 };
 
+function toActorUser(record: any): ActorUser | null {
+  if (!record || !record.id || !record.email) return null;
+
+  return {
+    id: String(record.id),
+    email: String(record.email),
+    alias: record.alias ?? null,
+    isGuest: Boolean(record.isGuest),
+    emailVerifiedAt: record.emailVerifiedAt ?? null,
+    freeCreditsBalance: record.freeCreditsBalance ?? null,
+    paidCreditsBalance: record.paidCreditsBalance ?? null,
+    lastDailyCreditsDayKey: record.lastDailyCreditsDayKey ?? null,
+  };
+}
+
 function sessionSecret() {
   return (
     process.env.AUTH_SESSION_SECRET ||
@@ -160,7 +175,7 @@ async function getSessionUserFromRequest(): Promise<ActorUser | null> {
     } as any,
   });
 
-  return (user as ActorUser | null) ?? null;
+  return toActorUser(user);
 }
 
 async function getOrCreateGuestUserByKey(guestKey: string): Promise<ActorUser> {
@@ -180,8 +195,9 @@ async function getOrCreateGuestUserByKey(guestKey: string): Promise<ActorUser> {
     } as any,
   });
 
-  if (existing && (existing as any).isGuest) {
-    return existing as ActorUser;
+  const existingActor = toActorUser(existing);
+  if (existingActor?.isGuest) {
+    return existingActor;
   }
 
   const created = await prisma.user.create({
@@ -204,7 +220,7 @@ async function getOrCreateGuestUserByKey(guestKey: string): Promise<ActorUser> {
     } as any,
   });
 
-  return created as ActorUser;
+  return toActorUser(created)!;
 }
 
 async function applyDailyCredits(user: ActorUser, bucketKey: string): Promise<ActorUser> {
@@ -238,7 +254,7 @@ async function applyDailyCredits(user: ActorUser, bucketKey: string): Promise<Ac
       } as any,
     });
 
-    return updated as ActorUser;
+    return toActorUser(updated)!;
   }
 
   const updated = await prisma.$transaction(async (tx) => {
@@ -281,7 +297,7 @@ async function applyDailyCredits(user: ActorUser, bucketKey: string): Promise<Ac
     return refreshed;
   });
 
-  return updated as ActorUser;
+  return toActorUser(updated)!;
 }
 
 export async function getCurrentActor() {
