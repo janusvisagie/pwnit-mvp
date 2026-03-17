@@ -8,6 +8,9 @@ export async function AuthStatusShell() {
     <AuthStatus
       initial={{
         isGuest: summary.isGuest,
+        isDemoUser: summary.isDemoUser,
+        isLocalDev: summary.isLocalDev,
+        demoUserKey: summary.demoUserKey,
         actorLabel: summary.actorLabel,
         email: summary.email,
         emailVerified: summary.emailVerified,

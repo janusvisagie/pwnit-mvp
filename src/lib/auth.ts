@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { createHmac, timingSafeEqual } from "crypto";
 import { cookies, headers } from "next/headers";
 
@@ -8,6 +9,7 @@ export const DAILY_FREE_CREDITS = 30;
 export const SESSION_COOKIE = "pwnit_session";
 export const GUEST_COOKIE = "pwnit_guest";
 export const BUCKET_COOKIE = "pwnit_bucket";
+export const DEV_DEMO_COOKIE = "pwnit_demo_user";
 
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 30;
 const GUEST_ID_RE = /^[a-z0-9_-]{8,120}$/i;
@@ -22,7 +24,7 @@ const actorUserSelect = {
   freeCreditsBalance: true,
   paidCreditsBalance: true,
   lastDailyCreditsDayKey: true,
-} as any;
+} as const;
 
 type ActorUser = {
   id: string;
@@ -34,6 +36,35 @@ type ActorUser = {
   paidCreditsBalance?: number | null;
   lastDailyCreditsDayKey?: string | null;
 };
+
+type CurrentActor = {
+  user: ActorUser;
+  isGuest: boolean;
+  bucketKey: string;
+  isLocalDev: boolean;
+  demoUserKey: string | null;
+  isDemoUser: boolean;
+};
+
+const LOCAL_DEMO_USERS = {
+  demo1: {
+    email: "demo1@pwnit.local",
+    alias: "Demo User 1",
+    referralCode: "demo1",
+  },
+  demo2: {
+    email: "demo2@pwnit.local",
+    alias: "Demo User 2",
+    referralCode: "demo2",
+  },
+  demo3: {
+    email: "demo3@pwnit.local",
+    alias: "Demo User 3",
+    referralCode: "demo3",
+  },
+} as const;
+
+type DemoUserKey = keyof typeof LOCAL_DEMO_USERS;
 
 function toActorUser(record: any): ActorUser | null {
   if (!record || !record.id || !record.email) return null;
@@ -51,11 +82,7 @@ function toActorUser(record: any): ActorUser | null {
 }
 
 function sessionSecret() {
-  return (
-    process.env.AUTH_SESSION_SECRET ||
-    process.env.NEXTAUTH_SECRET ||
-    "dev-only-change-me-before-production"
-  );
+  return process.env.AUTH_SESSION_SECRET || process.env.NEXTAUTH_SECRET || "dev-only-change-me-before-production";
 }
 
 function sign(value: string) {
@@ -75,6 +102,16 @@ function normalizeOpaqueId(raw: string | null | undefined) {
   return GUEST_ID_RE.test(value) ? value : null;
 }
 
+function normalizeDemoUserKey(raw: string | null | undefined): DemoUserKey | null {
+  const value = String(raw ?? "").trim().toLowerCase();
+
+  if (["1", "demo1", "user1"].includes(value)) return "demo1";
+  if (["2", "demo2", "user2"].includes(value)) return "demo2";
+  if (["3", "demo3", "user3"].includes(value)) return "demo3";
+
+  return null;
+}
+
 function readCookie(name: string) {
   try {
     return cookies().get(name)?.value ?? null;
@@ -91,20 +128,31 @@ function readHeader(name: string) {
   }
 }
 
-export function getGuestKeyFromRequest() {
+function getHost() {
+  return String(readHeader("host") ?? "").trim().toLowerCase();
+}
+
+function isLocalDevRequest() {
+  const host = getHost();
+  return host.startsWith("localhost:") || host.startsWith("127.0.0.1:") || host === "localhost" || host === "127.0.0.1";
+}
+
+function getLocalDemoUserFromRequest() {
+  if (!isLocalDevRequest()) return null;
+
   return (
-    normalizeOpaqueId(readCookie(GUEST_COOKIE)) ||
-    normalizeOpaqueId(readHeader("x-pwnit-guest-id")) ||
-    "guest_fallback_local"
+    normalizeDemoUserKey(readCookie(DEV_DEMO_COOKIE)) ||
+    normalizeDemoUserKey(readHeader("x-pwnit-demo-user")) ||
+    null
   );
 }
 
+export function getGuestKeyFromRequest() {
+  return normalizeOpaqueId(readCookie(GUEST_COOKIE)) || normalizeOpaqueId(readHeader("x-pwnit-guest-id")) || "guest_fallback_local";
+}
+
 export function getBucketKeyFromRequest() {
-  return (
-    normalizeOpaqueId(readCookie(BUCKET_COOKIE)) ||
-    normalizeOpaqueId(readHeader("x-pwnit-bucket-id")) ||
-    "bucket_fallback_local"
-  );
+  return normalizeOpaqueId(readCookie(BUCKET_COOKIE)) || normalizeOpaqueId(readHeader("x-pwnit-bucket-id")) || "bucket_fallback_local";
 }
 
 export function getRequestIp() {
@@ -180,31 +228,72 @@ async function getSessionUserFromRequest(): Promise<ActorUser | null> {
   return toActorUser(user);
 }
 
+async function findUserByEmail(email: string) {
+  const user = await prisma.user.findUnique({
+    where: { email },
+    select: actorUserSelect,
+  });
+
+  return toActorUser(user);
+}
+
+async function createUserWithEmailFallback(data: Record<string, unknown>): Promise<ActorUser> {
+  const email = String(data.email ?? "").trim().toLowerCase();
+  if (!email) {
+    throw new Error("Cannot create user without an email.");
+  }
+
+  try {
+    const created = await prisma.user.create({
+      data: data as any,
+      select: actorUserSelect,
+    });
+
+    return toActorUser(created)!;
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      const existing = await findUserByEmail(email);
+      if (existing) return existing;
+    }
+
+    throw error;
+  }
+}
+
 async function getOrCreateGuestUserByKey(guestKey: string): Promise<ActorUser> {
   const guestEmail = `${guestKey}@guest.pwnit.local`;
 
-  const existing = await prisma.user.findUnique({
-    where: { email: guestEmail },
-    select: actorUserSelect,
-  });
-
-  const existingActor = toActorUser(existing);
-  if (existingActor?.isGuest) {
-    return existingActor;
+  const existing = await findUserByEmail(guestEmail);
+  if (existing?.isGuest) {
+    return existing;
   }
 
-  const created = await prisma.user.create({
-    data: {
-      email: guestEmail,
-      referralCode: "guest",
-      isGuest: true,
-      freeCreditsBalance: 0,
-      paidCreditsBalance: 0,
-    } as any,
-    select: actorUserSelect,
+  return createUserWithEmailFallback({
+    email: guestEmail,
+    referralCode: "guest",
+    isGuest: true,
+    freeCreditsBalance: 0,
+    paidCreditsBalance: 0,
   });
+}
 
-  return toActorUser(created)!;
+async function getOrCreateLocalDemoUser(demoUserKey: DemoUserKey): Promise<ActorUser> {
+  const config = LOCAL_DEMO_USERS[demoUserKey];
+  const existing = await findUserByEmail(config.email);
+
+  if (existing && !existing.isGuest) {
+    return existing;
+  }
+
+  return createUserWithEmailFallback({
+    email: config.email,
+    alias: config.alias,
+    referralCode: config.referralCode,
+    isGuest: false,
+    emailVerifiedAt: new Date(),
+    freeCreditsBalance: 0,
+    paidCreditsBalance: 0,
+  });
 }
 
 async function applyDailyCredits(user: ActorUser, bucketKey: string): Promise<ActorUser> {
@@ -279,8 +368,22 @@ async function applyDailyCredits(user: ActorUser, bucketKey: string): Promise<Ac
   return toActorUser(updated)!;
 }
 
-export async function getCurrentActor() {
+export async function getCurrentActor(): Promise<CurrentActor> {
   const bucketKey = getBucketKeyFromRequest();
+  const isLocalDev = isLocalDevRequest();
+  const demoUserKey = getLocalDemoUserFromRequest();
+
+  if (demoUserKey) {
+    return {
+      user: await applyDailyCredits(await getOrCreateLocalDemoUser(demoUserKey), bucketKey),
+      isGuest: false,
+      bucketKey,
+      isLocalDev,
+      demoUserKey,
+      isDemoUser: true,
+    };
+  }
+
   const sessionUser = await getSessionUserFromRequest();
 
   if (sessionUser && !sessionUser.isGuest) {
@@ -288,6 +391,9 @@ export async function getCurrentActor() {
       user: await applyDailyCredits(sessionUser, bucketKey),
       isGuest: false,
       bucketKey,
+      isLocalDev,
+      demoUserKey: null,
+      isDemoUser: false,
     };
   }
 
@@ -298,6 +404,9 @@ export async function getCurrentActor() {
     user: await applyDailyCredits(guestUser, bucketKey),
     isGuest: true,
     bucketKey,
+    isLocalDev,
+    demoUserKey: null,
+    isDemoUser: false,
   };
 }
 
@@ -308,9 +417,12 @@ export async function getCurrentUserSummary() {
   return {
     id: user.id,
     isGuest: actor.isGuest,
+    isDemoUser: actor.isDemoUser,
+    isLocalDev: actor.isLocalDev,
+    demoUserKey: actor.demoUserKey,
     email: actor.isGuest ? null : user.email,
     emailVerified: !actor.isGuest && Boolean(user.emailVerifiedAt),
-    actorLabel: actor.isGuest ? "Playing as Guest" : user.email,
+    actorLabel: actor.isGuest ? "Playing as Guest" : user.alias || user.email,
     alias: user.alias ?? null,
     freeCreditsBalance: Number(user.freeCreditsBalance ?? 0),
     paidCreditsBalance: Number(user.paidCreditsBalance ?? 0),

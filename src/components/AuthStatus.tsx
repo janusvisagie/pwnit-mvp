@@ -6,10 +6,15 @@ import { useEffect, useMemo, useState } from "react";
 
 type Summary = {
   isGuest: boolean;
+  isDemoUser?: boolean;
+  isLocalDev?: boolean;
+  demoUserKey?: string | null;
   actorLabel: string;
   email: string | null;
   emailVerified: boolean;
 };
+
+const DEV_DEMO_COOKIE = "pwnit_demo_user";
 
 export function AuthStatus({ initial }: { initial: Summary }) {
   const pathname = usePathname() || "/";
@@ -30,6 +35,9 @@ export function AuthStatus({ initial }: { initial: Summary }) {
 
       setSummary({
         isGuest: Boolean(data.isGuest),
+        isDemoUser: Boolean(data.isDemoUser),
+        isLocalDev: Boolean(data.isLocalDev),
+        demoUserKey: data.demoUserKey ? String(data.demoUserKey) : null,
         actorLabel: String(data.actorLabel || (data.isGuest ? "Playing as Guest" : data.email || "Account")),
         email: data.email ? String(data.email) : null,
         emailVerified: Boolean(data.emailVerified),
@@ -52,6 +60,19 @@ export function AuthStatus({ initial }: { initial: Summary }) {
     }
   }
 
+  function setDemoUser(key: string | null) {
+    if (key) {
+      document.cookie = `${DEV_DEMO_COOKIE}=${encodeURIComponent(key)}; path=/; max-age=31536000; samesite=lax`;
+    } else {
+      document.cookie = `${DEV_DEMO_COOKIE}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; samesite=lax`;
+    }
+
+    window.dispatchEvent(new Event("pwnit:userChanged"));
+    window.dispatchEvent(new Event("pwnit:credits"));
+    router.refresh();
+    void refresh();
+  }
+
   useEffect(() => {
     const handler = () => {
       void refresh();
@@ -66,32 +87,69 @@ export function AuthStatus({ initial }: { initial: Summary }) {
     };
   }, []);
 
+  const demoSwitcher = summary.isLocalDev ? (
+    <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] shadow-sm">
+      <span className="font-semibold text-amber-900">Local test user:</span>
+      {[
+        [null, "Guest"],
+        ["demo1", "Demo 1"],
+        ["demo2", "Demo 2"],
+        ["demo3", "Demo 3"],
+      ].map(([key, label]) => {
+        const active = (key === null && !summary.isDemoUser) || summary.demoUserKey === key;
+
+        return (
+          <button
+            key={String(key ?? "guest")}
+            type="button"
+            onClick={() => setDemoUser(key)}
+            className={`rounded-full px-3 py-1 font-semibold transition ${
+              active
+                ? "bg-amber-900 text-white"
+                : "border border-amber-300 bg-white text-slate-900 hover:bg-amber-100"
+            }`}
+          >
+            {label}
+          </button>
+        );
+      })}
+    </div>
+  ) : null;
+
   if (summary.isGuest) {
     return (
-      <div className="flex flex-wrap items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs shadow-sm">
-        <span className="font-semibold text-slate-900">Playing as Guest</span>
-        <Link
-          href={loginHref}
-          className="rounded-full bg-slate-900 px-3 py-1.5 font-semibold text-white transition hover:bg-slate-800"
-        >
-          Sign in
-        </Link>
+      <div className="flex flex-col gap-2">
+        {demoSwitcher}
+        <div className="flex flex-wrap items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs shadow-sm">
+          <span className="font-semibold text-slate-900">Playing as Guest</span>
+          <Link
+            href={loginHref}
+            className="rounded-full bg-slate-900 px-3 py-1.5 font-semibold text-white transition hover:bg-slate-800"
+          >
+            Sign in
+          </Link>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs shadow-sm">
-      <span className="font-semibold text-slate-900">{summary.email || summary.actorLabel}</span>
-      <span className="text-emerald-700">Signed in</span>
-      <button
-        type="button"
-        onClick={signOut}
-        disabled={busy}
-        className="rounded-full border border-emerald-300 bg-white px-3 py-1.5 font-semibold text-slate-900 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-      >
-        {busy ? "Signing out…" : "Sign out"}
-      </button>
+    <div className="flex flex-col gap-2">
+      {demoSwitcher}
+      <div className="flex flex-wrap items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs shadow-sm">
+        <span className="font-semibold text-slate-900">{summary.email || summary.actorLabel}</span>
+        <span className="text-emerald-700">{summary.isDemoUser ? "Demo user" : "Signed in"}</span>
+        {!summary.isDemoUser ? (
+          <button
+            type="button"
+            onClick={signOut}
+            disabled={busy}
+            className="rounded-full border border-emerald-300 bg-white px-3 py-1.5 font-semibold text-slate-900 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {busy ? "Signing out…" : "Sign out"}
+          </button>
+        ) : null}
+      </div>
     </div>
   );
 }
