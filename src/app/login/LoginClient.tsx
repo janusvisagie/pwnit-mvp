@@ -1,13 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 
-export default function LoginClient() {
+type LoginClientProps = {
+  nextPath: string;
+};
+
+export default function LoginClient({ nextPath }: LoginClientProps) {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const next = useMemo(() => searchParams.get("next") || "/", [searchParams]);
 
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
@@ -51,7 +53,7 @@ export default function LoginClient() {
       const response = await fetch("/api/auth/verify-code", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ email, code, next }),
+        body: JSON.stringify({ email, code, next: nextPath }),
       });
 
       const data = await response.json().catch(() => null);
@@ -62,7 +64,7 @@ export default function LoginClient() {
 
       window.dispatchEvent(new Event("pwnit:userChanged"));
       window.dispatchEvent(new Event("pwnit:credits"));
-      router.push(data.redirectTo || next);
+      router.push(data.redirectTo || nextPath);
       router.refresh();
     } catch (error: any) {
       setMessage(error?.message || "Could not verify code.");
@@ -148,7 +150,7 @@ export default function LoginClient() {
         )}
 
         <Link
-          href={next}
+          href={nextPath}
           className="rounded-full border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-50"
         >
           Continue as guest

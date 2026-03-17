@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 function formatZAR(v: number) {
@@ -26,22 +26,27 @@ type Me = {
   actorLabel: string;
 };
 
-export default function PayClient() {
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const itemId = searchParams.get("itemId") || "";
-  const mode = (searchParams.get("mode") || "mix").toLowerCase();
+type PayClientProps = {
+  itemId: string;
+  mode: string;
+};
 
+export default function PayClient({ itemId, mode }: PayClientProps) {
+  const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [quote, setQuote] = useState<Quote | null>(null);
   const [me, setMe] = useState<Me | null>(null);
 
-  const title = useMemo(() => (mode === "full" ? "Pay full amount" : "Use credits + top up"), [mode]);
+  const normalizedMode = useMemo(() => (mode || "mix").toLowerCase(), [mode]);
+  const title = useMemo(
+    () => (normalizedMode === "full" ? "Pay full amount" : "Use credits + top up"),
+    [normalizedMode],
+  );
   const loginHref = useMemo(() => {
-    const raw = `/pay?itemId=${encodeURIComponent(itemId)}&mode=${encodeURIComponent(mode)}`;
+    const raw = `/pay?itemId=${encodeURIComponent(itemId)}&mode=${encodeURIComponent(normalizedMode)}`;
     return `/login?next=${encodeURIComponent(raw)}`;
-  }, [itemId, mode]);
+  }, [itemId, normalizedMode]);
 
   useEffect(() => {
     async function loadMe() {
@@ -88,7 +93,7 @@ export default function PayClient() {
       const response = await fetch(`/api/item/${itemId}/buy`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ mode }),
+        body: JSON.stringify({ mode: normalizedMode }),
       });
 
       const data = await response.json().catch(() => null);
@@ -164,7 +169,7 @@ export default function PayClient() {
               <div className="text-slate-500">Amount due</div>
               <div className="text-lg font-black text-slate-900">{formatZAR(due)}</div>
             </div>
-            {mode === "mix" ? (
+            {normalizedMode === "mix" ? (
               <>
                 <div>
                   <div className="text-slate-500">Use paid credits</div>
