@@ -13,6 +13,17 @@ const SESSION_TTL_SECONDS = 60 * 60 * 24 * 30;
 const GUEST_ID_RE = /^[a-z0-9_-]{8,120}$/i;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+const actorUserSelect = {
+  id: true,
+  email: true,
+  alias: true,
+  isGuest: true,
+  emailVerifiedAt: true,
+  freeCreditsBalance: true,
+  paidCreditsBalance: true,
+  lastDailyCreditsDayKey: true,
+} as any;
+
 type ActorUser = {
   id: string;
   email: string;
@@ -163,16 +174,7 @@ async function getSessionUserFromRequest(): Promise<ActorUser | null> {
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: {
-      id: true,
-      email: true,
-      alias: true,
-      isGuest: true,
-      emailVerifiedAt: true,
-      freeCreditsBalance: true,
-      paidCreditsBalance: true,
-      lastDailyCreditsDayKey: true,
-    } as any,
+    select: actorUserSelect,
   });
 
   return toActorUser(user);
@@ -183,16 +185,7 @@ async function getOrCreateGuestUserByKey(guestKey: string): Promise<ActorUser> {
 
   const existing = await prisma.user.findUnique({
     where: { email: guestEmail },
-    select: {
-      id: true,
-      email: true,
-      alias: true,
-      isGuest: true,
-      emailVerifiedAt: true,
-      freeCreditsBalance: true,
-      paidCreditsBalance: true,
-      lastDailyCreditsDayKey: true,
-    } as any,
+    select: actorUserSelect,
   });
 
   const existingActor = toActorUser(existing);
@@ -208,16 +201,7 @@ async function getOrCreateGuestUserByKey(guestKey: string): Promise<ActorUser> {
       freeCreditsBalance: 0,
       paidCreditsBalance: 0,
     } as any,
-    select: {
-      id: true,
-      email: true,
-      alias: true,
-      isGuest: true,
-      emailVerifiedAt: true,
-      freeCreditsBalance: true,
-      paidCreditsBalance: true,
-      lastDailyCreditsDayKey: true,
-    } as any,
+    select: actorUserSelect,
   });
 
   return toActorUser(created)!;
@@ -242,47 +226,42 @@ async function applyDailyCredits(user: ActorUser, bucketKey: string): Promise<Ac
     const updated = await prisma.user.update({
       where: { id: user.id },
       data: { lastDailyCreditsDayKey: today } as any,
-      select: {
-        id: true,
-        email: true,
-        alias: true,
-        isGuest: true,
-        emailVerifiedAt: true,
-        freeCreditsBalance: true,
-        paidCreditsBalance: true,
-        lastDailyCreditsDayKey: true,
-      } as any,
+      select: actorUserSelect,
     });
 
     return toActorUser(updated)!;
   }
 
   const updated = await prisma.$transaction(async (tx) => {
+    const grantResult = await (tx as any).dailyFreeBucketGrant.createMany({
+      data: [
+        {
+          bucketKey,
+          dayKey: today,
+          userId: user.id,
+          credits: DAILY_FREE_CREDITS,
+        },
+      ],
+      skipDuplicates: true,
+    });
+
+    if (!grantResult?.count) {
+      const alreadyUsed = await tx.user.update({
+        where: { id: user.id },
+        data: { lastDailyCreditsDayKey: today } as any,
+        select: actorUserSelect,
+      });
+
+      return alreadyUsed;
+    }
+
     const refreshed = await tx.user.update({
       where: { id: user.id },
       data: {
         freeCreditsBalance: DAILY_FREE_CREDITS,
         lastDailyCreditsDayKey: today,
       } as any,
-      select: {
-        id: true,
-        email: true,
-        alias: true,
-        isGuest: true,
-        emailVerifiedAt: true,
-        freeCreditsBalance: true,
-        paidCreditsBalance: true,
-        lastDailyCreditsDayKey: true,
-      } as any,
-    });
-
-    await (tx as any).dailyFreeBucketGrant.create({
-      data: {
-        bucketKey,
-        dayKey: today,
-        userId: user.id,
-        credits: DAILY_FREE_CREDITS,
-      },
+      select: actorUserSelect,
     });
 
     await tx.creditLedger.create({
