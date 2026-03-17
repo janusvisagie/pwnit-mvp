@@ -1,59 +1,46 @@
 export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
-import { getOrCreateDemoUser } from "@/lib/auth";
 
-function clampInt(n: any, lo: number, hi: number) {
+import { requireVerifiedAccount } from "@/lib/auth";
+import { prisma } from "@/lib/db";
+
+function clampInt(n: unknown, lo: number, hi: number) {
   const x = Math.floor(Number(n));
   if (!Number.isFinite(x)) return lo;
   return Math.max(lo, Math.min(hi, x));
 }
 
-const BUNDLES: Record<string, number> = {
-  starter: 60,
-  player: 130,
-  pro: 350,
-  elite: 750,
-  small: 60,
-  medium: 130,
-  large: 350,
-};
-
 export async function POST(req: Request) {
   try {
+    const auth = await requireVerifiedAccount();
+    if (!auth.ok) {
+      return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
+    }
+
     const body = await req.json().catch(() => ({}));
-    const bundleKey = String(body?.bundleKey || "").trim().toLowerCase();
-    const exactCredits = body?.exactCredits;
-    const me = await getOrCreateDemoUser();
+    const bundleKey = String((body as { bundleKey?: unknown })?.bundleKey || "").trim();
+    const exactCredits = (body as { exactCredits?: unknown })?.exactCredits;
 
     let creditsToAdd = 0;
     if (bundleKey) {
-      creditsToAdd = BUNDLES[bundleKey] ?? 0;
-      if (!creditsToAdd) {
-        return NextResponse.json({ ok: false, error: "Unknown bundleKey" }, { status: 400 });
-      }
+      if (bundleKey === "small") creditsToAdd = 10;
+      else if (bundleKey === "medium") creditsToAdd = 25;
+      else if (bundleKey === "large") creditsToAdd = 60;
+      else return NextResponse.json({ ok: false, error: "Unknown bundleKey" }, { status: 400 });
     } else {
-      creditsToAdd = clampInt(exactCredits, 1, 1000);
+      creditsToAdd = clampInt(exactCredits, 1, 500);
     }
 
-    const updated = await prisma.$transaction(async (tx) => {
-      const user = await tx.user.update({
-        where: { id: me.id },
-        data: { paidCreditsBalance: { increment: creditsToAdd } } as any,
-        select: { paidCreditsBalance: true, freeCreditsBalance: true },
-      });
-
-      await tx.creditLedger.create({
-        data: {
-          userId: me.id,
-          kind: "PACK_PURCHASE",
-          credits: creditsToAdd,
-          note: bundleKey ? `Credit pack: ${bundleKey}` : "Manual credit top-up",
-        },
-      });
-
-      return user;
+    const updated = await prisma.user.update({
+      where: { id: auth.user.id },
+      data: {
+        paidCreditsBalance: Number(auth.user.paidCreditsBalance ?? 0) + creditsToAdd,
+      } as any,
+      select: {
+        paidCreditsBalance: true,
+        freeCreditsBalance: true,
+      },
     });
 
     return NextResponse.json({
@@ -61,9 +48,13 @@ export async function POST(req: Request) {
       added: creditsToAdd,
       paidCreditsBalance: Number((updated as any).paidCreditsBalance ?? 0),
       freeCreditsBalance: Number((updated as any).freeCreditsBalance ?? 0),
-      totalCredits: Number((updated as any).paidCreditsBalance ?? 0) + Number((updated as any).freeCreditsBalance ?? 0),
+      totalCredits:
+        Number((updated as any).paidCreditsBalance ?? 0) + Number((updated as any).freeCreditsBalance ?? 0),
     });
-  } catch (e: any) {
-    return NextResponse.json({ ok: false, error: e?.message || String(e) }, { status: 500 });
+  } catch (error: any) {
+    return NextResponse.json(
+      { ok: false, error: error?.message || String(error) },
+      { status: 500 },
+    );
   }
 }

@@ -1,17 +1,29 @@
-// src/app/api/buy-credits/route.ts
+export const runtime = "nodejs";
+
 import { NextResponse } from "next/server";
+
 import { prisma } from "@/lib/db";
-import { getOrCreateDemoUser } from "@/lib/auth";
+import { requireVerifiedAccount } from "@/lib/auth";
 
 const TOPUP = 30;
 
 export async function POST() {
-  const user = await getOrCreateDemoUser();
+  const auth = await requireVerifiedAccount();
+  if (!auth.ok) {
+    return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
+  }
 
-  await prisma.user.update({
+  const user = auth.user;
+  const updated = await prisma.user.update({
     where: { id: user.id },
-    data: { paidCreditsBalance: (user.paidCreditsBalance ?? 0) + TOPUP },
+    data: { paidCreditsBalance: Number(user.paidCreditsBalance ?? 0) + TOPUP } as any,
+    select: { paidCreditsBalance: true, freeCreditsBalance: true },
   });
 
-  return NextResponse.json({ ok: true, added: TOPUP });
+  return NextResponse.json({
+    ok: true,
+    added: TOPUP,
+    paidCreditsBalance: Number((updated as any).paidCreditsBalance ?? 0),
+    freeCreditsBalance: Number((updated as any).freeCreditsBalance ?? 0),
+  });
 }

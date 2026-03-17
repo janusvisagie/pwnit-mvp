@@ -1,8 +1,9 @@
 export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
+
+import { getCurrentActor, requireVerifiedAccount } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { getOrCreateDemoUser } from "@/lib/auth";
 import { buyPriceAfterSpend, tierLabel } from "@/lib/pricing";
 import { ensureCurrentRound, syncRoundLifecycle } from "@/lib/rounds";
 
@@ -12,7 +13,9 @@ function getParamItemId(params: any) {
 }
 
 async function buildQuote(itemId: string) {
-  const me = await getOrCreateDemoUser();
+  const actor = await getCurrentActor();
+  const me = actor.user;
+
   await syncRoundLifecycle(itemId);
 
   const item = await prisma.item.findUnique({ where: { id: itemId } });
@@ -31,25 +34,26 @@ async function buildQuote(itemId: string) {
     where: { itemId, roundId: round.id, userId: me.id },
     _sum: { paidUsed: true },
   });
-  const spentCredits = Number(agg._sum.paidUsed ?? 0);
 
   const fresh = await prisma.user.findUnique({
     where: { id: me.id },
     select: { paidCreditsBalance: true, freeCreditsBalance: true },
   });
+
   const paidBal = Number(fresh?.paidCreditsBalance ?? 0);
   const freeBal = Number((fresh as any)?.freeCreditsBalance ?? 0);
 
   const price = buyPriceAfterSpend({
     prizeValueZAR: item.prizeValueZAR,
     tierNumber: item.tier,
-    spentCredits,
+    spentCredits: Number(agg._sum.paidUsed ?? 0),
     walletCredits: paidBal,
   });
 
   return {
     ok: true as const,
     status: 200,
+    actor,
     item,
     round,
     me,
@@ -71,6 +75,8 @@ export async function GET(_: Request, ctx: { params: any }) {
 
   return NextResponse.json({
     ok: true,
+    isGuest: q.actor.isGuest,
+    requiresVerifiedAccount: q.actor.isGuest,
     roundState: q.round.state,
     tier: tierLabel(q.price.tierKey),
     discountPct: q.price.discountPct,
@@ -86,14 +92,29 @@ export async function GET(_: Request, ctx: { params: any }) {
 
 export async function POST(req: Request, ctx: { params: any }) {
   try {
+    const auth = await requireVerifiedAccount();
+    if (!auth.ok) {
+      return NextResponse.json(
+        { ok: false, error: auth.error, requiresVerifiedAccount: true },
+        { status: auth.status },
+      );
+    }
+
     const itemId = getParamItemId(ctx?.params);
     if (!itemId) return NextResponse.json({ ok: false, error: "Missing itemId" }, { status: 400 });
 
     const body = await req.json().catch(() => ({}));
-    const mode = body?.mode === "full" ? "full" : "mix";
+    const mode = (body as { mode?: string })?.mode === "full" ? "full" : "mix";
 
     const q = await buildQuote(itemId);
     if (!q.ok) return NextResponse.json({ ok: false, error: q.error }, { status: q.status });
+
+    if (q.actor.isGuest) {
+      return NextResponse.json(
+        { ok: false, error: "Please sign in with your email to continue.", requiresVerifiedAccount: true },
+        { status: 401 },
+      );
+    }
 
     const result = await prisma.$transaction(async (tx) => {
       const fresh = await tx.user.findUnique({ where: { id: q.me.id } });
@@ -154,7 +175,10 @@ export async function POST(req: Request, ctx: { params: any }) {
       topUpCredits: result.topUpCredits,
       newBalance: result.newBalance,
     });
-  } catch (e: any) {
-    return NextResponse.json({ ok: false, error: e?.message || "Server error" }, { status: 500 });
+  } catch (error: any) {
+    return NextResponse.json(
+      { ok: false, error: error?.message || "Server error" },
+      { status: 500 },
+    );
   }
 }

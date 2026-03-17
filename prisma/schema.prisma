@@ -8,54 +8,54 @@ datasource db {
 }
 
 model User {
-  id                      String         @id @default(cuid())
-  createdAt               DateTime       @default(now())
-  email                   String         @unique
-  alias                   String?
-  referralCode            String?
-  isGuest                 Boolean        @default(false)
-  aliasSetByUser          Boolean        @default(false)
-  tier                    Int            @default(1)
-  freeCreditsBalance      Int            @default(0)
-  paidCreditsBalance      Int            @default(0)
-  lastDailyCreditsDayKey  String?
-
-  attempts   Attempt[]
-  purchases  ItemPurchase[]
-  winners    Winner[]
-  ledgers    CreditLedger[]
+  id                     String                @id @default(cuid())
+  createdAt              DateTime              @default(now())
+  email                  String                @unique
+  alias                  String?
+  referralCode           String?
+  isGuest                Boolean               @default(false)
+  aliasSetByUser         Boolean               @default(false)
+  tier                   Int                   @default(1)
+  freeCreditsBalance     Int                   @default(0)
+  paidCreditsBalance     Int                   @default(0)
+  lastDailyCreditsDayKey String?
+  emailVerifiedAt        DateTime?
+  attempts               Attempt[]
+  purchases              ItemPurchase[]
+  winners                Winner[]
+  ledgers                CreditLedger[]
+  dailyFreeGrants        DailyFreeBucketGrant[]
 }
 
 model Item {
-  id                    String       @id @default(cuid())
-  createdAt             DateTime     @default(now())
+  id                    String         @id @default(cuid())
+  createdAt             DateTime       @default(now())
   title                 String
-  tier                  Int          @default(1)
+  tier                  Int            @default(1)
   prizeType             String
-  prizeValueZAR         Int          @default(0)
-  landedCostZAR         Int          @default(0)
-  allowedSubsidyCredits Int          @default(0)
-  playCostCredits       Int          @default(5)
-  fundingWindowHours    Int          @default(48)
-  purchaseGraceHours    Int          @default(24)
-  sortOrder             Int          @default(0)
-  isHero                Boolean      @default(false)
+  prizeValueZAR         Int            @default(0)
+  landedCostZAR         Int            @default(0)
+  allowedSubsidyCredits Int            @default(0)
+  playCostCredits       Int            @default(5)
+  fundingWindowHours    Int            @default(48)
+  purchaseGraceHours    Int            @default(24)
+  sortOrder             Int            @default(0)
+  isHero                Boolean        @default(false)
   imageUrl              String?
   shortDesc             String?
   productUrl            String?
-  state                 String       @default("OPEN")
-  activationGoalEntries Int          @default(3)
-  countdownMinutes      Int          @default(120)
+  state                 String         @default("OPEN")
+  activationGoalEntries Int            @default(3)
+  countdownMinutes      Int            @default(120)
   opensAt               DateTime?
   closesAt              DateTime?
-  subscriberOnly        Boolean      @default(false)
+  subscriberOnly        Boolean        @default(false)
   gameKey               String?
-
-  attempts  Attempt[]
-  winners   Winner[]
-  purchases ItemPurchase[]
-  rounds    ItemRound[]
-  ledgers   CreditLedger[]
+  attempts              Attempt[]
+  winners               Winner[]
+  purchases             ItemPurchase[]
+  rounds                ItemRound[]
+  ledgers               CreditLedger[]
 }
 
 model ItemRound {
@@ -75,36 +75,34 @@ model ItemRound {
   freeCreditsCollected    Int            @default(0)
   attemptCount            Int            @default(0)
   winnerUserId            String?
-
-  item      Item           @relation(fields: [itemId], references: [id])
-  attempts  Attempt[]
-  winners   Winner[]
-  purchases ItemPurchase[]
-  ledgers   CreditLedger[]
+  item                    Item           @relation(fields: [itemId], references: [id])
+  attempts                Attempt[]
+  winners                 Winner[]
+  purchases               ItemPurchase[]
+  ledgers                 CreditLedger[]
 
   @@index([itemId, state])
   @@unique([itemId, sequence])
 }
 
 model Attempt {
-  id               String    @id @default(cuid())
-  createdAt        DateTime  @default(now())
+  id               String     @id @default(cuid())
+  createdAt        DateTime   @default(now())
   userId           String
   itemId           String
   roundId          String?
   dayKey           String
-  costCredits      Int       @default(0)
-  freeUsed         Int       @default(0)
-  paidUsed         Int       @default(0)
-  isPaid           Boolean   @default(false)
+  costCredits      Int        @default(0)
+  freeUsed         Int        @default(0)
+  paidUsed         Int        @default(0)
+  isPaid           Boolean    @default(false)
   scoreMs          Int
   flags            String?
   clientSentAt     DateTime?
-  serverReceivedAt DateTime  @default(now())
-
-  user  User       @relation(fields: [userId], references: [id])
-  item  Item       @relation(fields: [itemId], references: [id])
-  round ItemRound? @relation(fields: [roundId], references: [id])
+  serverReceivedAt DateTime   @default(now())
+  user             User       @relation(fields: [userId], references: [id])
+  item             Item       @relation(fields: [itemId], references: [id])
+  round            ItemRound? @relation(fields: [roundId], references: [id])
 
   @@index([itemId, dayKey])
   @@index([userId, dayKey])
@@ -113,21 +111,20 @@ model Attempt {
 }
 
 model Winner {
-  id            String     @id @default(cuid())
-  createdAt     DateTime   @default(now())
-  itemId        String
-  roundId       String?
-  dayKey        String
-  userId        String
-  rank          Int
-  scoreMs       Int
-  alias         String?
-  rewardType    String     @default("ITEM")
-  rewardCredits Int        @default(0)
-
-  item  Item       @relation(fields: [itemId], references: [id])
-  user  User       @relation(fields: [userId], references: [id])
-  round ItemRound? @relation(fields: [roundId], references: [id])
+  id           String     @id @default(cuid())
+  createdAt    DateTime   @default(now())
+  itemId       String
+  roundId      String?
+  dayKey       String
+  userId       String
+  rank         Int
+  scoreMs      Int
+  alias        String?
+  rewardType   String     @default("ITEM")
+  rewardCredits Int       @default(0)
+  item         Item       @relation(fields: [itemId], references: [id])
+  user         User       @relation(fields: [userId], references: [id])
+  round        ItemRound? @relation(fields: [roundId], references: [id])
 
   @@index([itemId, dayKey])
   @@index([userId, dayKey])
@@ -148,10 +145,9 @@ model ItemPurchase {
   discountCredits Int
   payCredits      Int
   tierKey         String
-
-  item  Item       @relation(fields: [itemId], references: [id])
-  user  User       @relation(fields: [userId], references: [id])
-  round ItemRound? @relation(fields: [roundId], references: [id])
+  item            Item       @relation(fields: [itemId], references: [id])
+  user            User       @relation(fields: [userId], references: [id])
+  round           ItemRound? @relation(fields: [roundId], references: [id])
 
   @@index([itemId, dayKey])
   @@index([userId, dayKey])
@@ -168,11 +164,39 @@ model CreditLedger {
   kind      String
   credits   Int
   note      String?
-
-  user  User       @relation(fields: [userId], references: [id])
-  item  Item?      @relation(fields: [itemId], references: [id])
-  round ItemRound? @relation(fields: [roundId], references: [id])
+  user      User       @relation(fields: [userId], references: [id])
+  item      Item?      @relation(fields: [itemId], references: [id])
+  round     ItemRound? @relation(fields: [roundId], references: [id])
 
   @@index([userId, createdAt])
   @@index([roundId, kind])
+}
+
+model DailyFreeBucketGrant {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  bucketKey String
+  dayKey    String
+  userId    String?
+  credits   Int      @default(0)
+  user      User?    @relation(fields: [userId], references: [id])
+
+  @@unique([bucketKey, dayKey])
+  @@index([userId, dayKey])
+  @@index([dayKey])
+}
+
+model LoginCode {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  email     String
+  codeHash  String
+  bucketKey String?
+  ipHash    String?
+  expiresAt DateTime
+  consumedAt DateTime?
+
+  @@index([email, createdAt])
+  @@index([bucketKey, createdAt])
+  @@index([ipHash, createdAt])
 }
