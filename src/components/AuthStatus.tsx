@@ -16,6 +16,8 @@ type Summary = {
 
 const DEV_DEMO_COOKIE = "pwnit_demo_user";
 
+type DemoOption = "guest" | "demo1" | "demo2" | "demo3";
+
 export function AuthStatus({ initial }: { initial: Summary }) {
   const pathname = usePathname() || "/";
   const router = useRouter();
@@ -26,6 +28,10 @@ export function AuthStatus({ initial }: { initial: Summary }) {
     const next = encodeURIComponent(pathname || "/");
     return `/login?next=${next}`;
   }, [pathname]);
+
+  const activeDemoOption: DemoOption = summary.isDemoUser
+    ? ((summary.demoUserKey as DemoOption) || "demo1")
+    : "guest";
 
   async function refresh() {
     try {
@@ -47,6 +53,28 @@ export function AuthStatus({ initial }: { initial: Summary }) {
     }
   }
 
+  function setDemoUser(key: string | null) {
+    if (key) {
+      document.cookie = `${DEV_DEMO_COOKIE}=${encodeURIComponent(key)}; path=/; max-age=31536000; samesite=lax`;
+    } else {
+      document.cookie = `${DEV_DEMO_COOKIE}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; samesite=lax`;
+    }
+
+    window.dispatchEvent(new Event("pwnit:userChanged"));
+    window.dispatchEvent(new Event("pwnit:credits"));
+    router.refresh();
+    void refresh();
+  }
+
+  async function handleDemoChange(value: DemoOption) {
+    setBusy(true);
+    try {
+      setDemoUser(value === "guest" ? null : value);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function signOut() {
     setBusy(true);
     try {
@@ -65,19 +93,6 @@ export function AuthStatus({ initial }: { initial: Summary }) {
     }
   }
 
-  function setDemoUser(key: string | null) {
-    if (key) {
-      document.cookie = `${DEV_DEMO_COOKIE}=${encodeURIComponent(key)}; path=/; max-age=31536000; samesite=lax`;
-    } else {
-      document.cookie = `${DEV_DEMO_COOKIE}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; samesite=lax`;
-    }
-
-    window.dispatchEvent(new Event("pwnit:userChanged"));
-    window.dispatchEvent(new Event("pwnit:credits"));
-    router.refresh();
-    void refresh();
-  }
-
   useEffect(() => {
     const handler = () => {
       void refresh();
@@ -93,31 +108,27 @@ export function AuthStatus({ initial }: { initial: Summary }) {
   }, []);
 
   const demoSwitcher = summary.isLocalDev ? (
-    <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] shadow-sm">
-      <span className="font-semibold text-amber-900">Local test user:</span>
-      {[
-        [null, "Guest"],
-        ["demo1", "Demo 1"],
-        ["demo2", "Demo 2"],
-        ["demo3", "Demo 3"],
-      ].map(([key, label]) => {
-        const active = (key === null && !summary.isDemoUser) || summary.demoUserKey === key;
-
-        return (
-          <button
-            key={String(key ?? "guest")}
-            type="button"
-            onClick={() => setDemoUser(key)}
-            className={`rounded-full px-3 py-1 font-semibold transition ${
-              active
-                ? "bg-amber-900 text-white"
-                : "border border-amber-300 bg-white text-slate-900 hover:bg-amber-100"
-            }`}
-          >
-            {label}
-          </button>
-        );
-      })}
+    <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs shadow-sm">
+      <label htmlFor="local-demo-user" className="font-semibold text-amber-900">
+        Local test user:
+      </label>
+      <select
+        id="local-demo-user"
+        value={activeDemoOption}
+        disabled={busy}
+        onChange={(event) => {
+          void handleDemoChange(event.target.value as DemoOption);
+        }}
+        className="rounded-full border border-amber-300 bg-white px-3 py-1.5 font-semibold text-slate-900 shadow-sm outline-none transition focus:border-amber-500"
+      >
+        <option value="guest">Guest</option>
+        <option value="demo1">Demo 1</option>
+        <option value="demo2">Demo 2</option>
+        <option value="demo3">Demo 3</option>
+      </select>
+      <span className="text-amber-800">
+        {summary.isDemoUser ? `Now using ${summary.actorLabel}` : "Now using Guest"}
+      </span>
     </div>
   ) : null;
 
@@ -144,14 +155,16 @@ export function AuthStatus({ initial }: { initial: Summary }) {
       <div className="flex flex-wrap items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs shadow-sm">
         <span className="font-semibold text-slate-900">{summary.email || summary.actorLabel}</span>
         <span className="text-emerald-700">{summary.isDemoUser ? "Demo user" : "Signed in"}</span>
-        <button
-          type="button"
-          onClick={signOut}
-          disabled={busy}
-          className="rounded-full border border-emerald-300 bg-white px-3 py-1.5 font-semibold text-slate-900 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {busy ? (summary.isDemoUser ? "Leaving demo…" : "Signing out…") : (summary.isDemoUser ? "Use Guest" : "Sign out")}
-        </button>
+        {!summary.isDemoUser ? (
+          <button
+            type="button"
+            onClick={signOut}
+            disabled={busy}
+            className="rounded-full border border-emerald-300 bg-white px-3 py-1.5 font-semibold text-slate-900 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {busy ? "Signing out…" : "Sign out"}
+          </button>
+        ) : null}
       </div>
     </div>
   );
