@@ -27,7 +27,7 @@ export default function HowActivationWorksPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-bold text-slate-900">3) Practice first, then play for real</h2>
+            <h2 className="text-lg font-bold text-slate-900">3) Practice or play for real</h2>
             <p className="mt-2">
               Use practice mode to warm up before spending credits. When you are ready,
               switch to a real attempt and post your best score to the leaderboard.
