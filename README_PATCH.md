@@ -1,9 +1,8 @@
-Replace these files in your repo with the versions in this ZIP:
-- src/app/layout.tsx
-- src/app/page.tsx
-- src/components/ItemCard.tsx
+Apply these file replacements:
 
-This patch:
-- restores a clear diagonal closed/won banner on homepage cards
-- treats any non-OPEN / non-ACTIVATED item as closed on the homepage
-- makes the homepage layout more height-aware so it behaves better on both laptop and external monitor screens
+- src/app/how-activation-works/page.tsx
+- src/components/WelcomeModal.tsx
+
+What this patch does:
+- Updates the “How it works” page to reflect the current guest/account flow and the 30 free credits per day.
+- Adds a permanent opt-out option to the welcome modal using localStorage.

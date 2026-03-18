@@ -3,20 +3,26 @@
 import { useEffect, useState } from "react";
 
 const SESSION_KEY = "pwnit_welcome_seen_session";
+const HIDE_FOREVER_KEY = "pwnit_welcome_hide_forever";
 
 const steps = [
-  { n: "1", title: "Pick", body: "Choose a prize." },
-  { n: "2", title: "Play", body: "Post your best score." },
-  { n: "3", title: "Win", body: "Top the leaderboard." },
+  { icon: "🎯", title: "Pick", body: "Choose a prize you want." },
+  { icon: "⚡", title: "Play", body: "Use your credits and post your best score." },
+  { icon: "🏆", title: "Win", body: "Top the leaderboard and win the prize." },
 ] as const;
 
 export function WelcomeModal() {
   const [open, setOpen] = useState(false);
+  const [hideForever, setHideForever] = useState(false);
 
   useEffect(() => {
     try {
-      const seen = window.sessionStorage.getItem(SESSION_KEY);
-      if (!seen) setOpen(true);
+      const hiddenForever = window.localStorage.getItem(HIDE_FOREVER_KEY) === "1";
+      const seenThisSession = window.sessionStorage.getItem(SESSION_KEY) === "1";
+
+      if (!hiddenForever && !seenThisSession) {
+        setOpen(true);
+      }
     } catch {
       setOpen(true);
     }
@@ -24,8 +30,24 @@ export function WelcomeModal() {
 
   function dismiss() {
     setOpen(false);
+
     try {
       window.sessionStorage.setItem(SESSION_KEY, "1");
+      if (hideForever) {
+        window.localStorage.setItem(HIDE_FOREVER_KEY, "1");
+      }
+    } catch {
+      // ignore blocked storage
+    }
+  }
+
+  function hidePermanentlyNow() {
+    setHideForever(true);
+    setOpen(false);
+
+    try {
+      window.sessionStorage.setItem(SESSION_KEY, "1");
+      window.localStorage.setItem(HIDE_FOREVER_KEY, "1");
     } catch {
       // ignore blocked storage
     }
@@ -34,61 +56,65 @@ export function WelcomeModal() {
   if (!open) return null;
 
   return (
-    <div
-      className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm"
-      style={{
-        paddingTop: "max(12px, env(safe-area-inset-top))",
-        paddingRight: "12px",
-        paddingBottom: "max(12px, env(safe-area-inset-bottom))",
-        paddingLeft: "12px",
-      }}
-    >
-      <div className="flex min-h-full items-end justify-center sm:items-center">
-        <div className="w-full max-w-md overflow-hidden rounded-3xl border border-white/10 bg-slate-900 text-white shadow-2xl">
-          <div className="border-b border-white/10 px-4 pb-3 pt-4 sm:px-5 sm:pb-4 sm:pt-5">
-            <p className="text-[11px] font-medium uppercase tracking-[0.24em] text-cyan-300/90">
-              Welcome to PwnIt
-            </p>
-            <h2 className="mt-1 text-[clamp(1.45rem,5.7vw,2rem)] font-semibold leading-[1.05] tracking-tight text-white">
-              Pick. Play. PwnIt.
-            </h2>
-            <p className="mt-2 text-sm leading-5 text-slate-300 sm:text-[15px]">
-              Choose a prize, play a quick skill game, and try to win it.
-            </p>
-          </div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/65 px-4 py-6">
+      <div className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl md:p-7">
+        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-amber-600">
+          Welcome to PwnIt
+        </p>
+        <h2 className="mt-2 text-3xl font-extrabold tracking-tight text-slate-900">
+          Pick. Play. PwnIt.
+        </h2>
+        <p className="mt-3 text-sm leading-6 text-slate-600 md:text-base">
+          Choose a prize, use your daily credits, play a quick skill game, and try to win it.
+        </p>
 
-          <div className="px-4 py-3 sm:px-5 sm:py-4">
-            <div className="grid grid-cols-3 gap-2 sm:gap-3">
-              {steps.map((step) => (
-                <div
-                  key={step.n}
-                  className="rounded-2xl border border-white/10 bg-white/[0.04] px-2 py-2 text-center sm:px-3 sm:py-3"
-                >
-                  <div className="mx-auto flex h-7 w-7 items-center justify-center rounded-full bg-cyan-400/15 text-xs font-semibold text-cyan-300 sm:h-8 sm:w-8">
-                    {step.n}
-                  </div>
-                  <div className="mt-1 text-sm font-semibold text-white sm:mt-2">
-                    {step.title}
-                  </div>
-                  <div className="mt-0.5 text-[11px] leading-4 text-slate-300 sm:text-xs">
-                    {step.body}
-                  </div>
-                </div>
-              ))}
+        <div className="mt-5 grid gap-3 sm:grid-cols-3">
+          {steps.map((step, index) => (
+            <div key={step.title} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <div className="flex items-center justify-between">
+                <span className="text-2xl" aria-hidden>
+                  {step.icon}
+                </span>
+                <span className="rounded-full bg-white px-2.5 py-0.5 text-xs font-bold text-slate-500">
+                  {index + 1}
+                </span>
+              </div>
+              <h3 className="mt-3 text-base font-bold text-slate-900">{step.title}</h3>
+              <p className="mt-1 text-sm leading-5 text-slate-600">{step.body}</p>
             </div>
+          ))}
+        </div>
 
-            <p className="mt-3 text-center text-xs leading-4 text-slate-300 sm:mt-4 sm:text-sm">
-              Or buy it if you don&apos;t win.
-            </p>
+        <div className="mt-5 rounded-2xl bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          You currently receive <span className="font-semibold">30 free credits per day</span>{" "}
+          to get started.
+        </div>
 
-            <button
-              type="button"
-              onClick={dismiss}
-              className="mt-3 w-full rounded-2xl bg-cyan-400 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-300/70 sm:mt-4"
-            >
-              Start playing
-            </button>
-          </div>
+        <label className="mt-5 flex items-start gap-3 text-sm text-slate-700">
+          <input
+            type="checkbox"
+            checked={hideForever}
+            onChange={(event) => setHideForever(event.target.checked)}
+            className="mt-1 h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900"
+          />
+          <span>Do not show this welcome message again.</span>
+        </label>
+
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+          <button
+            type="button"
+            onClick={dismiss}
+            className="inline-flex min-h-11 flex-1 items-center justify-center rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+          >
+            Start playing
+          </button>
+          <button
+            type="button"
+            onClick={hidePermanentlyNow}
+            className="inline-flex min-h-11 items-center justify-center rounded-full border border-slate-300 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+          >
+            Hide permanently
+          </button>
         </div>
       </div>
     </div>
