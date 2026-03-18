@@ -25,6 +25,9 @@ model User {
   winners                Winner[]
   ledgers                CreditLedger[]
   dailyFreeGrants        DailyFreeBucketGrant[]
+  referralsMade          Referral[]            @relation("ReferralReferrer")
+  referralsReceived      Referral[]            @relation("ReferralReferred")
+  surveyResponses        SurveyResponse[]
 }
 
 model Item {
@@ -111,20 +114,20 @@ model Attempt {
 }
 
 model Winner {
-  id           String     @id @default(cuid())
-  createdAt    DateTime   @default(now())
-  itemId       String
-  roundId      String?
-  dayKey       String
-  userId       String
-  rank         Int
-  scoreMs      Int
-  alias        String?
-  rewardType   String     @default("ITEM")
-  rewardCredits Int       @default(0)
-  item         Item       @relation(fields: [itemId], references: [id])
-  user         User       @relation(fields: [userId], references: [id])
-  round        ItemRound? @relation(fields: [roundId], references: [id])
+  id            String     @id @default(cuid())
+  createdAt     DateTime   @default(now())
+  itemId        String
+  roundId       String?
+  dayKey        String
+  userId        String
+  rank          Int
+  scoreMs       Int
+  alias         String?
+  rewardType    String     @default("ITEM")
+  rewardCredits Int        @default(0)
+  item          Item       @relation(fields: [itemId], references: [id])
+  user          User       @relation(fields: [userId], references: [id])
+  round         ItemRound? @relation(fields: [roundId], references: [id])
 
   @@index([itemId, dayKey])
   @@index([userId, dayKey])
@@ -187,16 +190,55 @@ model DailyFreeBucketGrant {
 }
 
 model LoginCode {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
-  email     String
-  codeHash  String
-  bucketKey String?
-  ipHash    String?
-  expiresAt DateTime
+  id         String    @id @default(cuid())
+  createdAt  DateTime  @default(now())
+  email      String
+  codeHash   String
+  bucketKey  String?
+  ipHash     String?
+  expiresAt  DateTime
   consumedAt DateTime?
 
   @@index([email, createdAt])
   @@index([bucketKey, createdAt])
   @@index([ipHash, createdAt])
+}
+
+model Referral {
+  id                    String    @id @default(cuid())
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  code                  String
+  referrerUserId        String
+  referredUserId        String?
+  referredBucketKey     String
+  status                String    @default("PENDING")
+  qualifiedAt           DateTime?
+  rewardedAt            DateTime?
+  referrerRewardCredits Int       @default(20)
+  referredRewardCredits Int       @default(10)
+  referrer              User      @relation("ReferralReferrer", fields: [referrerUserId], references: [id])
+  referred              User?     @relation("ReferralReferred", fields: [referredUserId], references: [id])
+
+  @@unique([referredBucketKey])
+  @@index([code])
+  @@index([referrerUserId, createdAt])
+  @@index([referredUserId, createdAt])
+  @@index([status, createdAt])
+}
+
+model SurveyResponse {
+  id            String   @id @default(cuid())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  surveyKey     String
+  userId        String?
+  bucketKey     String
+  answersJson   Json
+  rewardCredits Int      @default(0)
+  rewardedAt    DateTime?
+  user          User?    @relation(fields: [userId], references: [id])
+
+  @@unique([surveyKey, bucketKey])
+  @@index([userId, createdAt])
 }
