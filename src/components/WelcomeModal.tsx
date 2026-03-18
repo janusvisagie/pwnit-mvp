@@ -65,7 +65,7 @@ export function WelcomeModal() {
           Pick. Play. PwnIt.
         </h2>
         <p className="mt-3 text-sm leading-6 text-slate-600 md:text-base">
-          Choose a prize, use your daily credits, play a quick skill game, and try to win it.
+          Choose a prize, play a quick skill game, and try to win it.
         </p>
 
         <div className="mt-5 grid gap-3 sm:grid-cols-3">

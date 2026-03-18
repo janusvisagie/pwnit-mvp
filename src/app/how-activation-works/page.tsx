@@ -6,8 +6,7 @@ export default function HowActivationWorksPage() {
       <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm md:p-8">
         <h1 className="text-3xl font-extrabold tracking-tight">How it works</h1>
         <p className="mt-3 text-slate-600">
-          A simple overview of free credits, activation, gameplay, results, and buying the
-          item if you do not win.
+          
         </p>
 
         <div className="mt-8 space-y-6 text-sm leading-6 text-slate-700 md:text-base">
@@ -40,13 +39,12 @@ export default function HowActivationWorksPage() {
             <h2 className="text-lg font-bold text-slate-900">4) Activation and countdown</h2>
             <p className="mt-2">
               Prizes move through a visible activation threshold before they go live. Once a
-              prize is activated, the countdown starts. Plays made before activation still
-              count, and you can keep improving your score while the countdown is running.
+              prize is activated, the countdown starts. Keep playing to improve your score before the countdown ends.
             </p>
           </section>
 
           <section>
-            <h2 className="text-lg font-bold text-slate-900">5) Practice first, then play for real</h2>
+            <h2 className="text-lg font-bold text-slate-900">5) Practice or play for real</h2>
             <p className="mt-2">
               Use practice mode to warm up before spending credits. When you are ready,
               switch to a real attempt and post your best score to the leaderboard.
@@ -74,7 +72,7 @@ export default function HowActivationWorksPage() {
             <h2 className="text-lg font-bold text-slate-900">8) If an item does not activate</h2>
             <p className="mt-2">
               If a prize does not activate in time, paid credits used on that prize are
-              returned to your wallet.
+              refunded.
             </p>
           </section>
         </div>
