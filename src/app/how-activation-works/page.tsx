@@ -6,12 +6,72 @@ export default function HowActivationWorksPage() {
       <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm md:p-8">
         <h1 className="text-3xl font-extrabold tracking-tight">How it works</h1>
         <p className="mt-3 text-slate-600">
-          
+          A simple overview of how PwnIt prizes go live, how gameplay works, how winners are
+          decided, and what happens if you do not win.
         </p>
+
+        <div className="mt-6 rounded-2xl bg-slate-50 p-4 text-sm text-slate-700 md:text-base">
+          <p className="font-semibold text-slate-900">In short:</p>
+          <ul className="mt-2 list-disc space-y-1 pl-5">
+            <li>Choose a prize and play the linked skill game.</li>
+            <li>
+              Use credits to compete for the top spot on the leaderboard<span className="align-super text-xs">*</span>.
+            </li>
+            <li>1st place wins the item, while 2nd and 3rd receive credit bonuses.</li>
+            <li>If you do not win, you may still be able to buy the item at a discount.</li>
+          </ul>
+          <p className="mt-3 text-xs leading-5 text-slate-500 md:text-sm">
+            <span className="font-semibold">*</span> Users currently receive 30 free credits per day.
+            Extra credits may also be earned through qualifying referrals and occasional optional
+            feedback surveys.
+          </p>
+        </div>
 
         <div className="mt-8 space-y-6 text-sm leading-6 text-slate-700 md:text-base">
           <section>
-            <h2 className="text-lg font-bold text-slate-900">1) Start as a guest or sign in</h2>
+            <h2 className="text-lg font-bold text-slate-900">1) Pick a prize</h2>
+            <p className="mt-2">
+              Each prize shows the game type, play cost, value, and how close it is to going
+              live.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-bold text-slate-900">2) Activation and countdown</h2>
+            <p className="mt-2">
+              Prizes move through a visible activation threshold before they go live. Once a
+              prize is activated, the countdown starts. Plays made before activation still
+              count, and you can keep improving your score while the countdown is running.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-bold text-slate-900">3) Practice first, then play for real</h2>
+            <p className="mt-2">
+              Use practice mode to warm up before spending credits. When you are ready,
+              switch to a real attempt and post your best score to the leaderboard.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-bold text-slate-900">4) Win the leaderboard</h2>
+            <p className="mt-2">
+              Your best score counts. At the end of the round, <span className="font-semibold">1st place</span>{" "}
+              wins the item, while <span className="font-semibold">2nd</span> and <span className="font-semibold">3rd</span>{" "}
+              receive credit bonuses.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-bold text-slate-900">5) Did not win? Buy it</h2>
+            <p className="mt-2">
+              If you do not win, you can still buy the item. Your paid play spend on that
+              item counts toward your discount, and you only pay the difference.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-bold text-slate-900">6) Start as a guest or sign in</h2>
             <p className="mt-2">
               You can start playing straight away as a guest. Sign in when you want to save
               progress, buy credits, buy an item, claim a prize, or use features like
@@ -20,20 +80,10 @@ export default function HowActivationWorksPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-bold text-slate-900">2) Get 30 free credits each day</h2>
+            <h2 className="text-lg font-bold text-slate-900">7) Credits and bonus rewards</h2>
             <p className="mt-2">
-              Each user currently receives <span className="font-semibold">30 free credits</span>{" "}
-              per day to play. Once those are used, you can keep playing by using paid
-              credits.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-lg font-bold text-slate-900">3) Earn extra free credits</h2>
-            <p className="mt-2">
-              You earn extra free credits in two ways: by referring someone new
-              to the platform, and by completing an optional feedback survey with suggestions
-              to help improve PwnIt.
+              PwnIt currently gives users <span className="font-semibold">30 free credits per day</span>.
+              Once those are used, you can keep playing with paid credits.
             </p>
             <ul className="mt-2 list-disc space-y-1 pl-5">
               <li>
@@ -49,49 +99,7 @@ export default function HowActivationWorksPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-bold text-slate-900">4) Pick a prize</h2>
-            <p className="mt-2">
-              Each prize shows the game type, play cost, value, and how close it is to going
-              live.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-lg font-bold text-slate-900">5) Activation and countdown</h2>
-            <p className="mt-2">
-              Prizes move through a visible activation threshold before they go live. Once a
-              prize is activated, the countdown starts. Plays made before activation still
-              count, and you can keep improving your score while the countdown is running.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-lg font-bold text-slate-900">6) Practice first, then play for real</h2>
-            <p className="mt-2">
-              Use practice mode to warm up before spending credits. When you are ready,
-              switch to a real attempt and post your best score to the leaderboard.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-lg font-bold text-slate-900">7) Win the leaderboard</h2>
-            <p className="mt-2">
-              Your best score counts. At the end of the round, <span className="font-semibold">1st place</span>{" "}
-              wins the item, while <span className="font-semibold">2nd</span> and <span className="font-semibold">3rd</span>{" "}
-              receive credit bonuses.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-lg font-bold text-slate-900">8) Did not win? Buy it</h2>
-            <p className="mt-2">
-              If you do not win, you can still buy the item. Your paid play spend on that
-              item counts toward your discount, and you only pay the difference.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-lg font-bold text-slate-900">9) If an item does not activate</h2>
+            <h2 className="text-lg font-bold text-slate-900">8) If an item does not activate</h2>
             <p className="mt-2">
               If a prize does not activate in time, paid credits used on that prize are
               returned to your wallet.
