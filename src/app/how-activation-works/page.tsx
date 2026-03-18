@@ -6,26 +6,8 @@ export default function HowActivationWorksPage() {
       <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm md:p-8">
         <h1 className="text-3xl font-extrabold tracking-tight">How it works</h1>
         <p className="mt-3 text-slate-600">
-          A simple overview of how PwnIt prizes go live, how gameplay works, how winners are
-          decided, and what happens if you do not win.
+          
         </p>
-
-        <div className="mt-6 rounded-2xl bg-slate-50 p-4 text-sm text-slate-700 md:text-base">
-          <p className="font-semibold text-slate-900">In short:</p>
-          <ul className="mt-2 list-disc space-y-1 pl-5">
-            <li>Choose a prize and play the linked skill game.</li>
-            <li>
-              Use credits to compete for the top spot on the leaderboard<span className="align-super text-xs">*</span>.
-            </li>
-            <li>1st place wins the item, while 2nd and 3rd receive credit bonuses.</li>
-            <li>If you do not win, you may still be able to buy the item at a discount.</li>
-          </ul>
-          <p className="mt-3 text-xs leading-5 text-slate-500 md:text-sm">
-            <span className="font-semibold">*</span> Users currently receive 30 free credits per day.
-            Extra credits may also be earned through qualifying referrals and occasional optional
-            feedback surveys.
-          </p>
-        </div>
 
         <div className="mt-8 space-y-6 text-sm leading-6 text-slate-700 md:text-base">
           <section>
@@ -40,8 +22,7 @@ export default function HowActivationWorksPage() {
             <h2 className="text-lg font-bold text-slate-900">2) Activation and countdown</h2>
             <p className="mt-2">
               Prizes move through a visible activation threshold before they go live. Once a
-              prize is activated, the countdown starts. Plays made before activation still
-              count, and you can keep improving your score while the countdown is running.
+              prize is activated, the countdown starts. Keep playing to improve your score before the countdown ends.
             </p>
           </section>
 
@@ -88,8 +69,7 @@ export default function HowActivationWorksPage() {
             <ul className="mt-2 list-disc space-y-1 pl-5">
               <li>
                 <span className="font-semibold">Referrals:</span> share your referral code or
-                link. When a new player joins through you and qualifies, both of you can
-                receive bonus credits.
+                link. When a new player joins through you and qualifies, both of you receive bonus credits.
               </li>
               <li>
                 <span className="font-semibold">Feedback survey:</span> from time to time you
@@ -102,7 +82,7 @@ export default function HowActivationWorksPage() {
             <h2 className="text-lg font-bold text-slate-900">8) If an item does not activate</h2>
             <p className="mt-2">
               If a prize does not activate in time, paid credits used on that prize are
-              returned to your wallet.
+              refunded.
             </p>
           </section>
         </div>
