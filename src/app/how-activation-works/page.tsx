@@ -6,8 +6,7 @@ export default function HowActivationWorksPage() {
       <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm md:p-8">
         <h1 className="text-3xl font-extrabold tracking-tight">How it works</h1>
         <p className="mt-3 text-slate-600">
-          A simple overview of free credits, referrals, feedback rewards, gameplay, results,
-          and buying the item if you do not win.
+          
         </p>
 
         <div className="mt-8 space-y-6 text-sm leading-6 text-slate-700 md:text-base">
@@ -24,7 +23,7 @@ export default function HowActivationWorksPage() {
             <h2 className="text-lg font-bold text-slate-900">2) Get 30 free credits each day</h2>
             <p className="mt-2">
               Each user currently receives <span className="font-semibold">30 free credits</span>{" "}
-              per day to play with. Once those are used, you can keep playing by using paid
+              per day to play. Once those are used, you can keep playing by using paid
               credits.
             </p>
           </section>
@@ -32,7 +31,7 @@ export default function HowActivationWorksPage() {
           <section>
             <h2 className="text-lg font-bold text-slate-900">3) Earn extra free credits</h2>
             <p className="mt-2">
-              You can sometimes earn extra free credits in two ways: by referring someone new
+              You earn extra free credits in two ways: by referring someone new
               to the platform, and by completing an optional feedback survey with suggestions
               to help improve PwnIt.
             </p>
