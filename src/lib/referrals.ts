@@ -1,5 +1,7 @@
 import { randomBytes } from "crypto";
 
+import { Prisma } from "@prisma/client";
+
 import { cookies, headers } from "next/headers";
 
 import { getCurrentActor } from "@/lib/auth";
