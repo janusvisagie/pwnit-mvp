@@ -1,210 +1,162 @@
 "use client";
 
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
-function formatZAR(v: number) {
-  return `R${Number(v || 0).toLocaleString("en-ZA")}`;
-}
-
-type Quote = {
-  priceCredits?: number;
-  playDiscountCredits?: number;
-  discountCredits?: number;
-  newPriceCredits?: number;
-  amountDueCredits?: number;
-  payCredits?: number;
-  balances?: {
-    paid?: number;
-    free?: number;
-  };
-};
+const BUNDLES = [
+  {
+    key: "starter",
+    name: "Starter",
+    credits: 30,
+    priceLabel: "R30",
+    note: "Quick top-up",
+  },
+  {
+    key: "value",
+    name: "Value",
+    credits: 80,
+    priceLabel: "R70",
+    note: "Save R10",
+  },
+  {
+    key: "max",
+    name: "Max",
+    credits: 150,
+    priceLabel: "R120",
+    note: "Save R30",
+  },
+] as const;
 
 type Me = {
-  isGuest: boolean;
-  actorLabel: string;
+  ok?: boolean;
+  isGuest?: boolean;
+  isDemoUser?: boolean;
+  actorLabel?: string;
+  freeCreditsBalance?: number;
+  paidCreditsBalance?: number;
+  totalCredits?: number;
 };
 
-type PayClientProps = {
-  itemId: string;
-  mode: string;
-};
-
-export default function PayClient({ itemId, mode }: PayClientProps) {
-  const router = useRouter();
-  const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-  const [quote, setQuote] = useState<Quote | null>(null);
+export default function PayClient() {
   const [me, setMe] = useState<Me | null>(null);
+  const [busyKey, setBusyKey] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
 
-  const normalizedMode = useMemo(() => (mode || "mix").toLowerCase(), [mode]);
-  const title = useMemo(
-    () => (normalizedMode === "full" ? "Pay full amount" : "Use credits + top up"),
-    [normalizedMode],
-  );
-  const loginHref = useMemo(() => {
-    const raw = `/pay?itemId=${encodeURIComponent(itemId)}&mode=${encodeURIComponent(normalizedMode)}`;
-    return `/login?next=${encodeURIComponent(raw)}`;
-  }, [itemId, normalizedMode]);
-
-  useEffect(() => {
-    async function loadMe() {
+  async function loadMe() {
+    try {
       const response = await fetch("/api/me", { cache: "no-store" });
       const data = await response.json().catch(() => null);
       if (!response.ok || !data?.ok) return;
-      setMe({ isGuest: Boolean(data.isGuest), actorLabel: String(data.actorLabel || "") });
-    }
-
-    void loadMe();
-  }, []);
-
-  async function loadQuote() {
-    if (!itemId) {
-      setMessage("Missing itemId");
-      return;
-    }
-
-    setBusy(true);
-    setMessage(null);
-
-    try {
-      const response = await fetch(`/api/item/${itemId}/buy`, { cache: "no-store" });
-      const data = await response.json().catch(() => null);
-      if (!response.ok || !data?.ok) {
-        setMessage(data?.error || "Could not load quote");
-        return;
-      }
-      setQuote(data);
-    } catch (error: any) {
-      setMessage(error?.message || "Could not load quote");
-    } finally {
-      setBusy(false);
+      setMe({
+        ok: true,
+        isGuest: Boolean(data.isGuest),
+        isDemoUser: Boolean(data.isDemoUser),
+        actorLabel: String(data.actorLabel || ""),
+        freeCreditsBalance: Number(data.freeCreditsBalance ?? 0),
+        paidCreditsBalance: Number(data.paidCreditsBalance ?? 0),
+        totalCredits: Number(data.totalCredits ?? 0),
+      });
+    } catch {
+      // Ignore background refresh failures.
     }
   }
 
-  async function complete() {
-    if (!itemId) return;
+  useEffect(() => {
+    void loadMe();
 
-    setBusy(true);
+    const handler = () => {
+      void loadMe();
+    };
+
+    window.addEventListener("pwnit:credits", handler as EventListener);
+    window.addEventListener("pwnit:userChanged", handler as EventListener);
+
+    return () => {
+      window.removeEventListener("pwnit:credits", handler as EventListener);
+      window.removeEventListener("pwnit:userChanged", handler as EventListener);
+    };
+  }, []);
+
+  const actorLabel = useMemo(() => me?.actorLabel || "Current player", [me?.actorLabel]);
+
+  async function buyBundle(bundleKey: string) {
+    setBusyKey(bundleKey);
     setMessage(null);
 
     try {
-      const response = await fetch(`/api/item/${itemId}/buy`, {
+      const response = await fetch("/api/credits/buy", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ mode: normalizedMode }),
+        body: JSON.stringify({ bundleKey }),
       });
 
       const data = await response.json().catch(() => null);
       if (!response.ok || !data?.ok) {
-        setMessage(data?.error || "Payment failed (MVP)");
+        setMessage(data?.error || "Could not add credits.");
         return;
       }
 
+      await loadMe();
       window.dispatchEvent(new Event("pwnit:credits"));
-      setMessage("Payment successful. Item purchased.");
-      router.refresh();
+      setMessage(`Added ${data.added} paid credits.`);
     } catch (error: any) {
-      setMessage(error?.message || "Payment failed (MVP)");
+      setMessage(error?.message || "Could not add credits.");
     } finally {
-      setBusy(false);
+      setBusyKey(null);
     }
   }
 
-  const price = Number(quote?.priceCredits ?? 0);
-  const discount = Number(quote?.playDiscountCredits ?? quote?.discountCredits ?? 0);
-  const due = Number(quote?.newPriceCredits ?? quote?.amountDueCredits ?? quote?.payCredits ?? 0);
-  const paidBal = Number(quote?.balances?.paid ?? 0);
-  const usePaid = Math.min(paidBal, due);
-  const topUp = Math.max(0, due - usePaid);
-
   return (
-    <div className="mx-auto flex w-full max-w-2xl flex-col gap-4 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-5 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
       <div className="space-y-2">
-        <h1 className="text-2xl font-black text-slate-900">{title}</h1>
-        {me ? <p className="text-sm text-slate-600">Current player: {me.actorLabel}</p> : null}
+        <h1 className="text-2xl font-black text-slate-900">Buy credits</h1>
+        <p className="text-sm text-slate-600">Select a bundle and the credits are added immediately for testing.</p>
       </div>
 
-      {me?.isGuest ? (
-        <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">
-          <p className="font-semibold">You need to sign in before buying an item.</p>
-          <p className="mt-1">Guest play stays frictionless, but checkout is account-only.</p>
-          <div className="mt-4 flex flex-wrap gap-3">
-            <Link
-              href={loginHref}
-              className="rounded-full bg-slate-900 px-5 py-3 font-semibold text-white transition hover:bg-slate-800"
-            >
-              Sign in to continue
-            </Link>
-            <Link
-              href="/"
-              className="rounded-full border border-slate-300 bg-white px-5 py-3 font-semibold text-slate-900 transition hover:bg-slate-50"
-            >
-              Cancel
-            </Link>
-          </div>
+      <div className="grid gap-3 rounded-3xl border border-slate-200 bg-slate-50 p-4 text-sm sm:grid-cols-3">
+        <div>
+          <div className="text-slate-500">Player</div>
+          <div className="font-bold text-slate-900">{actorLabel}</div>
         </div>
-      ) : !quote ? (
-        <button
-          type="button"
-          onClick={loadQuote}
-          disabled={busy}
-          className="rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {busy ? "Loading…" : "Load payment details"}
-        </button>
-      ) : (
-        <>
-          <div className="grid gap-3 rounded-3xl border border-slate-200 bg-slate-50 p-5 text-sm sm:grid-cols-2">
-            <div>
-              <div className="text-slate-500">Price</div>
-              <div className="text-lg font-black text-slate-900">{formatZAR(price)}</div>
-            </div>
-            <div>
-              <div className="text-slate-500">Discount</div>
-              <div className="text-lg font-black text-slate-900">{formatZAR(discount)}</div>
-            </div>
-            <div>
-              <div className="text-slate-500">Amount due</div>
-              <div className="text-lg font-black text-slate-900">{formatZAR(due)}</div>
-            </div>
-            {normalizedMode === "mix" ? (
-              <>
-                <div>
-                  <div className="text-slate-500">Use paid credits</div>
-                  <div className="text-lg font-black text-slate-900">{formatZAR(usePaid)}</div>
-                </div>
-                <div>
-                  <div className="text-slate-500">Top up required</div>
-                  <div className="text-lg font-black text-slate-900">{formatZAR(topUp)}</div>
-                </div>
-              </>
-            ) : null}
-          </div>
+        <div>
+          <div className="text-slate-500">Free credits</div>
+          <div className="font-bold text-slate-900">{Number(me?.freeCreditsBalance ?? 0)}</div>
+        </div>
+        <div>
+          <div className="text-slate-500">Paid credits</div>
+          <div className="font-bold text-slate-900">{Number(me?.paidCreditsBalance ?? 0)}</div>
+        </div>
+      </div>
 
-          <div className="flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={complete}
-              disabled={busy}
-              className="rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {busy ? "Processing…" : "Complete payment (MVP)"}
-            </button>
-            <Link
-              href="/"
-              className="rounded-full border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-50"
-            >
-              Cancel
-            </Link>
-          </div>
-        </>
-      )}
+      <div className="grid gap-4 md:grid-cols-3">
+        {BUNDLES.map((bundle) => (
+          <button
+            key={bundle.key}
+            type="button"
+            onClick={() => buyBundle(bundle.key)}
+            disabled={busyKey === bundle.key}
+            className="rounded-3xl border border-slate-200 bg-slate-50 p-5 text-left transition hover:border-slate-300 hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="text-lg font-black text-slate-900">{bundle.name}</div>
+                <div className="mt-1 text-sm text-slate-600">{bundle.note}</div>
+              </div>
+              <div className="rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold text-white">{bundle.priceLabel}</div>
+            </div>
+
+            <div className="mt-6 text-3xl font-black text-slate-900">{bundle.credits}</div>
+            <div className="text-sm text-slate-500">paid credits</div>
+
+            <div className="mt-6 rounded-full border border-slate-300 bg-white px-4 py-2 text-center text-sm font-semibold text-slate-900">
+              {busyKey === bundle.key ? "Adding…" : "Get this bundle"}
+            </div>
+          </button>
+        ))}
+      </div>
 
       {message ? <div className="rounded-2xl bg-slate-100 px-4 py-3 text-sm text-slate-700">{message}</div> : null}
 
-      <p className="text-xs text-slate-500">Payments are still MVP placeholder — this page simulates a payment flow.</p>
+      <p className="text-xs text-slate-500">Payment gateway coming later. For now, selected bundles are applied immediately.</p>
     </div>
   );
 }
