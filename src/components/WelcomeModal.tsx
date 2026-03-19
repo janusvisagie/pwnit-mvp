@@ -6,9 +6,9 @@ const SESSION_KEY = "pwnit_welcome_seen_session";
 const HIDE_FOREVER_KEY = "pwnit_welcome_hide_forever";
 
 const steps = [
-  { icon: "🎯", title: "Pick", body: "Choose a prize you want." },
-  { icon: "⚡", title: "Play", body: "Use your credits and post your best score." },
-  { icon: "🏆", title: "Win", body: "Top the leaderboard and win the prize." },
+  { icon: "🎯", title: "Pick", body: "Choose a prize." },
+  { icon: "⚡", title: "Play", body: "Post your best score." },
+  { icon: "🏆", title: "Win", body: "Top the leaderboard." },
 ] as const;
 
 export function WelcomeModal() {
@@ -55,7 +55,7 @@ export function WelcomeModal() {
           Pick. Play. PwnIt.
         </h2>
         <p className="mt-3 text-sm leading-6 text-slate-600 md:text-base">
-          Choose a prize, use your daily credits, play a quick skill game, and try to win it.
+          Choose a prize, play a quick skill game, and try to win it.
         </p>
 
         <div className="mt-5 grid gap-3 sm:grid-cols-3">
@@ -76,8 +76,7 @@ export function WelcomeModal() {
         </div>
 
         <div className="mt-5 rounded-2xl bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          You currently receive <span className="font-semibold">30 free credits per day</span>{" "}
-          to get started.
+          You receive <span className="font-semibold">30 free credits per day</span>.
         </div>
 
         <label className="mt-5 flex items-start gap-3 text-sm text-slate-700">
