@@ -63,6 +63,7 @@ export function HeaderNav() {
     () => [
       { href: "/", label: "Home", show: true },
       { href: "/how-activation-works", label: "How it works", show: true },
+      { href: "/pay", label: "Buy credits", show: true },
       { href: "/referrals", label: "Referrals", show: true },
       { href: "/feedback", label: "Feedback", show: true },
       { href: "/terms", label: "Terms", show: true },
