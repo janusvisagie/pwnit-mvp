@@ -1,5 +1,3 @@
-import { redirect } from "next/navigation";
-
 import ProfileSharePanel from "@/components/ProfileSharePanel";
 import { getCurrentActor } from "@/lib/auth";
 import { getDashboardProfile } from "@/lib/gamification";
@@ -16,16 +14,25 @@ function StatCard({ label, value, hint }: { label: string; value: string; hint?:
 
 export default async function DashboardPage() {
   const actor = await getCurrentActor();
-  const isLocalDev = process.env.NODE_ENV !== "production";
-
-  if (actor.isGuest || (actor.isDemoUser && !isLocalDev)) {
-    redirect(`/login?next=/dashboard`);
-  }
-
   const profile = await getDashboardProfile(actor.user.id);
+
   if (!profile) {
-    redirect(`/login?next=/dashboard`);
+    return (
+      <main className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-8 md:px-6">
+        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm md:p-8">
+          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-amber-600">Dashboard</p>
+          <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-slate-900">Profile not available yet</h1>
+          <p className="mt-3 text-sm leading-6 text-slate-600 md:text-base">
+            Play a few rounds and your stats, achievements, badges, and sharing options will appear here.
+          </p>
+        </section>
+      </main>
+    );
   }
+
+  const intro = actor.isGuest
+    ? "You are viewing your guest profile for this device. Create an account later if you want to keep progress across devices."
+    : "Track your progress, unlock badges, and share your best moments.";
 
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-8 md:px-6">
@@ -34,7 +41,7 @@ export default async function DashboardPage() {
         <div className="mt-3 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
             <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">{profile.displayName}</h1>
-            <p className="mt-2 text-sm leading-6 text-slate-600">Track your progress, unlock badges, and share your best moments.</p>
+            <p className="mt-2 text-sm leading-6 text-slate-600">{intro}</p>
           </div>
           {profile.referralCode ? (
             <div className="rounded-2xl bg-slate-900 px-4 py-3 text-sm text-white">
