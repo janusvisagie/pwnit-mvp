@@ -16,8 +16,9 @@ function StatCard({ label, value, hint }: { label: string; value: string; hint?:
 
 export default async function DashboardPage() {
   const actor = await getCurrentActor();
+  const isLocalDev = process.env.NODE_ENV !== "production";
 
-  if (actor.isGuest || actor.isDemoUser) {
+  if (actor.isGuest || (actor.isDemoUser && !isLocalDev)) {
     redirect(`/login?next=/dashboard`);
   }
 
@@ -63,9 +64,7 @@ export default async function DashboardPage() {
                 key={achievement.key}
                 className={[
                   "rounded-2xl border p-4",
-                  achievement.unlocked
-                    ? "border-emerald-200 bg-emerald-50"
-                    : "border-slate-200 bg-slate-50",
+                  achievement.unlocked ? "border-emerald-200 bg-emerald-50" : "border-slate-200 bg-slate-50",
                 ].join(" ")}
               >
                 <div className="flex items-start gap-3">
@@ -93,9 +92,7 @@ export default async function DashboardPage() {
                 </span>
               ))
             ) : (
-              <p className="text-sm leading-6 text-slate-600">
-                Play a few different game types to start unlocking specialist badges.
-              </p>
+              <p className="text-sm leading-6 text-slate-600">Play a few different game types to start unlocking specialist badges.</p>
             )}
           </div>
 
@@ -113,7 +110,7 @@ export default async function DashboardPage() {
       <ProfileSharePanel
         headline={profile.share.headline}
         body={profile.share.body}
-        shareUrl={profile.referralLink || (process.env.NEXT_PUBLIC_SITE_URL || process.env.APP_URL || "/")}
+        shareUrl={profile.referralLink || process.env.NEXT_PUBLIC_SITE_URL || process.env.APP_URL || "/"}
         challengeUrl={profile.referralLink}
       />
     </main>

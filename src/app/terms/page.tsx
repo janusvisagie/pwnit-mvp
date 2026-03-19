@@ -23,14 +23,14 @@ const sections = [
   {
     title: "4. Leaderboards and prizes",
     body: [
-      "Each item or round may have its own activation threshold, countdown, scoring rule, and prize or runner-up reward structure.",
+      "Each item or round may have its own scoring rule, timing rule, and prize or runner-up reward structure.",
       "Ties, disputes, suspicious activity, and scoring anomalies may be resolved under PwnIt’s published rules and fair-play processes.",
     ],
   },
   {
     title: "5. Purchases and fulfilment",
     body: [
-      "Where buy-now or discounted purchase options are offered, checkout, payment, and fulfilment details will be shown before confirmation.",
+      "Buy-now and discounted purchase options are shown on the relevant item flow, together with checkout, payment, and fulfilment details before confirmation.",
       "Prize claims and purchases may require identity, delivery, or contact verification.",
     ],
   },
@@ -56,9 +56,6 @@ export default function TermsPage() {
       <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm md:p-8">
         <p className="text-sm font-semibold uppercase tracking-[0.2em] text-amber-600">Terms &amp; Conditions</p>
         <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-slate-900">Clear rules. Fair play.</h1>
-        <p className="mt-3 text-sm leading-6 text-slate-600 md:text-base">
-          These are starter terms for the MVP. They should be refined with your formal legal review before wider public rollout.
-        </p>
       </section>
 
       <section className="space-y-4">

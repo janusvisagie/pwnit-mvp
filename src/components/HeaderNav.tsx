@@ -57,7 +57,7 @@ export function HeaderNav() {
 
   const isLocalHost = typeof window !== "undefined" && ["localhost", "127.0.0.1"].includes(window.location.hostname);
   const showAdmin = Boolean(me.isLocalDev || isLocalHost);
-  const showDashboard = !Boolean(me.isGuest) && !Boolean(me.isDemoUser);
+  const showDashboard = !Boolean(me.isGuest) && (!Boolean(me.isDemoUser) || isLocalHost || Boolean(me.isLocalDev));
 
   const items = useMemo<NavItem[]>(
     () => [
