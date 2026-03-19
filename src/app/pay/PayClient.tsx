@@ -97,7 +97,7 @@ export default function PayClient() {
 
       await loadMe();
       window.dispatchEvent(new Event("pwnit:credits"));
-      setMessage(`Added ${data.added} paid credits.`);
+      setMessage(`Added ${data.added} extra credits.`);
     } catch (error: any) {
       setMessage(error?.message || "Could not add credits.");
     } finally {
@@ -122,7 +122,7 @@ export default function PayClient() {
           <div className="font-bold text-slate-900">{Number(me?.freeCreditsBalance ?? 0)}</div>
         </div>
         <div>
-          <div className="text-slate-500">Paid credits</div>
+          <div className="text-slate-500">Extra credits</div>
           <div className="font-bold text-slate-900">{Number(me?.paidCreditsBalance ?? 0)}</div>
         </div>
       </div>
@@ -145,7 +145,7 @@ export default function PayClient() {
             </div>
 
             <div className="mt-6 text-3xl font-black text-slate-900">{bundle.credits}</div>
-            <div className="text-sm text-slate-500">paid credits</div>
+            <div className="text-sm text-slate-500">extra credits</div>
 
             <div className="mt-6 rounded-full border border-slate-300 bg-white px-4 py-2 text-center text-sm font-semibold text-slate-900">
               {busyKey === bundle.key ? "Adding…" : "Get this bundle"}
@@ -156,7 +156,9 @@ export default function PayClient() {
 
       {message ? <div className="rounded-2xl bg-slate-100 px-4 py-3 text-sm text-slate-700">{message}</div> : null}
 
-      <p className="text-xs text-slate-500">Payment gateway coming later. For now, selected bundles are applied immediately.</p>
+      <p className="text-xs text-slate-500">
+        Daily credits go into your free balance. Bought, bonus, refund, referral, and survey credits appear as extra credits.
+      </p>
     </div>
   );
 }

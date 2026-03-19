@@ -10,15 +10,14 @@ function formatZAR(v: number) {
 export function CreditsPill(props?: { free?: number; paid?: number }) {
   const pathname = usePathname();
   const usingProps = typeof props?.free === "number" || typeof props?.paid === "number";
-
   const [free, setFree] = useState<number | null>(typeof props?.free === "number" ? props.free : null);
   const [paid, setPaid] = useState<number | null>(typeof props?.paid === "number" ? props.paid : null);
   const [discount, setDiscount] = useState<number | null>(null);
   const [newPrice, setNewPrice] = useState<number | null>(null);
 
   const itemIdFromPath = useMemo(() => {
-    const m = pathname?.match(/^\/(item|play)\/([^\/]+)/i);
-    return m?.[2] ? String(m[2]) : null;
+    const match = pathname?.match(/^\/(item|play)\/([^/]+)/i);
+    return match?.[2] ? String(match[2]) : null;
   }, [pathname]);
 
   async function refreshBalance() {
@@ -27,11 +26,13 @@ export function CreditsPill(props?: { free?: number; paid?: number }) {
       if (!res.ok) return;
       const data: any = await res.json().catch(() => null);
       if (!data) return;
-      const f = Number(data?.freeCreditsBalance ?? data?.free ?? data?.freeBalance);
-      const p = Number(data?.paidCreditsBalance ?? data?.paid ?? data?.paidBalance);
-      if (Number.isFinite(f)) setFree(f);
-      if (Number.isFinite(p)) setPaid(p);
-    } catch {}
+      const nextFree = Number(data?.freeCreditsBalance ?? data?.free ?? data?.freeBalance);
+      const nextPaid = Number(data?.paidCreditsBalance ?? data?.paid ?? data?.paidBalance);
+      if (Number.isFinite(nextFree)) setFree(nextFree);
+      if (Number.isFinite(nextPaid)) setPaid(nextPaid);
+    } catch {
+      // ignore background refresh failures
+    }
   }
 
   async function refreshDiscount(currentItemId: string | null) {
@@ -40,6 +41,7 @@ export function CreditsPill(props?: { free?: number; paid?: number }) {
       setNewPrice(null);
       return;
     }
+
     try {
       const res = await fetch(`/api/item/${currentItemId}/buy`, { method: "GET", cache: "no-store" });
       const data: any = await res.json().catch(() => null);
@@ -48,10 +50,10 @@ export function CreditsPill(props?: { free?: number; paid?: number }) {
         setNewPrice(null);
         return;
       }
-      const v = Number(data?.playDiscountCredits ?? 0);
-      const d = Number(data?.newPriceCredits ?? 0);
-      setDiscount(Number.isFinite(v) ? v : null);
-      setNewPrice(Number.isFinite(d) ? d : null);
+      const nextDiscount = Number(data?.playDiscountCredits ?? 0);
+      const nextNewPrice = Number(data?.newPriceCredits ?? 0);
+      setDiscount(Number.isFinite(nextDiscount) ? nextDiscount : null);
+      setNewPrice(Number.isFinite(nextNewPrice) ? nextNewPrice : null);
     } catch {
       setDiscount(null);
       setNewPrice(null);
@@ -60,39 +62,31 @@ export function CreditsPill(props?: { free?: number; paid?: number }) {
 
   useEffect(() => {
     if (usingProps) return;
-    refreshBalance();
-    refreshDiscount(itemIdFromPath);
+    void refreshBalance();
+    void refreshDiscount(itemIdFromPath);
   }, [usingProps, itemIdFromPath]);
 
   useEffect(() => {
     if (usingProps) return;
     const handler = () => {
-      refreshBalance();
-      refreshDiscount(itemIdFromPath);
+      void refreshBalance();
+      void refreshDiscount(itemIdFromPath);
     };
-    window.addEventListener("pwnit:credits", handler as any);
-    window.addEventListener("pwnit:userChanged", handler as any);
-    window.addEventListener("focus", handler as any);
-    document.addEventListener("visibilitychange", handler as any);
+    window.addEventListener("pwnit:credits", handler as EventListener);
+    window.addEventListener("pwnit:userChanged", handler as EventListener);
+    window.addEventListener("focus", handler as EventListener);
+    document.addEventListener("visibilitychange", handler as EventListener);
     return () => {
-      window.removeEventListener("pwnit:credits", handler as any);
-      window.removeEventListener("pwnit:userChanged", handler as any);
-      window.removeEventListener("focus", handler as any);
-      document.removeEventListener("visibilitychange", handler as any);
+      window.removeEventListener("pwnit:credits", handler as EventListener);
+      window.removeEventListener("pwnit:userChanged", handler as EventListener);
+      window.removeEventListener("focus", handler as EventListener);
+      document.removeEventListener("visibilitychange", handler as EventListener);
     };
   }, [usingProps, itemIdFromPath]);
 
-  const f = Number.isFinite(free as any) ? (free as number) : null;
-  const p = Number.isFinite(paid as any) ? (paid as number) : null;
-  const total = (f ?? 0) + (p ?? 0);
-
-  const details = useMemo(() => {
-    if (f == null && p == null) return "—";
-    const parts: string[] = [];
-    if (f != null) parts.push(`free ${f}`);
-    if (p != null) parts.push(`paid ${p}`);
-    return parts.join(" • ");
-  }, [f, p]);
+  const freeCredits = Number.isFinite(free as number) ? (free as number) : null;
+  const extraCredits = Number.isFinite(paid as number) ? (paid as number) : null;
+  const total = (freeCredits ?? 0) + (extraCredits ?? 0);
 
   const discountText = useMemo(() => {
     if (discount == null) return null;
@@ -101,14 +95,20 @@ export function CreditsPill(props?: { free?: number; paid?: number }) {
   }, [discount, newPrice]);
 
   return (
-    <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-900 shadow-sm">
-      <span className="hidden sm:inline">Credits:</span>
-      <span className="rounded-full bg-slate-900 px-3 py-0.5 text-white">
-        {f == null && p == null ? "—" : total}
+    <div className="inline-flex max-w-full flex-col rounded-2xl border border-slate-200 bg-white px-3 py-2 text-left shadow-sm">
+      <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+        Credits
       </span>
-      <span className="hidden md:inline text-slate-600">{details}</span>
-      {discountText ? <span className="hidden xl:inline text-slate-500">{discountText}</span> : null}
-    </span>
+      <span className="text-sm font-bold text-slate-900 sm:text-base">
+        {freeCredits == null && extraCredits == null ? "—" : total}
+      </span>
+      <span className="text-[11px] leading-4 text-slate-600 sm:text-xs">
+        {freeCredits == null && extraCredits == null
+          ? "Loading…"
+          : `Free ${freeCredits ?? 0} • Extra ${extraCredits ?? 0}`}
+      </span>
+      {discountText ? <span className="mt-1 text-[11px] leading-4 text-emerald-700">{discountText}</span> : null}
+    </div>
   );
 }
 

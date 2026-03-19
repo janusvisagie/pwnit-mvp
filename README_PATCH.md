@@ -1,8 +1,5 @@
-Apply these files to restore the bulk Buy Credits flow.
-
-Included:
-- /pay page with bundle cards
-- /api/credits/buy route that grants selected credits immediately to the current actor
-- /buy-credits alias that redirects to /pay
-
-No Prisma schema changes are needed.
+This patch addresses:
+- Welcome modal height on phones
+- Credits pill labeling on mobile
+- Renaming user-facing "paid credits" to "extra credits"
+- Automatically starting a fresh playable round after terminal round states so item pages stop showing "not accepting plays" for most items during family testing
