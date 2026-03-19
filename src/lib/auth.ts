@@ -176,12 +176,6 @@ export function normalizeEmail(raw: unknown) {
   return EMAIL_RE.test(value) ? value : null;
 }
 
-export function buildLoginCodeHash(email: string, code: string) {
-  return createHmac("sha256", sessionSecret())
-    .update(`login-code:${email}:${code}`)
-    .digest("hex");
-}
-
 export function buildSessionToken(userId: string) {
   const payload = Buffer.from(
     JSON.stringify({
@@ -451,7 +445,7 @@ export async function getCurrentUserSummary() {
     isLocalDev: actor.isLocalDev,
     demoUserKey: actor.demoUserKey,
     email: actor.isGuest ? null : user.email,
-    emailVerified: !actor.isGuest && Boolean(user.emailVerifiedAt),
+    emailVerified: !actor.isGuest,
     actorLabel: actor.isGuest ? "Playing as Guest" : user.alias || user.email,
     alias: user.alias ?? null,
     freeCreditsBalance: Number(user.freeCreditsBalance ?? 0),
@@ -462,11 +456,11 @@ export async function getCurrentUserSummary() {
 export async function requireVerifiedAccount() {
   const actor = await getCurrentActor();
 
-  if (actor.isGuest || !actor.user.emailVerifiedAt) {
+  if (actor.isGuest) {
     return {
       ok: false as const,
       status: 401,
-      error: "Please sign in with your email to continue.",
+      error: "Please sign in or create an account to continue.",
       actor,
     };
   }

@@ -1,101 +1,63 @@
-import Link from "next/link";
+const sections = [
+  {
+    title: "1. Pick a prize",
+    body: "Choose the item you want to compete for. Each prize has its own challenge, activation target, and timing window.",
+  },
+  {
+    title: "2. Activation comes first*",
+    body: "A prize round only starts once enough support has built up for that item. After activation, the countdown begins and the live competition opens.",
+  },
+  {
+    title: "3. Practice first, then play for real",
+    body: "You can warm up in practice mode before posting a real score. Real plays use credits and count toward the leaderboard.",
+  },
+  {
+    title: "4. Win by performance",
+    body: "Leaderboard position is determined by performance under the published game rules and timing logic. The top player wins the prize. Runner-up rewards may also apply.",
+  },
+  {
+    title: "5. Did not win? You may still be able to buy it",
+    body: "For certain items, non-winning players can still buy the item at a reduced effective price based on the platform rules for that item.",
+  },
+  {
+    title: "6. Start as a guest or create an account",
+    body: "You can get started as a guest. Creating an account lets you keep progress, see your dashboard, claim prizes, buy items, and use features like referrals more easily.",
+  },
+  {
+    title: "7. Bonus ways to grow your balance",
+    body: "You may receive daily free credits*, referral rewards when invited players genuinely join and play, and optional feedback rewards for useful suggestions.",
+  },
+  {
+    title: "8. Clear rules matter",
+    body: "PwnIt is presented as a skill-based competition platform with fair scoring and clear rules. Read the Terms & Conditions and any competition-specific rules that apply to each item or round.",
+  },
+] as const;
 
 export default function HowActivationWorksPage() {
   return (
-    <main className="mx-auto max-w-3xl px-4 py-8 text-slate-900">
-      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm md:p-8">
-        <h1 className="text-3xl font-extrabold tracking-tight">How it works</h1>
-        <p className="mt-3 text-slate-600">
-          
+    <main className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-4 py-8 md:px-6">
+      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm md:p-8">
+        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-amber-600">How it works</p>
+        <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-slate-900">Pick a prize. Play for position. Win on skill.</h1>
+        <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600 md:text-base">
+          PwnIt combines short skill challenges, live leaderboards, and prize-based competition. The key flow is below.
         </p>
+      </section>
 
-        <div className="mt-8 space-y-6 text-sm leading-6 text-slate-700 md:text-base">
-          <section>
-            <h2 className="text-lg font-bold text-slate-900">1) Pick a prize</h2>
-            <p className="mt-2">
-              Each prize shows the game type, play cost, value, and how close it is to going
-              live.
-            </p>
-          </section>
+      <section className="grid gap-4 md:grid-cols-2">
+        {sections.map((section) => (
+          <article key={section.title} className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h2 className="text-xl font-bold tracking-tight text-slate-900">{section.title}</h2>
+            <p className="mt-3 text-sm leading-6 text-slate-700 md:text-base">{section.body}</p>
+          </article>
+        ))}
+      </section>
 
-          <section>
-            <h2 className="text-lg font-bold text-slate-900">2) Activation and countdown</h2>
-            <p className="mt-2">
-              Prizes move through a visible activation threshold before they go live. Once a
-              prize is activated, the countdown starts. Keep playing to improve your score before the countdown ends.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-lg font-bold text-slate-900">3) Practice or play for real</h2>
-            <p className="mt-2">
-              Use practice mode to warm up before spending credits. When you are ready,
-              switch to a real attempt and post your best score to the leaderboard.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-lg font-bold text-slate-900">4) Win the leaderboard</h2>
-            <p className="mt-2">
-              Your best score counts. At the end of the round, <span className="font-semibold">1st place</span>{" "}
-              wins the item, while <span className="font-semibold">2nd</span> and <span className="font-semibold">3rd</span>{" "}
-              receive credit bonuses.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-lg font-bold text-slate-900">5) Did not win? Buy it</h2>
-            <p className="mt-2">
-              If you do not win, you can still buy the item. Your paid play spend on that
-              item counts toward your discount, and you only pay the difference.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-lg font-bold text-slate-900">6) Start as a guest or sign in</h2>
-            <p className="mt-2">
-              You can start playing straight away as a guest. Sign in when you want to save
-              progress, buy credits, buy an item, claim a prize, or use features like
-              referrals and feedback rewards more reliably across devices.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-lg font-bold text-slate-900">7) Credits and bonus rewards</h2>
-            <p className="mt-2">
-              PwnIt currently gives users <span className="font-semibold">30 free credits per day</span>.
-              Once those are used, you can keep playing with paid credits.
-            </p>
-            <ul className="mt-2 list-disc space-y-1 pl-5">
-              <li>
-                <span className="font-semibold">Referrals:</span> share your referral code or
-                link. When a new player joins through you and qualifies, both of you receive bonus credits.
-              </li>
-              <li>
-                <span className="font-semibold">Feedback survey:</span> from time to time you
-                may be offered free credits for completing a short optional suggestions survey.
-              </li>
-            </ul>
-          </section>
-
-          <section>
-            <h2 className="text-lg font-bold text-slate-900">8) If an item does not activate</h2>
-            <p className="mt-2">
-              If a prize does not activate in time, paid credits used on that prize are
-              refunded.
-            </p>
-          </section>
-        </div>
-
-        <div className="mt-8 flex flex-wrap gap-3">
-          <Link
-            href="/"
-            className="inline-flex items-center rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
-          >
-            ← Back to home
-          </Link>
-        </div>
-      </div>
+      <section className="rounded-3xl border border-amber-200 bg-amber-50 p-6 text-sm leading-6 text-amber-950 shadow-sm md:text-base">
+        <p>
+          <span className="font-semibold">*</span> Daily free credits, referrals, feedback rewards, prize structures, and activation rules may vary over time and may be limited to prevent abuse.
+        </p>
+      </section>
     </main>
   );
 }

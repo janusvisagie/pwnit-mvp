@@ -1,14 +1,16 @@
+import { safeNextPath } from "@/lib/auth";
 import LoginClient from "./LoginClient";
 
-export const dynamic = "force-dynamic";
-
-type LoginPageProps = {
+export default function LoginPage({
+  searchParams,
+}: {
   searchParams?: {
     next?: string;
+    mode?: string;
   };
-};
+}) {
+  const nextPath = safeNextPath(searchParams?.next ?? "/");
+  const initialMode = String(searchParams?.mode ?? "").toLowerCase() === "register" ? "register" : "login";
 
-export default function LoginPage({ searchParams }: LoginPageProps) {
-  const next = typeof searchParams?.next === "string" ? searchParams.next : "/";
-  return <LoginClient nextPath={next} />;
+  return <LoginClient nextPath={nextPath} initialMode={initialMode as "login" | "register"} />;
 }

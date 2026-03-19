@@ -35,19 +35,9 @@ export function WelcomeModal() {
       window.sessionStorage.setItem(SESSION_KEY, "1");
       if (hideForever) {
         window.localStorage.setItem(HIDE_FOREVER_KEY, "1");
+      } else {
+        window.localStorage.removeItem(HIDE_FOREVER_KEY);
       }
-    } catch {
-      // ignore blocked storage
-    }
-  }
-
-  function hidePermanentlyNow() {
-    setHideForever(true);
-    setOpen(false);
-
-    try {
-      window.sessionStorage.setItem(SESSION_KEY, "1");
-      window.localStorage.setItem(HIDE_FOREVER_KEY, "1");
     } catch {
       // ignore blocked storage
     }
@@ -65,7 +55,7 @@ export function WelcomeModal() {
           Pick. Play. PwnIt.
         </h2>
         <p className="mt-3 text-sm leading-6 text-slate-600 md:text-base">
-          Choose a prize, play a quick skill game, and try to win it.
+          Choose a prize, use your daily credits, play a quick skill game, and try to win it.
         </p>
 
         <div className="mt-5 grid gap-3 sm:grid-cols-3">
@@ -107,13 +97,6 @@ export function WelcomeModal() {
             className="inline-flex min-h-11 flex-1 items-center justify-center rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
           >
             Start playing
-          </button>
-          <button
-            type="button"
-            onClick={hidePermanentlyNow}
-            className="inline-flex min-h-11 items-center justify-center rounded-full border border-slate-300 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-          >
-            Hide permanently
           </button>
         </div>
       </div>

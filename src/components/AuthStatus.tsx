@@ -144,7 +144,7 @@ export function AuthStatus({ initial }: { initial: Summary }) {
             href={loginHref}
             className="rounded-full bg-slate-900 px-3 py-1.5 font-semibold text-white transition hover:bg-slate-800"
           >
-            Sign in
+            Sign in / create account
           </Link>
         </div>
       </div>

@@ -11,6 +11,8 @@ model User {
   id                     String                @id @default(cuid())
   createdAt              DateTime              @default(now())
   email                  String                @unique
+  passwordHash           String?
+  passwordSetAt          DateTime?
   alias                  String?
   referralCode           String?
   isGuest                Boolean               @default(false)

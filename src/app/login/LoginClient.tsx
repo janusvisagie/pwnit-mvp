@@ -2,159 +2,162 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
 
-type LoginClientProps = {
+type Mode = "login" | "register";
+
+export default function LoginClient({
+  nextPath,
+  initialMode,
+}: {
   nextPath: string;
-};
-
-export default function LoginClient({ nextPath }: LoginClientProps) {
+  initialMode: Mode;
+}) {
   const router = useRouter();
-
+  const [mode, setMode] = useState<Mode>(initialMode);
   const [email, setEmail] = useState("");
-  const [code, setCode] = useState("");
+  const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
-  const [step, setStep] = useState<"request" | "verify">("request");
-  const [message, setMessage] = useState<string | null>(null);
-  const [devCode, setDevCode] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  async function requestCode() {
+  const heading = useMemo(
+    () => (mode === "register" ? "Create your account" : "Sign in to your account"),
+    [mode],
+  );
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
     setBusy(true);
-    setMessage(null);
+    setError(null);
 
     try {
-      const response = await fetch("/api/auth/request-code", {
+      const response = await fetch(mode === "register" ? "/api/auth/register" : "/api/auth/login", {
         method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ email }),
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          password,
+          next: nextPath,
+        }),
       });
 
       const data = await response.json().catch(() => null);
+
       if (!response.ok || !data?.ok) {
-        setMessage(data?.error || "Could not send sign-in code.");
-        return;
-      }
-
-      setStep("verify");
-      setDevCode(data?.devCode ? String(data.devCode) : null);
-      setMessage(`We sent a sign-in code to ${data.email}.`);
-    } catch (error: any) {
-      setMessage(error?.message || "Could not send sign-in code.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function verifyCode() {
-    setBusy(true);
-    setMessage(null);
-
-    try {
-      const response = await fetch("/api/auth/verify-code", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ email, code, next: nextPath }),
-      });
-
-      const data = await response.json().catch(() => null);
-      if (!response.ok || !data?.ok) {
-        setMessage(data?.error || "Could not verify code.");
+        setError(String(data?.error || "Something went wrong."));
         return;
       }
 
       window.dispatchEvent(new Event("pwnit:userChanged"));
       window.dispatchEvent(new Event("pwnit:credits"));
-      router.push(data.redirectTo || nextPath);
+      router.replace(String(data.nextPath || nextPath || "/"));
       router.refresh();
-    } catch (error: any) {
-      setMessage(error?.message || "Could not verify code.");
+    } catch {
+      setError("Could not complete the request. Please try again.");
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-xl flex-col gap-4 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-      <div className="space-y-2">
-        <h1 className="text-2xl font-black text-slate-900">Sign in</h1>
-        <p className="text-sm text-slate-600">
-          You can still browse and play as a guest. Sign-in is for purchases, prize claims, and saving your account.
+    <div className="mx-auto w-full max-w-md py-6">
+      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-600">PwnIt account</p>
+        <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-slate-900">{heading}</h1>
+        <p className="mt-3 text-sm leading-6 text-slate-600">
+          Guest mode stays available. Creating an account lets you keep progress, receive prizes, and use account-only features.
         </p>
-      </div>
 
-      <label className="space-y-2 text-sm font-semibold text-slate-900">
-        <span>Email address</span>
-        <input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="you@example.com"
-          className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-slate-900"
-        />
-      </label>
-
-      {step === "verify" ? (
-        <label className="space-y-2 text-sm font-semibold text-slate-900">
-          <span>6-digit code</span>
-          <input
-            inputMode="numeric"
-            value={code}
-            onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-            placeholder="123456"
-            className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-slate-900"
-          />
-        </label>
-      ) : null}
-
-      {message ? <div className="rounded-2xl bg-slate-100 px-4 py-3 text-sm text-slate-700">{message}</div> : null}
-
-      {devCode ? (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          Dev sign-in code: <span className="font-black tracking-widest">{devCode}</span>
-        </div>
-      ) : null}
-
-      <div className="flex flex-wrap gap-3">
-        {step === "request" ? (
+        <div className="mt-5 grid grid-cols-2 gap-2 rounded-2xl bg-slate-100 p-1">
           <button
             type="button"
-            onClick={requestCode}
-            disabled={busy || !email.trim()}
-            className="rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+            onClick={() => setMode("login")}
+            className={[
+              "rounded-2xl px-4 py-2 text-sm font-semibold transition",
+              mode === "login" ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-900",
+            ].join(" ")}
           >
-            {busy ? "Sending…" : "Email me a code"}
+            Sign in
           </button>
-        ) : (
-          <>
-            <button
-              type="button"
-              onClick={verifyCode}
-              disabled={busy || code.length !== 6}
-              className="rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {busy ? "Signing in…" : "Verify code"}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setStep("request");
-                setCode("");
-                setDevCode(null);
-                setMessage(null);
-              }}
-              className="rounded-full border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-50"
-            >
-              Change email
-            </button>
-          </>
-        )}
+          <button
+            type="button"
+            onClick={() => setMode("register")}
+            className={[
+              "rounded-2xl px-4 py-2 text-sm font-semibold transition",
+              mode === "register" ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-900",
+            ].join(" ")}
+          >
+            Create account
+          </button>
+        </div>
 
-        <Link
-          href={nextPath}
-          className="rounded-full border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-50"
-        >
-          Continue as guest
-        </Link>
+        <form className="mt-5 space-y-4" onSubmit={handleSubmit}>
+          <div>
+            <label htmlFor="email" className="mb-1 block text-sm font-semibold text-slate-800">
+              Email address
+            </label>
+            <input
+              id="email"
+              type="email"
+              autoComplete={mode === "register" ? "email" : "username"}
+              required
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-900"
+              placeholder="you@example.com"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="password" className="mb-1 block text-sm font-semibold text-slate-800">
+              Password
+            </label>
+            <input
+              id="password"
+              type="password"
+              autoComplete={mode === "register" ? "new-password" : "current-password"}
+              required
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-900"
+              placeholder={mode === "register" ? "At least 8 characters" : "Your password"}
+            />
+          </div>
+
+          {mode === "register" ? (
+            <div className="rounded-2xl bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              If you are currently playing as a guest on this browser, creating an account will keep that guest progress under your new account.
+            </div>
+          ) : null}
+
+          {error ? (
+            <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+              {error}
+            </div>
+          ) : null}
+
+          <button
+            type="submit"
+            disabled={busy}
+            className="inline-flex min-h-11 w-full items-center justify-center rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {busy
+              ? mode === "register"
+                ? "Creating account…"
+                : "Signing in…"
+              : mode === "register"
+                ? "Create account"
+                : "Sign in"}
+          </button>
+        </form>
+
+        <div className="mt-5 text-center text-sm text-slate-600">
+          <Link href={nextPath || "/"} className="font-semibold text-slate-900 underline underline-offset-2">
+            Continue as guest
+          </Link>
+        </div>
       </div>
     </div>
   );

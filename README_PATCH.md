@@ -1,44 +1,41 @@
-# Referral + Survey patch
+PwnIt combined patch: password auth + nav cleanup + gamification/social sharing/terms
 
-This patch adds:
+Included from the prior combined auth patch:
+- Guest-first optional email + password auth
+- Localhost demo-user switching retained
+- Admin hidden from live nav
+- Dashboard only shown for real signed-in users
+- Simplified welcome modal
 
-- `/?ref=CODE` referral capture via middleware cookie
-- a `/referrals` page with share link, manual code entry, and referral history
-- automatic referral crediting after the referred player completes their first real play
-- a `/feedback` page with an optional survey that rewards credits once per browser/account
-- Prisma schema additions for `Referral` and `SurveyResponse`
-- `/api/referrals/apply` and `/api/surveys/submit`
-- `/api/me` hook-in so referral rewards can settle during normal UI refreshes
+New in this bundle:
+- Dashboard/profile page with:
+  - games played
+  - best rank
+  - total winnings
+  - streak
+  - achievements
+  - badges
+  - share / challenge panel
+- Broad social sharing support:
+  - native share sheet where available
+  - WhatsApp, Facebook, X, Telegram, Email quick links
+  - copy caption for TikTok / Instagram
+- Public Terms & Conditions page
+- Updated How it works page with softer legal wording and referral / feedback references
+- Header nav updated to include Terms
 
-## Files included
+Files added or changed beyond the previous auth patch:
+- src/app/dashboard/page.tsx
+- src/app/terms/page.tsx
+- src/app/how-activation-works/page.tsx
+- src/components/ProfileSharePanel.tsx
+- src/components/HeaderNav.tsx
+- src/lib/gamification.ts
 
-- `prisma/schema.prisma`
-- `src/lib/referrals.ts`
-- `src/lib/survey.ts`
-- `src/app/api/me/route.ts`
-- `src/app/api/referrals/apply/route.ts`
-- `src/app/api/surveys/submit/route.ts`
-- `src/app/referrals/page.tsx`
-- `src/app/feedback/page.tsx`
-- `src/components/ReferralPanel.tsx`
-- `src/components/FeedbackSurveyForm.tsx`
-- `src/middleware.ts`
-
-## Apply steps
-
-1. Copy the files into your repo.
-2. Run:
-
-```bash
-npx prisma generate
-npx prisma db push
-```
-
-3. Restart local dev or redeploy.
-
-## Notes
-
-- Referral rewards are set to **20 credits for the referrer** and **10 credits for the new player**.
-- The reward is triggered when the referred player completes their **first real play**.
-- For anti-abuse, this version is bucket-based: the first referral captured for a browser bucket wins, and the survey reward is one per survey per browser bucket.
-- This patch does **not** modify your custom `HeaderNav` component because that file was not part of the earlier patch bundles. The new pages are available at `/referrals` and `/feedback` immediately.
+Notes:
+1. The dashboard stats are derived from existing Attempt / Winner / Referral / SurveyResponse data.
+2. The dashboard redirects guests and localhost demo users to /login.
+3. Instagram and TikTok do not provide a simple browser share intent like WhatsApp/X/Facebook, so this patch uses:
+   - the native share sheet where available
+   - a copy button for those platforms
+4. These Terms & Conditions are MVP starter content and should still be refined with formal legal review.
