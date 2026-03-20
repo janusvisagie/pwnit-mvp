@@ -3,12 +3,12 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import AlphabetSprintGame from "@/games/alphabet-sprint/AlphabetSprintGame";
+import FlashCountGame from "@/games/flash-count/FlashCountGame";
+import MovingZoneGame from "@/games/moving-zone/MovingZoneGame";
 import NumberMemoryGame from "@/games/number-memory/NumberMemoryGame";
 import QuickStopGame from "@/games/quick-stop/QuickStopGame";
-import MovingZoneGame from "@/games/moving-zone/MovingZoneGame";
-import FlashCountGame from "@/games/flash-count/FlashCountGame";
 import TargetGridGame from "@/games/target-grid/TargetGridGame";
-import AlphabetSprintGame from "@/games/alphabet-sprint/AlphabetSprintGame";
 
 type GameKey =
   | "memory-sprint"
@@ -52,31 +52,23 @@ type Props = {
 
 function ConfettiOverlay({ show }: { show: boolean }) {
   if (!show) return null;
+
   return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden">
-      <style>{`
-        @keyframes pwnit-fall {
-          0% { transform: translateY(-20px) rotate(0deg); opacity: 0; }
-          10% { opacity: 1; }
-          100% { transform: translateY(280px) rotate(360deg); opacity: 0; }
-        }
-      `}</style>
+    <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-3xl">
       {Array.from({ length: 24 }).map((_, i) => {
         const left = (i * 100) / 24;
         const delay = (i % 6) * 0.05;
         const size = 6 + (i % 4) * 2;
+
         return (
           <span
             key={i}
+            className="absolute top-0 animate-bounce rounded-full opacity-80"
             style={{
-              position: "absolute",
               left: `${left}%`,
-              top: 0,
-              width: size,
-              height: size,
-              borderRadius: 2,
-              background: i % 2 === 0 ? "#0f172a" : "#94a3b8",
-              animation: `pwnit-fall 0.9s ease-in ${delay}s 1`,
+              width: `${size}px`,
+              height: `${size * 1.6}px`,
+              animationDelay: `${delay}s`,
             }}
           />
         );
@@ -92,11 +84,7 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<{ scoreMs: number } | null>(null);
   const [errMsg, setErrMsg] = useState<string | null>(null);
-  const [status, setStatus] = useState<null | {
-    myRank: number;
-    totalPlayers: number;
-    state: "WINNING" | "ALMOST" | "PLAYING";
-  }>(null);
+  const [status, setStatus] = useState<{ myRank: number; totalPlayers: number; state: "LEADING" | "BONUS" | "CHASING" } | null>(null);
 
   const entry = GAME_REGISTRY[gameKey] ?? GAME_REGISTRY["quick-stop"];
   const Game = useMemo(() => entry.Component, [entry.Component]);
@@ -121,7 +109,11 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
       const res = await fetch("/api/attempt", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ itemId, scoreMs: payload.scoreMs, meta: payload.meta ?? null }),
+        body: JSON.stringify({
+          itemId,
+          scoreMs: payload.scoreMs,
+          meta: payload.meta ?? null,
+        }),
       });
 
       const ct = res.headers.get("content-type") || "";
@@ -138,8 +130,9 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
       setStatus({
         myRank: Number(data.myRank || 0),
         totalPlayers: Number(data.totalPlayers || 0),
-        state: (data.status || "PLAYING") as any,
+        state: (data.status || "CHASING") as any,
       });
+
       window.dispatchEvent(new Event("pwnit:credits"));
       router.refresh();
     } catch (e: any) {
@@ -150,22 +143,19 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
   }
 
   return (
-    <div className="space-y-2.5">
-      <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-start">
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="text-sm font-semibold text-slate-900">{entry.title}</div>
-          <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-semibold text-slate-700 ring-1 ring-slate-200 sm:px-2.5 sm:text-[11px]">
-            {playCost} credits / play
-          </span>
-          <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-semibold text-slate-700 ring-1 ring-slate-200 sm:px-2.5 sm:text-[11px]">
-            Wallet {credits}
-          </span>
+    <div className="relative rounded-3xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
+      <ConfettiOverlay show={status?.state === "LEADING"} />
+
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <div className="text-sm font-semibold uppercase tracking-wide text-slate-500">Game</div>
+          <h2 className="mt-1 text-2xl font-black text-slate-950">{entry.title}</h2>
         </div>
 
-        <label className="inline-flex items-center gap-2 text-xs font-semibold text-slate-700 sm:justify-self-end">
+        <label className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700">
           <input
             type="checkbox"
-            checked={practiceMode || !canPay}
+            checked={practiceMode}
             onChange={(e) => setPracticeMode(e.target.checked)}
             className="h-4 w-4 rounded border-slate-300"
             disabled={!canPay || submitting}
@@ -175,50 +165,48 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
       </div>
 
       {!canPay ? (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           <div className="font-semibold">Not enough credits to submit a score.</div>
-          <div className="mt-1 text-xs text-amber-800">Practice is enabled until you top up.</div>
+          <div className="mt-1">Practice is enabled until you top up.</div>
         </div>
       ) : null}
 
       {status ? (
-        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm">
-          <div className="font-semibold text-slate-900">
+        <div className="mt-4 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+          <div className="font-semibold">
             Current standing: #{status.myRank} / {status.totalPlayers}
           </div>
-          <div className="mt-1 text-xs text-slate-600">1st place wins the prize. 2nd and 3rd earn credit bonuses.</div>
-          {status.state === "WINNING" ? (
-            <div className="mt-2 text-sm font-semibold text-slate-900">🎉 You’re currently in first place.</div>
-          ) : status.state === "ALMOST" ? (
-            <div className="mt-2 text-sm font-semibold text-slate-900">😮 You’re close — one better run could move you up.</div>
+          <div className="mt-1">1st place wins the prize. 2nd and 3rd earn credit bonuses.</div>
+          {status.state === "LEADING" ? (
+            <div className="mt-1 font-medium">You’re currently in first place.</div>
+          ) : status.state === "BONUS" ? (
+            <div className="mt-1 font-medium">You’re in a bonus position.</div>
           ) : null}
         </div>
       ) : null}
 
       {result ? (
-        <div className="text-xs text-slate-600">
-          {practiceMode ? "Practice result" : "Submitted"} • Score <span className="font-semibold text-slate-900">{result.scoreMs}</span>
+        <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+          <div className="font-semibold">{practiceMode ? "Practice result" : "Submitted"}</div>
+          <div className="mt-1">Score {result.scoreMs}</div>
         </div>
       ) : null}
 
       {errMsg ? (
-        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+        <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
           <div className="font-semibold">Couldn’t submit your score</div>
-          <div className="mt-1 text-xs text-rose-700">{errMsg}</div>
+          <div className="mt-1">{errMsg}</div>
         </div>
       ) : null}
 
-      <div className="relative rounded-2xl border border-slate-200 bg-slate-50 p-2 sm:p-4">
-        <ConfettiOverlay show={!practiceMode && status?.state === "WINNING"} />
-        <Game disabled={submitting} onFinish={(r: any) => submitAttempt({ scoreMs: r.scoreMs, meta: r.meta })} />
+      <div className="mt-5">
+        <Game onFinish={(r: { scoreMs: number; meta?: any }) => submitAttempt({ scoreMs: r.scoreMs, meta: r.meta })} />
       </div>
 
-      <div className="grid gap-2 sm:grid-cols-2 sm:gap-3">
+      <div className="mt-5 flex flex-wrap gap-3">
         <button
-          className={[
-            "inline-flex min-h-[44px] items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold",
-            submitting ? "bg-slate-200 text-slate-500" : "bg-slate-900 text-white hover:bg-slate-800",
-          ].join(" ")}
+          type="button"
+          className="rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-bold text-slate-900"
           onClick={() => router.push(`/item/${itemId}/leaderboard`)}
           disabled={submitting}
         >
@@ -226,7 +214,8 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
         </button>
 
         <button
-          className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-slate-50"
+          type="button"
+          className="rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-bold text-slate-900"
           onClick={() => router.push(`/item/${itemId}`)}
           disabled={submitting}
         >

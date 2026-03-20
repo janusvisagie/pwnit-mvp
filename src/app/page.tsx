@@ -79,15 +79,15 @@ export default async function HomePage() {
   const anyActivated = synced.some((item) => item.state === "ACTIVATED");
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
+    <main className="mx-auto max-w-[1380px] px-4 py-4 sm:px-6 lg:px-8">
       <WelcomeModal />
 
-      <section className="mb-5 rounded-3xl border border-slate-200 bg-white px-4 py-4 shadow-sm sm:px-6">
+      <section className="mb-4 rounded-3xl border border-slate-200 bg-white px-4 py-4 shadow-sm sm:px-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <div className="leading-none">
-              <span className="text-2xl font-semibold text-slate-700 sm:text-3xl">Pick. Play.</span>{" "}
-              <span className="text-4xl font-black text-blue-600 sm:text-5xl">PwnIt.</span>
+              <span className="text-[28px] font-semibold text-slate-700 sm:text-[34px]">Pick. Play.</span>{" "}
+              <span className="text-[42px] font-black text-blue-600 sm:text-[52px]">PwnIt.</span>
             </div>
             <p className="mt-2 text-sm text-slate-600 sm:text-base">
               Choose a prize, play a quick skill game, and try to win it.
@@ -122,7 +122,7 @@ export default async function HomePage() {
                 state: item.state,
                 imageUrl: item.imageUrl,
                 closesAt: item.closesAt ? new Date(item.closesAt).toISOString() : null,
-                playCostCredits: Number(item.playCostCredits ?? playCostForPrize(item.prizeValueZAR)),
+                playCostCredits: playCostForPrize(item.prizeValueZAR),
                 gameKey: item.gameKey,
                 activationPct: pct,
               }}

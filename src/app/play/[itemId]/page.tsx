@@ -90,14 +90,14 @@ export default async function PlayPage({ params }: { params: { itemId: string } 
         ? new Date(item.closesAt).toISOString()
         : null;
 
-    const playCost = Math.max(1, Number(item.playCostCredits ?? playCostForPrize(item.prizeValueZAR)));
+    const playCost = playCostForPrize(item.prizeValueZAR);
     const free = Number(actor.user.freeCreditsBalance ?? 0);
     const extra = Number(actor.user.paidCreditsBalance ?? 0);
     const creditsTotal = free + extra;
 
     return (
-      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
-        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+      <main className="mx-auto max-w-[1080px] px-4 py-5 sm:px-6 lg:px-8">
+        <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
           <div className="flex flex-wrap items-center gap-2">
             <span className="rounded-full bg-blue-50 px-3 py-1 text-sm font-semibold text-blue-700">
               {playCost} credits / play
@@ -132,7 +132,7 @@ export default async function PlayPage({ params }: { params: { itemId: string } 
             </div>
           </div>
 
-          <div className="mt-6">
+          <div className="mt-5">
             <GameHost itemId={itemId} gameKey={item.gameKey as any} playCost={playCost} credits={creditsTotal} />
           </div>
         </div>

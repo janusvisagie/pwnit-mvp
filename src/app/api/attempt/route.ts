@@ -1,11 +1,13 @@
 export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
+
+import { getCurrentActor } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { dayKeyZA } from "@/lib/time";
-import { getOrCreateDemoUser } from "@/lib/auth";
 import { compareScores } from "@/lib/gameRules";
+import { playCostForPrize } from "@/lib/playCost";
 import { ensureCurrentRound, syncRoundLifecycle } from "@/lib/rounds";
+import { dayKeyZA } from "@/lib/time";
 
 const INVALID_FLAG_FRAGMENT = '"valid":false';
 
@@ -17,39 +19,60 @@ function isInvalidAttempt(flags: string | null | undefined) {
 export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => ({}));
-
     const itemId = String(body?.itemId || "").trim();
     const scoreMs = Number(body?.scoreMs);
 
-    if (!itemId) return NextResponse.json({ ok: false, error: "Missing itemId" }, { status: 400 });
+    if (!itemId) {
+      return NextResponse.json({ ok: false, error: "Missing itemId" }, { status: 400 });
+    }
+
     if (!Number.isFinite(scoreMs)) {
       return NextResponse.json({ ok: false, error: "Invalid score" }, { status: 400 });
     }
 
-    const user = await getOrCreateDemoUser();
+    const actor = await getCurrentActor();
+    const user = actor.user;
     const dayKey = dayKeyZA();
 
     const item = await prisma.item.findUnique({
       where: { id: itemId },
-      select: { id: true, prizeValueZAR: true, playCostCredits: true, gameKey: true },
+      select: {
+        id: true,
+        prizeValueZAR: true,
+        playCostCredits: true,
+        gameKey: true,
+      },
     });
-    if (!item) return NextResponse.json({ ok: false, error: "Item not found" }, { status: 404 });
+
+    if (!item) {
+      return NextResponse.json({ ok: false, error: "Item not found" }, { status: 404 });
+    }
 
     const round = await ensureCurrentRound(itemId);
-    if (!round) return NextResponse.json({ ok: false, error: "Round not found" }, { status: 404 });
+    if (!round) {
+      return NextResponse.json({ ok: false, error: "Round not found" }, { status: 404 });
+    }
 
     const synced = await syncRoundLifecycle(itemId);
     const currentState = synced?.state ?? round.state;
+
     if (!["BUILDING", "ACTIVATED"].includes(currentState)) {
-      return NextResponse.json({ ok: false, error: "This prize is not accepting plays right now." }, { status: 409 });
+      return NextResponse.json(
+        { ok: false, error: "This prize is not accepting plays right now." },
+        { status: 409 },
+      );
     }
 
-    const playCost = Math.max(1, Number(item.playCostCredits || 0));
+    const playCost = playCostForPrize(item.prizeValueZAR);
 
     const txRes = await prisma.$transaction(async (tx) => {
       const freshUser: any = await tx.user.findUnique({
         where: { id: user.id },
-        select: { id: true, paidCreditsBalance: true, freeCreditsBalance: true },
+        select: {
+          id: true,
+          paidCreditsBalance: true,
+          freeCreditsBalance: true,
+        },
       });
 
       const freeBal = Number(freshUser?.freeCreditsBalance ?? 0);
@@ -118,6 +141,7 @@ export async function POST(req: Request) {
           },
         });
       }
+
       if (freeUsed > 0) {
         await tx.creditLedger.create({
           data: {
@@ -153,7 +177,7 @@ export async function POST(req: Request) {
           paidBalance: txRes.paidBalance,
           totalBalance: txRes.totalBalance,
         },
-        { status: 402 }
+        { status: 402 },
       );
     }
 
@@ -166,13 +190,19 @@ export async function POST(req: Request) {
         OR: [{ flags: null }, { NOT: { flags: { contains: INVALID_FLAG_FRAGMENT } } }],
       },
       orderBy: [{ createdAt: "asc" }],
-      select: { userId: true, scoreMs: true, createdAt: true },
+      select: {
+        userId: true,
+        scoreMs: true,
+        createdAt: true,
+      },
     });
 
-    const bestByUser = new Map<string, { userId: string; scoreMs: number; createdAt: Date }>();
+    const bestByUser = new Map();
     for (const row of rowsRaw) {
       const current = bestByUser.get(row.userId);
-      if (!current || compareScores(item.gameKey, row, current) < 0) bestByUser.set(row.userId, row);
+      if (!current || compareScores(item.gameKey, row, current) < 0) {
+        bestByUser.set(row.userId, row);
+      }
     }
 
     const rows = Array.from(bestByUser.values()).sort((a, b) => compareScores(item.gameKey, a, b));
@@ -201,6 +231,9 @@ export async function POST(req: Request) {
       roundState: refreshedRound?.state ?? currentState,
     });
   } catch (e: any) {
-    return NextResponse.json({ ok: false, error: e?.message || String(e) || "Server error" }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, error: e?.message || String(e) || "Server error" },
+      { status: 500 },
+    );
   }
 }

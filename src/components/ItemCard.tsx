@@ -39,7 +39,8 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
   const pct = Math.max(0, Math.min(100, Number(item.activationPct ?? 0)));
   const normalizedState = String(item.state || "").toUpperCase();
   const isActivated = normalizedState === "ACTIVATED";
-  const isPlayable = normalizedState === "OPEN" || normalizedState === "BUILDING" || normalizedState === "ACTIVATED";
+  const isPlayable =
+    normalizedState === "OPEN" || normalizedState === "BUILDING" || normalizedState === "ACTIVATED";
   const isClosed = !isPlayable;
   const href = isClosed ? `/item/${item.id}/leaderboard` : `/item/${item.id}`;
   const product = getProductContent(item.title, item.imageUrl);
@@ -58,7 +59,7 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
   return (
     <Link
       href={href}
-      className="group flex h-full flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+      className="group flex h-full min-h-[320px] flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
     >
       <div className="relative">
         <ProductImage
@@ -66,7 +67,7 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
           fallbackSrc={fallbackImage}
           alt={item.title}
           className="bg-slate-50"
-          imgClassName="h-36 w-full object-contain bg-white p-3 sm:h-40"
+          imgClassName="h-32 w-full object-contain bg-white p-3 sm:h-36"
         />
 
         {isClosed ? (
@@ -78,7 +79,7 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
         ) : null}
       </div>
 
-      <div className="flex flex-1 flex-col p-4">
+      <div className="flex flex-1 flex-col p-3.5">
         <div className="flex items-start justify-between gap-2">
           <div className="text-lg font-black text-slate-950">{formatZAR(item.prizeValueZAR)}</div>
           <div className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${badgeTone}`}>
@@ -110,7 +111,7 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
           ) : null}
         </div>
 
-        <div className="mt-4">
+        <div className="mt-auto pt-4">
           <div className="mb-1 flex items-center justify-between gap-2">
             <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
               Activation

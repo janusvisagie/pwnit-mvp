@@ -27,6 +27,17 @@ function stateLabel(state: string) {
   return "Open";
 }
 
+function gameLabel(k?: string | null) {
+  if (!k) return null;
+  if (k === "memory-sprint" || k === "number-memory") return "Memory Sprint";
+  if (k === "alphabet-sprint" || k === "trace-run") return "Alphabet Sprint";
+  if (k === "quick-stop" || k === "precision-timer" || k === "stop-zero") return "Quick Stop";
+  if (k === "moving-zone" || k === "rhythm-hold") return "Moving Zone Hold";
+  if (k === "flash-count" || k === "burst-match" || k === "tap-speed" || k === "tap-pattern") return "Flash Count";
+  if (k === "target-grid" || k === "target-hold") return "Target Grid";
+  return k.replace(/[-_]/g, " ");
+}
+
 export default async function ItemPage({ params }: { params: { id: string } }) {
   noStore();
 
@@ -52,12 +63,18 @@ export default async function ItemPage({ params }: { params: { id: string } }) {
     }
     if (!round) notFound();
 
-    const mySpend = await prisma.attempt.aggregate({
-      where: { itemId, roundId: round.id, userId: actor.user.id },
-      _sum: { paidUsed: true },
-    });
+    const [meWinner, mySpend] = await Promise.all([
+      prisma.winner.findFirst({
+        where: { itemId, roundId: round.id, userId: actor.user.id, rank: 1, rewardType: "ITEM" },
+        select: { id: true },
+      }),
+      prisma.attempt.aggregate({
+        where: { itemId, roundId: round.id, userId: actor.user.id },
+        _sum: { paidUsed: true },
+      }),
+    ]);
 
-    const playCost = Math.max(1, Number(item.playCostCredits ?? playCostForPrize(item.prizeValueZAR)));
+    const playCost = playCostForPrize(item.prizeValueZAR);
     const product = getProductContent(item.title, item.imageUrl);
     const fallbackImage = getFallbackProductImage(item.title, item.imageUrl);
     const primaryImage = product?.imageUrl ?? item.imageUrl ?? fallbackImage;
@@ -72,12 +89,13 @@ export default async function ItemPage({ params }: { params: { id: string } }) {
     });
     const isPlayable = round.state === ROUND_STATES.BUILDING || round.state === ROUND_STATES.ACTIVATED;
     const spentCredits = Number(mySpend._sum.paidUsed ?? 0);
+    const game = gameLabel(item.gameKey);
 
     return (
-      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
-        <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
+      <main className="mx-auto max-w-[1180px] px-4 py-5 sm:px-6 lg:px-8">
+        <div className="grid gap-5 lg:grid-cols-[1.02fr_0.98fr]">
           <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-            <div className="border-b border-slate-200 px-4 py-4 sm:px-6">
+            <div className="border-b border-slate-200 px-4 py-4 sm:px-5">
               <div className="flex flex-wrap items-center gap-2 text-sm">
                 <span className="rounded-full bg-slate-100 px-3 py-1 font-semibold text-slate-700">
                   {stateLabel(String(round.state || ""))}
@@ -88,6 +106,11 @@ export default async function ItemPage({ params }: { params: { id: string } }) {
                 <span className="rounded-full bg-blue-50 px-3 py-1 font-semibold text-blue-700">
                   {playCost} credits / play
                 </span>
+                {game ? (
+                  <span className="rounded-full bg-blue-50 px-3 py-1 font-semibold text-blue-700">
+                    {game}
+                  </span>
+                ) : null}
               </div>
 
               <h1 className="mt-3 text-2xl font-black tracking-tight text-slate-950 sm:text-3xl">
@@ -95,16 +118,16 @@ export default async function ItemPage({ params }: { params: { id: string } }) {
               </h1>
             </div>
 
-            <div className="p-4 sm:p-6">
+            <div className="p-4 sm:p-5">
               <ProductImage
                 primarySrc={primaryImage}
                 fallbackSrc={fallbackImage}
                 alt={item.title}
                 className="overflow-hidden rounded-3xl border border-slate-200 bg-slate-50"
-                imgClassName="h-[280px] w-full object-contain bg-white p-4 sm:h-[360px]"
+                imgClassName="h-[240px] w-full object-contain bg-white p-4 sm:h-[300px]"
               />
 
-              <div className="mt-5 rounded-3xl border border-slate-200 bg-slate-50 p-4">
+              <div className="mt-4 rounded-3xl border border-slate-200 bg-slate-50 p-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -132,8 +155,8 @@ export default async function ItemPage({ params }: { params: { id: string } }) {
             </div>
           </section>
 
-          <section className="space-y-5">
-            <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <section className="space-y-4">
+            <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Play</div>
@@ -169,17 +192,25 @@ export default async function ItemPage({ params }: { params: { id: string } }) {
               </div>
             </div>
 
-            <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
               <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Buy now</div>
-              <p className="mt-2 text-sm text-slate-600">
-                Your paid plays on this item build up a discount automatically.
-              </p>
-              <p className="mt-3 text-sm font-medium text-slate-700">
-                Your paid plays on this round: <span className="font-extrabold">{spentCredits}</span>
-              </p>
+              {meWinner ? (
+                <p className="mt-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">
+                  You already won this item in the current round.
+                </p>
+              ) : (
+                <>
+                  <p className="mt-2 text-sm text-slate-600">
+                    Your paid plays on this item build up a discount automatically.
+                  </p>
+                  <p className="mt-3 text-sm font-medium text-slate-700">
+                    Your paid plays on this round: <span className="font-extrabold">{spentCredits}</span>
+                  </p>
+                </>
+              )}
             </div>
 
-            <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
               <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                 {product?.kicker ?? "Product details"}
               </div>
