@@ -27,7 +27,9 @@ export function HeaderNav() {
       try {
         const response = await fetch("/api/me", { cache: "no-store" });
         const data = await response.json().catch(() => null);
+
         if (!alive || !response.ok || !data?.ok) return;
+
         setMe({ isLocalDev: Boolean(data.isLocalDev) });
       } catch {
         // Ignore header refresh failures.
@@ -50,21 +52,61 @@ export function HeaderNav() {
     };
   }, []);
 
-  const isLocalHost = typeof window !== "undefined" && ["localhost", "127.0.0.1"].includes(window.location.hostname);
+  const isLocalHost =
+    typeof window !== "undefined" &&
+    ["localhost", "127.0.0.1"].includes(window.location.hostname);
+
   const showAdmin = Boolean(me.isLocalDev || isLocalHost);
   const isDetailPage = pathname.startsWith("/item/") || pathname.startsWith("/play/");
 
-  const items = useMemo<NavItem[]>(
-    () => [
-      { href: "/", label: "Home", mobileMode: "always", desktop: true, show: true },
-      { href: "/pay", label: "Buy credits", mobileMode: "always", desktop: true, show: true },
-      { href: "/how-activation-works", label: "How it works", mobileMode: "always", desktop: true, show: true },
-      { href: "/dashboard", label: "Dashboard", mobileMode: "hide-on-detail", desktop: true, show: true },
-      { href: "/referrals", label: "Referrals", mobileMode: "hide-on-detail", desktop: true, show: true },
-      { href: "/feedback", label: "Feedback", mobileMode: "hide-on-detail", desktop: true, show: true },
-      { href: "/terms", label: "Terms", mobileMode: "hide-on-detail", desktop: true, show: true },
-      { href: "/admin", label: "Admin", mobileMode: "never", desktop: true, show: showAdmin },
-    ].filter((item) => item.show !== false),
+  const items = useMemo(
+    () =>
+      ([
+        { href: "/", label: "Home", mobileMode: "always", desktop: true, show: true },
+        { href: "/pay", label: "Buy credits", mobileMode: "always", desktop: true, show: true },
+        {
+          href: "/how-activation-works",
+          label: "How it works",
+          mobileMode: "always",
+          desktop: true,
+          show: true,
+        },
+        {
+          href: "/dashboard",
+          label: "Dashboard",
+          mobileMode: "hide-on-detail",
+          desktop: true,
+          show: true,
+        },
+        {
+          href: "/referrals",
+          label: "Referrals",
+          mobileMode: "hide-on-detail",
+          desktop: true,
+          show: true,
+        },
+        {
+          href: "/feedback",
+          label: "Feedback",
+          mobileMode: "hide-on-detail",
+          desktop: true,
+          show: true,
+        },
+        {
+          href: "/terms",
+          label: "Terms",
+          mobileMode: "hide-on-detail",
+          desktop: true,
+          show: true,
+        },
+        {
+          href: "/admin",
+          label: "Admin",
+          mobileMode: "never",
+          desktop: true,
+          show: showAdmin,
+        },
+      ] satisfies NavItem[]).filter((item) => item.show !== false),
     [showAdmin],
   );
 
@@ -87,33 +129,40 @@ export function HeaderNav() {
 
     return [
       "rounded-full px-3 py-1.5 text-sm font-medium transition",
-      active ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
+      active
+        ? "bg-slate-900 text-white"
+        : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
     ].join(" ");
   }
 
   return (
     <>
-      <nav className="-mx-1 flex items-center gap-2 overflow-x-auto px-1 pb-1 md:hidden">
-        {mobileItems.map((item) => {
-          const active = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
-          return (
-            <Link key={item.href} href={item.href} className={linkClasses(active, "mobile")}>
-              {item.label}
-            </Link>
-          );
-        })}
-      </nav>
+      {mobileItems.map((item) => {
+        const active = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
 
-      <nav className="hidden items-center gap-1 md:flex md:flex-wrap md:justify-end">
-        {items.filter((item) => item.desktop).map((item) => {
-          const active = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
+        return (
+          <Link key={`mobile-${item.href}`} href={item.href} className={linkClasses(active, "mobile")}>
+            {item.label}
+          </Link>
+        );
+      })}
+
+      {items
+        .filter((item) => item.desktop)
+        .map((item) => {
+          const active =
+            pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
+
           return (
-            <Link key={item.href} href={item.href} className={linkClasses(active, "desktop")}>
+            <Link
+              key={`desktop-${item.href}`}
+              href={item.href}
+              className={linkClasses(active, "desktop")}
+            >
               {item.label}
             </Link>
           );
         })}
-      </nav>
     </>
   );
 }
