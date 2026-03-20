@@ -5,8 +5,8 @@ import { useMemo } from "react";
 
 import { CountdownChip } from "@/components/CountdownChip";
 import { ProductImage } from "@/components/ProductImage";
-import { getFallbackProductImage, getProductContent } from "@/lib/productCatalog";
 import { activationStageLabel } from "@/lib/playCost";
+import { getFallbackProductImage, getProductContent } from "@/lib/productCatalog";
 
 export type ItemCardModel = {
   id: string;
@@ -18,7 +18,6 @@ export type ItemCardModel = {
   playCostCredits?: number;
   gameKey?: string | null;
   activationPct?: number;
-  activationLabel?: string;
 };
 
 function formatZAR(v: number) {
@@ -31,33 +30,30 @@ function gameLabel(k?: string | null) {
   if (k === "alphabet-sprint" || k === "trace-run") return "Alphabet Sprint";
   if (k === "quick-stop" || k === "precision-timer" || k === "stop-zero") return "Quick Stop";
   if (k === "moving-zone" || k === "rhythm-hold") return "Moving Zone Hold";
-  if (k === "flash-count" || k === "burst-match" || k === "tap-speed" || k === "tap-pattern") {
-    return "Flash Count";
-  }
+  if (k === "flash-count" || k === "burst-match" || k === "tap-speed" || k === "tap-pattern") return "Flash Count";
   if (k === "target-grid" || k === "target-hold") return "Target Grid";
-  return k;
+  return k.replace(/[-_]/g, " ");
 }
 
 export function ItemCard({ item }: { item: ItemCardModel }) {
   const pct = Math.max(0, Math.min(100, Number(item.activationPct ?? 0)));
-  const normalizedState = (item.state || "").toUpperCase();
+  const normalizedState = String(item.state || "").toUpperCase();
   const isActivated = normalizedState === "ACTIVATED";
-  const isPlayable = normalizedState === "OPEN" || normalizedState === "ACTIVATED";
+  const isPlayable = normalizedState === "OPEN" || normalizedState === "BUILDING" || normalizedState === "ACTIVATED";
   const isClosed = !isPlayable;
   const href = isClosed ? `/item/${item.id}/leaderboard` : `/item/${item.id}`;
-  const gLabel = gameLabel(item.gameKey);
   const product = getProductContent(item.title, item.imageUrl);
   const fallbackImage = getFallbackProductImage(item.title, item.imageUrl);
   const primaryImage = product?.imageUrl ?? item.imageUrl ?? fallbackImage;
+  const game = gameLabel(item.gameKey);
   const hot = useMemo(() => isPlayable && !isActivated && pct >= 75, [isPlayable, isActivated, pct]);
 
-  const statusTone = isClosed
+  const progressText = isActivated ? "Activated" : activationStageLabel(pct);
+  const badgeTone = isClosed
     ? "bg-slate-900 text-white"
     : isActivated
       ? "bg-emerald-100 text-emerald-800 ring-1 ring-emerald-200"
       : "bg-slate-100 text-slate-700 ring-1 ring-slate-200";
-
-  const statusText = isClosed ? "Won" : isActivated ? "Activated" : "Open";
 
   return (
     <Link
@@ -70,72 +66,67 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
           fallbackSrc={fallbackImage}
           alt={item.title}
           className="bg-slate-50"
-          imgClassName="h-48 w-full object-contain bg-white p-4"
+          imgClassName="h-36 w-full object-contain bg-white p-3 sm:h-40"
         />
 
         {isClosed ? (
-          <div className="pointer-events-none absolute inset-x-0 top-4 flex justify-center">
-            <span className="rounded-full bg-slate-950 px-3 py-1 text-xs font-bold tracking-wide text-white">
-              PRIZE WON • CLOSED
+          <div className="pointer-events-none absolute inset-x-0 top-3 flex justify-center">
+            <span className="rounded-full bg-slate-950 px-3 py-1 text-[11px] font-bold tracking-wide text-white">
+              PRIZE WON
             </span>
           </div>
         ) : null}
       </div>
 
       <div className="flex flex-1 flex-col p-4">
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start justify-between gap-2">
           <div className="text-lg font-black text-slate-950">{formatZAR(item.prizeValueZAR)}</div>
-          <div className={`rounded-full px-2.5 py-1 text-xs font-semibold ${statusTone}`}>
-            {statusText}
+          <div className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${badgeTone}`}>
+            {isClosed ? "Closed" : isActivated ? "Activated" : "Open"}
           </div>
         </div>
 
-        <div className="mt-2 flex flex-wrap items-center gap-2">
-          {hot ? (
-            <span className="rounded-full bg-orange-100 px-2.5 py-1 text-xs font-semibold text-orange-800 ring-1 ring-orange-200">
-              Hot
-            </span>
-          ) : null}
-
-          {isActivated && item.closesAt ? <CountdownChip closesAt={item.closesAt} state="ACTIVATED" /> : null}
-        </div>
-
-        <h3 className="mt-3 text-base font-black leading-tight text-slate-950">{item.title}</h3>
+        <h3 className="mt-2 line-clamp-2 text-[15px] font-black leading-tight text-slate-950">
+          {item.title}
+        </h3>
 
         <div className="mt-2 flex flex-wrap items-center gap-2">
-          {gLabel ? (
-            <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-700 ring-1 ring-blue-200">
-              {gLabel}
+          {game ? (
+            <span className="rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-bold text-blue-700 ring-1 ring-blue-200">
+              {game}
             </span>
           ) : null}
 
           {typeof item.playCostCredits === "number" ? (
-            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 ring-1 ring-slate-200">
+            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-700 ring-1 ring-slate-200">
               {item.playCostCredits} credits/play
+            </span>
+          ) : null}
+
+          {hot ? (
+            <span className="rounded-full bg-orange-100 px-2.5 py-1 text-[11px] font-semibold text-orange-800 ring-1 ring-orange-200">
+              Hot
             </span>
           ) : null}
         </div>
 
-        {!isClosed ? (
-          <div className="mt-4">
-            <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Activation progress
-            </div>
-            <div className="h-2 overflow-hidden rounded-full bg-slate-200">
-              <div
-                className="h-full rounded-full bg-slate-900 transition-all"
-                style={{ width: `${Math.max(6, pct)}%` }}
-              />
-            </div>
-            <div className="mt-2 text-sm text-slate-600">
-              {isActivated ? "Activated" : activationStageLabel(pct)}
-            </div>
+        <div className="mt-4">
+          <div className="mb-1 flex items-center justify-between gap-2">
+            <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+              Activation
+            </span>
+            {isActivated && item.closesAt ? <CountdownChip closesAt={item.closesAt} state="ACTIVATED" /> : null}
           </div>
-        ) : (
-          <div className="mt-4 text-sm text-slate-600">
-            View results or buy the prize if you didn’t win.
+
+          <div className="h-2 overflow-hidden rounded-full bg-slate-200">
+            <div
+              className="h-full rounded-full bg-slate-900 transition-all"
+              style={{ width: `${Math.max(6, pct)}%` }}
+            />
           </div>
-        )}
+
+          <div className="mt-2 text-sm text-slate-600">{progressText}</div>
+        </div>
       </div>
     </Link>
   );

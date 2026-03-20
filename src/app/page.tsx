@@ -1,28 +1,18 @@
 import { unstable_noStore as noStore } from "next/cache";
 
-import { prisma } from "@/lib/db";
-import { getOrCreateDemoUser } from "@/lib/auth";
 import { AutoRefreshActivated } from "@/components/AutoRefreshActivated";
-import { settleItemWinners } from "@/lib/settle";
 import { ItemCard } from "@/components/ItemCard";
-import {
-  activationProgress,
-  activationTargetPaidCredits,
-  playCostForPrize,
-} from "@/lib/playCost";
 import { WelcomeModal } from "@/components/WelcomeModal";
+import { prisma } from "@/lib/db";
+import { activationProgress, activationTargetPaidCredits, playCostForPrize } from "@/lib/playCost";
+import { settleItemWinners } from "@/lib/settle";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 type HomeItem = Awaited<ReturnType<typeof prisma.item.findMany>>[number];
 
-async function syncItemState(
-  item: HomeItem,
-  now: Date,
-  paidSpent: number,
-  winnerCount: number,
-) {
+async function syncItemState(item: HomeItem, now: Date, paidSpent: number, winnerCount: number) {
   let state = item.state;
   let closesAt = item.closesAt;
 
@@ -47,7 +37,6 @@ async function syncItemState(
     if (winnerCount === 0) {
       await settleItemWinners(item.id);
     }
-
     await prisma.item.update({
       where: { id: item.id },
       data: { state: "PUBLISHED" },
@@ -55,19 +44,13 @@ async function syncItemState(
     state = "PUBLISHED";
   }
 
-  return {
-    ...item,
-    state,
-    closesAt,
-  };
+  return { ...item, state, closesAt };
 }
 
 export default async function HomePage() {
   noStore();
 
-  const user = await getOrCreateDemoUser();
   const now = new Date();
-
   const items = await prisma.item.findMany({
     orderBy: [{ createdAt: "asc" }],
     take: 6,
@@ -94,48 +77,59 @@ export default async function HomePage() {
   const anyActivated = synced.some((item) => item.state === "ACTIVATED");
 
   return (
-    <main className="flex h-full min-h-0 w-full flex-col gap-3 md:gap-4">
+    <main className="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
       <WelcomeModal />
-      <AutoRefreshActivated enabled={anyActivated} everyMs={10_000} />
 
-      <section className="fade-in flex min-h-0 flex-1 flex-col gap-3">
-        <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 lg:text-[10px]">
-          Logged in as{" "}
-          <span className="font-bold normal-case tracking-normal text-slate-900">{user.email}</span>
-        </div>
-
-        {anyActivated ? (
-          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-900 lg:px-3 lg:py-2 lg:text-[13px]">
-            Live prizes are active! Play now before time runs out.
+      <section className="mb-5 rounded-3xl border border-slate-200 bg-white px-4 py-4 shadow-sm sm:px-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div className="leading-none">
+              <span className="text-2xl font-semibold text-slate-700 sm:text-3xl">Pick. Play.</span>{" "}
+              <span className="text-4xl font-black text-blue-600 sm:text-5xl">PwnIt.</span>
+            </div>
+            <p className="mt-2 text-sm text-slate-600 sm:text-base">
+              Choose a prize, play a quick skill game, and try to win it.
+            </p>
           </div>
-        ) : null}
 
-        <div className="grid min-h-0 grid-cols-1 gap-3 sm:grid-cols-2 lg:flex-1 lg:grid-cols-3 lg:grid-rows-2">
-          {synced.map((item) => {
-            const paidSpent = paidMap.get(item.id) ?? 0;
-            const progress = activationProgress(item.prizeValueZAR, paidSpent);
-            const pct = typeof progress === "number" ? progress : progress.pct;
-
-            return (
-              <ItemCard
-                key={item.id}
-                item={{
-                  id: item.id,
-                  title: item.title,
-                  prizeValueZAR: item.prizeValueZAR,
-                  state: item.state,
-                  imageUrl: item.imageUrl ?? null,
-                  closesAt: item.closesAt ? item.closesAt.toISOString() : null,
-                  playCostCredits: playCostForPrize(item.prizeValueZAR),
-                  gameKey: item.gameKey ?? null,
-                  activationPct: pct,
-                  activationLabel: pct >= 100 ? "Activated" : undefined,
-                }}
-              />
-            );
-          })}
+          {anyActivated ? (
+            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">
+              Live prizes are active now.
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700">
+              New rounds activate as interest builds.
+            </div>
+          )}
         </div>
       </section>
+
+      <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {synced.map((item) => {
+          const paidSpent = paidMap.get(item.id) ?? 0;
+          const progress = activationProgress(item.prizeValueZAR, paidSpent);
+          const pct = typeof progress === "number" ? progress : progress.pct;
+
+          return (
+            <ItemCard
+              key={item.id}
+              item={{
+                id: item.id,
+                title: item.title,
+                prizeValueZAR: item.prizeValueZAR,
+                state: item.state,
+                imageUrl: item.imageUrl,
+                closesAt: item.closesAt ? new Date(item.closesAt).toISOString() : null,
+                playCostCredits: Number(item.playCostCredits ?? playCostForPrize(item.prizeValueZAR)),
+                gameKey: item.gameKey,
+                activationPct: pct,
+              }}
+            />
+          );
+        })}
+      </section>
+
+      {anyActivated ? <AutoRefreshActivated /> : null}
     </main>
   );
 }

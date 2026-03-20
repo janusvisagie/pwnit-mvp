@@ -33,6 +33,7 @@ export default function MovingZoneGame({ onFinish, disabled }: GameProps) {
   }
 
   useEffect(() => cleanup, []);
+
   useEffect(() => {
     if (phase !== "RUNNING") return;
 
@@ -132,7 +133,7 @@ export default function MovingZoneGame({ onFinish, disabled }: GameProps) {
     try {
       event.currentTarget.setPointerCapture(event.pointerId);
     } catch {
-      // best-effort
+      // best effort
     }
 
     if (phase !== "RUNNING") {
@@ -153,12 +154,19 @@ export default function MovingZoneGame({ onFinish, disabled }: GameProps) {
       <div>
         <h2 className="text-xl font-black text-slate-950">Moving Zone Hold</h2>
         <p className="mt-1 text-sm text-slate-600">
-          Hold the black bar on the red centre line inside the moving green band. Lower score wins.
+          Keep the black bar on the red marker inside the moving green band. Lower score wins.
         </p>
       </div>
 
-      <div className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-700">
-        Time left {Math.ceil(timeLeft / 1000)}s
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-700">
+          Time left {Math.ceil(timeLeft / 1000)}s
+        </div>
+        {phase === "IDLE" ? (
+          <div className="text-sm font-medium text-slate-600">
+            Tap and hold the black bar to start.
+          </div>
+        ) : null}
       </div>
 
       <div
@@ -168,20 +176,18 @@ export default function MovingZoneGame({ onFinish, disabled }: GameProps) {
         onPointerUp={handleBarPointerUp}
         className="relative h-24 touch-none overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-sm sm:h-28 sm:rounded-[28px]"
       >
-        <div className="absolute inset-y-0 left-1/2 w-1 -translate-x-1/2 bg-red-500" />
         <div
           className="absolute inset-y-3 w-[18%] -translate-x-1/2 rounded-full bg-emerald-300/80 transition-all"
+          style={{ left: targetLeft }}
+        />
+        <div
+          className="absolute inset-y-0 w-1 -translate-x-1/2 bg-red-500 transition-all"
           style={{ left: targetLeft }}
         />
         <div
           className="absolute inset-y-2 w-5 -translate-x-1/2 rounded-full bg-slate-900 shadow"
           style={{ left: cursorLeft }}
         />
-        {phase === "IDLE" ? (
-          <div className="absolute inset-x-0 bottom-3 text-center text-xs font-semibold text-slate-500">
-            Tap and hold the black bar to start.
-          </div>
-        ) : null}
       </div>
 
       {phase === "DONE" && score != null ? (
@@ -190,13 +196,15 @@ export default function MovingZoneGame({ onFinish, disabled }: GameProps) {
         </div>
       ) : null}
 
-      <button
-        type="button"
-        onClick={reset}
-        className="rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-bold text-slate-900 hover:bg-slate-50"
-      >
-        {phase === "DONE" ? "Play again" : "Reset"}
-      </button>
+      {phase !== "IDLE" ? (
+        <button
+          type="button"
+          onClick={reset}
+          className="rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-bold text-slate-900 hover:bg-slate-50"
+        >
+          {phase === "DONE" ? "Play again" : "Reset"}
+        </button>
+      ) : null}
     </div>
   );
 }
