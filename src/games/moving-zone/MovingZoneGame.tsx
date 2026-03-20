@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+
 import type { GameProps } from "../types";
 
 const DURATION_MS = 6500;
-const BAND_WIDTH = 0.18;
 
 export default function MovingZoneGame({ onFinish, disabled }: GameProps) {
   const [phase, setPhase] = useState<"IDLE" | "RUNNING" | "DONE">("IDLE");
@@ -33,7 +33,6 @@ export default function MovingZoneGame({ onFinish, disabled }: GameProps) {
   }
 
   useEffect(() => cleanup, []);
-
   useEffect(() => {
     if (phase !== "RUNNING") return;
 
@@ -62,7 +61,6 @@ export default function MovingZoneGame({ onFinish, disabled }: GameProps) {
   function updateCursor(clientX: number) {
     const element = areaRef.current;
     if (!element) return;
-
     const rect = element.getBoundingClientRect();
     const x = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
     cursorRef.current = x;
@@ -96,6 +94,7 @@ export default function MovingZoneGame({ onFinish, disabled }: GameProps) {
       const progress = elapsed / DURATION_MS;
       const target = 0.5 + Math.sin(progress * Math.PI * 4) * 0.28 + Math.sin(progress * Math.PI * 9) * 0.08;
       const clampedTarget = Math.max(0.12, Math.min(0.88, target));
+
       setTargetX(clampedTarget);
       setTimeLeft(Math.max(0, DURATION_MS - elapsed));
 
@@ -124,7 +123,7 @@ export default function MovingZoneGame({ onFinish, disabled }: GameProps) {
     setTimeLeft(DURATION_MS);
   }
 
-  function handleBarPointerDown(event: React.PointerEvent<HTMLButtonElement | HTMLDivElement>) {
+  function handleBarPointerDown(event: React.PointerEvent<HTMLDivElement>) {
     event.preventDefault();
     activePointerIdRef.current = event.pointerId;
     draggingRef.current = true;
@@ -133,7 +132,7 @@ export default function MovingZoneGame({ onFinish, disabled }: GameProps) {
     try {
       event.currentTarget.setPointerCapture(event.pointerId);
     } catch {
-      // pointer capture is best-effort only
+      // best-effort
     }
 
     if (phase !== "RUNNING") {
@@ -141,13 +140,7 @@ export default function MovingZoneGame({ onFinish, disabled }: GameProps) {
     }
   }
 
-  function handleBarPointerMove(event: React.PointerEvent<HTMLButtonElement | HTMLDivElement>) {
-    if (!draggingRef.current) return;
-    if (activePointerIdRef.current != null && event.pointerId !== activePointerIdRef.current) return;
-    updateCursor(event.clientX);
-  }
-
-  function handleBarPointerUp(event: React.PointerEvent<HTMLButtonElement | HTMLDivElement>) {
+  function handleBarPointerUp(event: React.PointerEvent<HTMLDivElement>) {
     if (activePointerIdRef.current != null && event.pointerId !== activePointerIdRef.current) return;
     stopDragging();
   }
@@ -158,70 +151,41 @@ export default function MovingZoneGame({ onFinish, disabled }: GameProps) {
   return (
     <div className="space-y-4">
       <div>
-        <div className="text-xs font-black uppercase tracking-[0.28em] text-slate-500">Moving Zone Hold</div>
-        <p className="mt-2 text-sm leading-6 text-slate-700">
-          Click on the black bar / pointer to start the Game.
+        <h2 className="text-xl font-black text-slate-950">Moving Zone Hold</h2>
+        <p className="mt-1 text-sm text-slate-600">
+          Hold the black bar on the red centre line inside the moving green band. Lower score wins.
         </p>
       </div>
 
-      <div className="rounded-2xl bg-slate-50 px-4 py-3">
-        <div className="text-xs font-black uppercase tracking-[0.24em] text-slate-500">Time left</div>
-        <div className="mt-1 text-lg font-black text-slate-950">{Math.ceil(timeLeft / 1000)}s</div>
+      <div className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-700">
+        Time left {Math.ceil(timeLeft / 1000)}s
       </div>
 
       <div
         ref={areaRef}
+        onPointerDown={handleBarPointerDown}
         onPointerMove={(event) => phase === "RUNNING" && updateCursor(event.clientX)}
-        onPointerDown={(event) => phase === "RUNNING" && updateCursor(event.clientX)}
+        onPointerUp={handleBarPointerUp}
         className="relative h-24 touch-none overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-sm sm:h-28 sm:rounded-[28px]"
       >
-        <div className="absolute inset-x-5 top-1/2 h-3 -translate-y-1/2 rounded-full bg-slate-100" />
-
+        <div className="absolute inset-y-0 left-1/2 w-1 -translate-x-1/2 bg-red-500" />
         <div
-          className="absolute top-1/2 h-10 -translate-x-1/2 -translate-y-1/2 rounded-full bg-emerald-200/90 ring-2 ring-emerald-300 transition-all"
-          style={{ left: targetLeft, width: `${BAND_WIDTH * 100}%` }}
-        />
-
-        <div
-          className="absolute top-1/2 z-[5] h-11 w-[2px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-rose-500 shadow-[0_0_0_3px_rgba(255,255,255,0.85)] transition-all"
+          className="absolute inset-y-3 w-[18%] -translate-x-1/2 rounded-full bg-emerald-300/80 transition-all"
           style={{ left: targetLeft }}
         />
-
+        <div
+          className="absolute inset-y-2 w-5 -translate-x-1/2 rounded-full bg-slate-900 shadow"
+          style={{ left: cursorLeft }}
+        />
         {phase === "IDLE" ? (
-          <button
-            type="button"
-            onPointerDown={handleBarPointerDown}
-            onPointerMove={handleBarPointerMove}
-            onPointerUp={handleBarPointerUp}
-            onPointerCancel={handleBarPointerUp}
-            disabled={disabled}
-            className="absolute top-1/2 z-20 flex h-16 w-16 touch-none items-center justify-center rounded-full bg-transparent -translate-x-1/2 -translate-y-1/2 transition disabled:opacity-50"
-            style={{ left: cursorLeft }}
-            aria-label="Start moving zone"
-            title="Start moving zone"
-          >
-            <span className="h-12 w-4 rounded-full bg-slate-950 shadow-lg ring-4 ring-white transition hover:bg-slate-800" />
-          </button>
-        ) : (
-          <div
-            className="absolute top-1/2 z-10 flex h-16 w-16 touch-none items-center justify-center rounded-full bg-transparent -translate-x-1/2 -translate-y-1/2"
-            style={{ left: cursorLeft }}
-            onPointerDown={handleBarPointerDown}
-            onPointerMove={handleBarPointerMove}
-            onPointerUp={handleBarPointerUp}
-            onPointerCancel={handleBarPointerUp}
-          >
-            <span className="h-12 w-4 rounded-full bg-slate-950 shadow-lg ring-4 ring-white transition-all" />
+          <div className="absolute inset-x-0 bottom-3 text-center text-xs font-semibold text-slate-500">
+            Tap and hold the black bar to start.
           </div>
-        )}
+        ) : null}
       </div>
 
-      <p className="text-sm text-slate-600">
-        Keep the black bar on the red centre line inside the moving green band. Score is based on your drift from the centre line, so lower score wins.
-      </p>
-
       {phase === "DONE" && score != null ? (
-        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-900">
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">
           Run complete • Score {score}
         </div>
       ) : null}
@@ -229,10 +193,9 @@ export default function MovingZoneGame({ onFinish, disabled }: GameProps) {
       <button
         type="button"
         onClick={reset}
-        disabled={disabled}
-        className="inline-flex min-h-[44px] items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-extrabold text-slate-800 shadow-sm transition hover:bg-slate-50 disabled:bg-slate-100 disabled:text-slate-400"
+        className="rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-bold text-slate-900 hover:bg-slate-50"
       >
-        {phase === "DONE" ? "Play again" : "Reset lane"}
+        {phase === "DONE" ? "Play again" : "Reset"}
       </button>
     </div>
   );
