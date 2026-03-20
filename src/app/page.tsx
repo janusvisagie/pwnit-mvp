@@ -37,6 +37,7 @@ async function syncItemState(item: HomeItem, now: Date, paidSpent: number, winne
     if (winnerCount === 0) {
       await settleItemWinners(item.id);
     }
+
     await prisma.item.update({
       where: { id: item.id },
       data: { state: "PUBLISHED" },
@@ -51,6 +52,7 @@ export default async function HomePage() {
   noStore();
 
   const now = new Date();
+
   const items = await prisma.item.findMany({
     orderBy: [{ createdAt: "asc" }],
     take: 6,
@@ -129,7 +131,7 @@ export default async function HomePage() {
         })}
       </section>
 
-      {anyActivated ? <AutoRefreshActivated /> : null}
+      <AutoRefreshActivated enabled={anyActivated} />
     </main>
   );
 }
