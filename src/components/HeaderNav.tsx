@@ -58,54 +58,55 @@ export function HeaderNav() {
   const isHomePage = pathname === "/";
   const isDetailPage = pathname.startsWith("/item/") || pathname.startsWith("/play/");
 
-  const items: NavItem[] = useMemo(
-    () => [
-      { href: "/", label: "Home", mobileMode: "always", desktop: true, show: true },
-      { href: "/pay", label: "Buy credits", mobileMode: "always", desktop: true, show: true },
-      {
-        href: "/how-activation-works",
-        label: "How it works",
-        mobileMode: "always",
-        desktop: true,
-        show: true,
-      },
-      {
-        href: "/dashboard",
-        label: "Dashboard",
-        mobileMode: "home-only",
-        desktop: true,
-        show: true,
-      },
-      {
-        href: "/referrals",
-        label: "Referrals",
-        mobileMode: "home-only",
-        desktop: true,
-        show: true,
-      },
-      {
-        href: "/feedback",
-        label: "Feedback",
-        mobileMode: "home-only",
-        desktop: true,
-        show: true,
-      },
-      {
-        href: "/terms",
-        label: "Terms",
-        mobileMode: "home-only",
-        desktop: true,
-        show: true,
-      },
-      {
-        href: "/admin",
-        label: "Admin",
-        mobileMode: "never",
-        desktop: true,
-        show: showAdmin,
-      },
-    ],
-    [showAdmin],
+  const items = useMemo(
+    () =>
+      ([
+        { href: "/", label: "Home", mobileMode: "always", desktop: true, show: true },
+        { href: "/pay", label: "Buy credits", mobileMode: "always", desktop: true, show: true },
+        {
+          href: "/how-activation-works",
+          label: "How it works",
+          mobileMode: "always",
+          desktop: true,
+          show: true,
+        },
+        {
+          href: "/dashboard",
+          label: "Dashboard",
+          mobileMode: "home-only",
+          desktop: true,
+          show: true,
+        },
+        {
+          href: "/referrals",
+          label: "Referrals",
+          mobileMode: "home-only",
+          desktop: true,
+          show: true,
+        },
+        {
+          href: "/feedback",
+          label: "Feedback",
+          mobileMode: "home-only",
+          desktop: true,
+          show: true,
+        },
+        {
+          href: "/terms",
+          label: "Terms",
+          mobileMode: "home-only",
+          desktop: true,
+          show: true,
+        },
+        {
+          href: "/admin",
+          label: "Admin",
+          mobileMode: "never",
+          desktop: true,
+          show: showAdmin,
+        },
+      ] satisfies NavItem[]),
+    [showAdmin]
   );
 
   const visibleItems = items.filter((item) => item.show);
@@ -113,7 +114,7 @@ export function HeaderNav() {
   const mobileItems = visibleItems.filter((item) => {
     if (item.mobileMode === "never") return false;
     if (item.mobileMode === "always") return true;
-    if (item.mobileMode === "home-only") return isHomePage && not isDetailPage;
+    if (item.mobileMode === "home-only") return isHomePage && !isDetailPage;
     return false;
   });
 
