@@ -96,7 +96,7 @@ export default async function PlayPage({ params }: { params: { itemId: string } 
 
             {roundState === ROUND_STATES.ACTIVATED && closesAtIso ? (
               <div className="shrink-0">
-                <CountdownChip closesAtIso={closesAtIso} state="ACTIVATED" />
+                <CountdownChip closesAt={closesAtIso} state="ACTIVATED" />
               </div>
             ) : null}
           </div>

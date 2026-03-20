@@ -106,7 +106,7 @@ export default async function ItemPage({ params }: { params: { id: string } }) {
                   <div className="text-sm font-semibold text-slate-900">Activation progress</div>
                   <div className="text-xs text-slate-500">{progress.label}</div>
                 </div>
-                {round.state === ROUND_STATES.ACTIVATED && closesAtIso ? <CountdownChip closesAtIso={closesAtIso} state="ACTIVATED" /> : null}
+                {round.state === ROUND_STATES.ACTIVATED && closesAtIso ? <CountdownChip closesAt={closesAtIso} state="ACTIVATED" /> : null}
               </div>
               <div className="mt-3 h-3 overflow-hidden rounded-full bg-slate-200">
                 <div className="h-full rounded-full bg-slate-900 transition-all" style={{ width: `${Math.max(6, progress.pct)}%` }} />
