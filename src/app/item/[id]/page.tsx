@@ -43,13 +43,7 @@ export default async function ItemPage({ params }: { params: { id: string } }) {
     }
     if (!round) notFound();
 
-    const [meWinner, mySpend] = await Promise.all([
-      prisma.winner.findFirst({
-        where: { itemId, roundId: round.id, userId: actor.user.id, rank: 1, rewardType: "ITEM" },
-        select: { id: true },
-      }),
-      prisma.attempt.aggregate({ where: { itemId, roundId: round.id, userId: actor.user.id }, _sum: { paidUsed: true } }),
-    ]);
+    const mySpend = await prisma.attempt.aggregate({ where: { itemId, roundId: round.id, userId: actor.user.id }, _sum: { paidUsed: true } });
 
     const playCost = playCostForPrize(item.prizeValueZAR);
     const product = getProductContent(item.title, item.imageUrl);
@@ -89,15 +83,18 @@ export default async function ItemPage({ params }: { params: { id: string } }) {
               />
             </div>
 
-            <div className="mt-5 flex flex-wrap gap-2">
-              <Link href={`/item/${item.id}/leaderboard`} className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700">
-                Leaderboard
-              </Link>
+            <div className="mt-5 flex flex-wrap gap-2 md:gap-3">
               {isPlayable ? (
-                <Link href={`/play/${item.id}`} className="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white">
-                  Play
+                <Link href={`/play/${item.id}`} className="inline-flex min-h-11 items-center justify-center rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800">
+                  Play now
                 </Link>
               ) : null}
+              <BuyNowButton itemId={item.id} className="inline-flex min-h-11 items-center justify-center rounded-full border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-slate-50">
+                Buy now
+              </BuyNowButton>
+              <Link href={`/item/${item.id}/leaderboard`} className="inline-flex min-h-11 items-center justify-center rounded-full border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-slate-50">
+                Leaderboard
+              </Link>
             </div>
 
             <div className="mt-6 rounded-3xl border border-slate-200 bg-slate-50 p-4">
@@ -112,9 +109,7 @@ export default async function ItemPage({ params }: { params: { id: string } }) {
                 <div className="h-full rounded-full bg-slate-900 transition-all" style={{ width: `${Math.max(6, progress.pct)}%` }} />
               </div>
               <p className="mt-3 text-sm leading-6 text-slate-600">
-                {round.state === ROUND_STATES.ACTIVATED
-                  ? "This prize is live now."
-                  : `This round is ${progress.label.toLowerCase()}.`}
+                {round.state === ROUND_STATES.ACTIVATED ? "This prize is live now." : `This round is ${progress.label.toLowerCase()}.`}
               </p>
             </div>
           </section>
@@ -122,26 +117,18 @@ export default async function ItemPage({ params }: { params: { id: string } }) {
           <section className="space-y-5">
             <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
               <h2 className="text-lg font-black tracking-tight text-slate-900">Buy Now</h2>
-              {meWinner ? (
-                <p className="mt-3 rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">
-                  You already won this item in the current round.
-                </p>
-              ) : (
-                <>
-                  <p className="mt-3 text-sm leading-6 text-slate-600">Buy Now is always available. Your paid plays on this item build up a discount automatically.</p>
-                  <div className="mt-3 rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-700">
-                    Your paid plays on this round: <span className="font-semibold text-slate-900">{spentCredits}</span>
-                  </div>
-                  <div className="mt-4">
-                    <BuyNowButton
-                      itemId={item.id}
-                      className="inline-flex min-h-11 w-full items-center justify-center rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
-                    >
-                      Buy now
-                    </BuyNowButton>
-                  </div>
-                </>
-              )}
+              <p className="mt-3 text-sm leading-6 text-slate-600">Buy Now is always available. Your paid plays on this item build up a discount automatically.</p>
+              <div className="mt-3 rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-700">
+                Your paid plays on this round: <span className="font-semibold text-slate-900">{spentCredits}</span>
+              </div>
+              <div className="mt-4">
+                <BuyNowButton
+                  itemId={item.id}
+                  className="inline-flex min-h-11 w-full items-center justify-center rounded-full border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-slate-50"
+                >
+                  Buy now
+                </BuyNowButton>
+              </div>
             </div>
 
             <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">

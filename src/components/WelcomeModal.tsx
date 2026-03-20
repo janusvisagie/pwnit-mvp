@@ -8,7 +8,7 @@ const HIDE_FOREVER_KEY = "pwnit_welcome_hide_forever";
 const steps = [
   { icon: "🎯", title: "Pick", body: "Choose a prize." },
   { icon: "⚡", title: "Play", body: "Post your best score." },
-  { icon: "🏆", title: "Win", body: "Top the leaderboard." },
+  { icon: "🏆", title: "PwnIt", body: "Top the leaderboard." },
 ] as const;
 
 export function WelcomeModal() {
@@ -51,7 +51,11 @@ export function WelcomeModal() {
         <div className="w-full max-w-sm overflow-hidden rounded-[28px] bg-white shadow-2xl ring-1 ring-slate-200">
           <div className="border-b border-slate-100 bg-gradient-to-br from-amber-50 via-white to-white px-4 pb-3 pt-4 sm:px-5 sm:pb-4 sm:pt-5">
             <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-amber-700 sm:text-xs">Welcome to PwnIt</p>
-            <h2 className="mt-1 text-[1.45rem] font-extrabold tracking-tight text-slate-900 sm:text-[1.7rem]">Pick. Play. PwnIt.</h2>
+            <h2 className="mt-1 flex flex-wrap items-end gap-x-2 text-slate-900">
+              <span className="text-[1.2rem] font-extrabold tracking-tight sm:text-[1.35rem]">Pick.</span>
+              <span className="text-[1.2rem] font-extrabold tracking-tight sm:text-[1.35rem]">Play.</span>
+              <span className="text-[1.75rem] font-black tracking-tight sm:text-[2rem]">PwnIt.</span>
+            </h2>
             <p className="mt-1.5 text-sm leading-5 text-slate-600">
               Choose a prize, play a quick skill game, and try to win it.
             </p>
@@ -64,7 +68,9 @@ export function WelcomeModal() {
                   <div className="text-lg leading-none" aria-hidden>
                     {step.icon}
                   </div>
-                  <div className="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-900">{step.title}</div>
+                  <div className={`mt-1 uppercase tracking-[0.12em] text-slate-900 ${step.title === "PwnIt" ? "text-[13px] font-black" : "text-[11px] font-bold"}`}>
+                    {step.title}
+                  </div>
                   <div className="mt-0.5 text-[11px] leading-4 text-slate-600">{step.body}</div>
                 </div>
               ))}
@@ -73,10 +79,6 @@ export function WelcomeModal() {
             <div className="flex items-center justify-between rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
               <span className="font-medium">Daily free credits</span>
               <span className="rounded-full bg-white px-2.5 py-1 text-xs font-black text-amber-800 shadow-sm">30</span>
-            </div>
-
-            <div className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-[12px] leading-4 text-slate-600">
-              Practice first. Buy Now is always available. If an item does not activate, credits are refunded.
             </div>
 
             <label className="flex items-start gap-3 rounded-2xl bg-slate-50 px-3 py-2 text-sm text-slate-700">

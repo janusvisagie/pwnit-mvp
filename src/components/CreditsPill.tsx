@@ -91,23 +91,23 @@ export function CreditsPill(props?: { free?: number; paid?: number }) {
   const discountText = useMemo(() => {
     if (discount == null) return null;
     if (newPrice == null) return `Discount ${formatZAR(discount)}`;
-    return `Discount ${formatZAR(discount)} • New price ${formatZAR(newPrice)}`;
+    return `Discount ${formatZAR(discount)} • Now ${formatZAR(newPrice)}`;
   }, [discount, newPrice]);
 
   return (
-    <div className="inline-flex max-w-full flex-col rounded-2xl border border-slate-200 bg-white px-3 py-2 text-left shadow-sm">
-      <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-        Credits
-      </span>
-      <span className="text-sm font-bold text-slate-900 sm:text-base">
-        {freeCredits == null && extraCredits == null ? "—" : total}
-      </span>
-      <span className="text-[11px] leading-4 text-slate-600 sm:text-xs">
-        {freeCredits == null && extraCredits == null
-          ? "Loading…"
-          : `Free ${freeCredits ?? 0} • Extra ${extraCredits ?? 0}`}
-      </span>
-      {discountText ? <span className="mt-1 text-[11px] leading-4 text-emerald-700">{discountText}</span> : null}
+    <div className="inline-flex max-w-full items-center gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-left shadow-sm">
+      <div className="min-w-0">
+        <div className="flex items-center gap-2 leading-none">
+          <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Credits</span>
+          <span className="text-sm font-black text-slate-900 sm:text-base">
+            {freeCredits == null && extraCredits == null ? "—" : total}
+          </span>
+        </div>
+        <div className="mt-1 text-[11px] leading-4 text-slate-600 sm:text-xs">
+          {freeCredits == null && extraCredits == null ? "Loading…" : `Free ${freeCredits ?? 0} • Extra ${extraCredits ?? 0}`}
+        </div>
+      </div>
+      {discountText ? <div className="hidden max-w-[180px] text-[11px] leading-4 text-emerald-700 md:block">{discountText}</div> : null}
     </div>
   );
 }

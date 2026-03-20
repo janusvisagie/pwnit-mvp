@@ -18,15 +18,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body className="min-h-screen bg-slate-50 text-slate-900">
         <div className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur">
-          <header className="mx-auto flex w-full max-w-6xl flex-col gap-3 px-4 py-3">
-            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <Link href="/" className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-900 text-sm font-black text-white shadow-sm">
-                  P
-                </div>
-                <div>
-                  <div className="text-lg font-black tracking-tight text-slate-900">PwnIt</div>
-                  <div className="text-xs text-slate-500">Pick. Play. PwnIt.</div>
+          <header className="mx-auto flex w-full max-w-6xl flex-col gap-2 px-4 py-3">
+            <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+              <Link href="/" className="min-w-0">
+                <div className="flex flex-wrap items-end gap-x-2 leading-none text-slate-900">
+                  <span className="text-lg font-extrabold tracking-tight">Pick.</span>
+                  <span className="text-lg font-extrabold tracking-tight">Play.</span>
+                  <span className="text-2xl font-black tracking-tight">PwnIt.</span>
                 </div>
               </Link>
 
@@ -43,9 +41,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {children}
 
         <footer className="mt-10 border-t border-slate-200 bg-white">
-          <div className="mx-auto flex w-full max-w-6xl flex-col gap-2 px-4 py-6 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between">
-            <div>Contact</div>
-            <div className="text-xs sm:text-sm">WhatsApp: +27 00 000 0000 (demo) · Email: support@pwnit.local (demo)</div>
+          <div className="mx-auto flex w-full max-w-6xl flex-col gap-2 px-4 py-6 text-sm text-slate-500 md:flex-row md:items-center md:justify-between">
+            <p>Pick. Play. PwnIt.</p>
+            <div className="flex gap-4">
+              <Link href="/how-activation-works" className="hover:text-slate-900">
+                How it works
+              </Link>
+              <Link href="/terms" className="hover:text-slate-900">
+                Terms
+              </Link>
+            </div>
           </div>
         </footer>
       </body>

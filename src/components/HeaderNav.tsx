@@ -11,7 +11,7 @@ type MeSummary = {
 type NavItem = {
   href: string;
   label: string;
-  mobile?: boolean;
+  mobileMode?: "always" | "home-only" | "hide-on-detail" | "never";
   desktop?: boolean;
   show?: boolean;
 };
@@ -52,20 +52,28 @@ export function HeaderNav() {
 
   const isLocalHost = typeof window !== "undefined" && ["localhost", "127.0.0.1"].includes(window.location.hostname);
   const showAdmin = Boolean(me.isLocalDev || isLocalHost);
+  const isDetailPage = pathname.startsWith("/item/") || pathname.startsWith("/play/");
 
   const items = useMemo<NavItem[]>(
     () => [
-      { href: "/", label: "Home", mobile: true, desktop: true, show: true },
-      { href: "/pay", label: "Buy credits", mobile: true, desktop: true, show: true },
-      { href: "/how-activation-works", label: "How it works", mobile: true, desktop: true, show: true },
-      { href: "/dashboard", label: "Dashboard", mobile: false, desktop: true, show: true },
-      { href: "/referrals", label: "Referrals", mobile: false, desktop: true, show: true },
-      { href: "/feedback", label: "Feedback", mobile: false, desktop: true, show: true },
-      { href: "/terms", label: "Terms", mobile: false, desktop: true, show: true },
-      { href: "/admin", label: "Admin", mobile: false, desktop: true, show: showAdmin },
+      { href: "/", label: "Home", mobileMode: "always", desktop: true, show: true },
+      { href: "/pay", label: "Buy credits", mobileMode: "always", desktop: true, show: true },
+      { href: "/how-activation-works", label: "How it works", mobileMode: "always", desktop: true, show: true },
+      { href: "/dashboard", label: "Dashboard", mobileMode: "hide-on-detail", desktop: true, show: true },
+      { href: "/referrals", label: "Referrals", mobileMode: "hide-on-detail", desktop: true, show: true },
+      { href: "/feedback", label: "Feedback", mobileMode: "hide-on-detail", desktop: true, show: true },
+      { href: "/terms", label: "Terms", mobileMode: "hide-on-detail", desktop: true, show: true },
+      { href: "/admin", label: "Admin", mobileMode: "never", desktop: true, show: showAdmin },
     ].filter((item) => item.show !== false),
     [showAdmin],
   );
+
+  const mobileItems = items.filter((item) => {
+    if (item.mobileMode === "never") return false;
+    if (item.mobileMode === "always") return true;
+    if (item.mobileMode === "hide-on-detail") return !isDetailPage;
+    return pathname === "/";
+  });
 
   function linkClasses(active: boolean, tone: "mobile" | "desktop") {
     if (tone === "mobile") {
@@ -86,7 +94,7 @@ export function HeaderNav() {
   return (
     <>
       <nav className="-mx-1 flex items-center gap-2 overflow-x-auto px-1 pb-1 md:hidden">
-        {items.filter((item) => item.mobile).map((item) => {
+        {mobileItems.map((item) => {
           const active = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
           return (
             <Link key={item.href} href={item.href} className={linkClasses(active, "mobile")}>

@@ -89,9 +89,7 @@ export default async function PlayPage({ params }: { params: { itemId: string } 
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">Play</p>
               <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-900 md:text-3xl">{item.title}</h1>
-              <p className="mt-2 text-sm leading-6 text-slate-600">
-                Play costs {playCost} credits · You have {creditsTotal} credits
-              </p>
+              <p className="mt-2 text-sm leading-6 text-slate-600">Play costs {playCost} credits · You have {creditsTotal} credits</p>
             </div>
 
             {roundState === ROUND_STATES.ACTIVATED && closesAtIso ? (
