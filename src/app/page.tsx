@@ -79,34 +79,34 @@ export default async function HomePage() {
   const anyActivated = synced.some((item) => item.state === "ACTIVATED");
 
   return (
-    <main className="mx-auto max-w-[1380px] px-4 py-4 sm:px-6 lg:px-8">
+    <main className="mx-auto max-w-[1500px] px-4 py-3 sm:px-5 lg:px-6">
       <WelcomeModal />
 
-      <section className="mb-4 rounded-3xl border border-slate-200 bg-white px-4 py-4 shadow-sm sm:px-6">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+      <section className="mb-3 rounded-3xl border border-slate-200 bg-white px-4 py-3 shadow-sm sm:px-5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <div className="leading-none">
-              <span className="text-[28px] font-semibold text-slate-700 sm:text-[34px]">Pick. Play.</span>{" "}
-              <span className="text-[42px] font-black text-blue-600 sm:text-[52px]">PwnIt.</span>
+              <span className="text-[24px] font-semibold text-slate-700 sm:text-[30px]">Pick. Play.</span>{" "}
+              <span className="text-[38px] font-black text-blue-600 sm:text-[46px]">PwnIt.</span>
             </div>
-            <p className="mt-2 text-sm text-slate-600 sm:text-base">
+            <p className="mt-1.5 text-sm text-slate-600">
               Choose a prize, play a quick skill game, and try to win it.
             </p>
           </div>
 
           {anyActivated ? (
-            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">
+            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800">
               Live prizes are active now.
             </div>
           ) : (
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700">
               New rounds activate as interest builds.
             </div>
           )}
         </div>
       </section>
 
-      <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <section className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
         {synced.map((item) => {
           const paidSpent = paidMap.get(item.id) ?? 0;
           const progress = activationProgress(item.prizeValueZAR, paidSpent);

@@ -59,7 +59,7 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
   return (
     <Link
       href={href}
-      className="group flex h-full min-h-[320px] flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+      className="group flex h-full min-h-[285px] flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
     >
       <div className="relative">
         <ProductImage
@@ -67,7 +67,7 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
           fallbackSrc={fallbackImage}
           alt={item.title}
           className="bg-slate-50"
-          imgClassName="h-32 w-full object-contain bg-white p-3 sm:h-36"
+          imgClassName="h-28 w-full object-contain bg-white p-3 sm:h-32"
         />
 
         {isClosed ? (
@@ -79,7 +79,7 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
         ) : null}
       </div>
 
-      <div className="flex flex-1 flex-col p-3.5">
+      <div className="flex flex-1 flex-col p-3">
         <div className="flex items-start justify-between gap-2">
           <div className="text-lg font-black text-slate-950">{formatZAR(item.prizeValueZAR)}</div>
           <div className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${badgeTone}`}>
@@ -111,7 +111,7 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
           ) : null}
         </div>
 
-        <div className="mt-auto pt-4">
+        <div className="mt-auto pt-3">
           <div className="mb-1 flex items-center justify-between gap-2">
             <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
               Activation
@@ -126,7 +126,7 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
             />
           </div>
 
-          <div className="mt-2 text-sm text-slate-600">{progressText}</div>
+          <div className="mt-1.5 text-sm text-slate-600">{progressText}</div>
         </div>
       </div>
     </Link>

@@ -143,13 +143,13 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
   }
 
   return (
-    <div className="relative rounded-3xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
+    <div className="relative rounded-3xl border border-slate-200 bg-slate-50 p-4">
       <ConfettiOverlay show={status?.state === "LEADING"} />
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <div className="text-sm font-semibold uppercase tracking-wide text-slate-500">Game</div>
-          <h2 className="mt-1 text-2xl font-black text-slate-950">{entry.title}</h2>
+          <h2 className="mt-1 text-xl font-black text-slate-950">{entry.title}</h2>
         </div>
 
         <label className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700">
@@ -165,14 +165,14 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
       </div>
 
       {!canPay ? (
-        <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           <div className="font-semibold">Not enough credits to submit a score.</div>
           <div className="mt-1">Practice is enabled until you top up.</div>
         </div>
       ) : null}
 
       {status ? (
-        <div className="mt-4 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+        <div className="mt-3 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
           <div className="font-semibold">
             Current standing: #{status.myRank} / {status.totalPlayers}
           </div>
@@ -186,24 +186,24 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
       ) : null}
 
       {result ? (
-        <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+        <div className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
           <div className="font-semibold">{practiceMode ? "Practice result" : "Submitted"}</div>
           <div className="mt-1">Score {result.scoreMs}</div>
         </div>
       ) : null}
 
       {errMsg ? (
-        <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+        <div className="mt-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
           <div className="font-semibold">Couldn’t submit your score</div>
           <div className="mt-1">{errMsg}</div>
         </div>
       ) : null}
 
-      <div className="mt-5">
+      <div className="mt-4">
         <Game onFinish={(r: { scoreMs: number; meta?: any }) => submitAttempt({ scoreMs: r.scoreMs, meta: r.meta })} />
       </div>
 
-      <div className="mt-5 flex flex-wrap gap-3">
+      <div className="mt-4 flex flex-wrap gap-3">
         <button
           type="button"
           className="rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-bold text-slate-900"

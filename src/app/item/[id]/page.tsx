@@ -92,10 +92,10 @@ export default async function ItemPage({ params }: { params: { id: string } }) {
     const game = gameLabel(item.gameKey);
 
     return (
-      <main className="mx-auto max-w-[1180px] px-4 py-5 sm:px-6 lg:px-8">
-        <div className="grid gap-5 lg:grid-cols-[1.02fr_0.98fr]">
+      <main className="mx-auto max-w-[1260px] px-4 py-4 sm:px-5 lg:px-6">
+        <div className="grid gap-4 lg:grid-cols-[1.02fr_0.98fr]">
           <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-            <div className="border-b border-slate-200 px-4 py-4 sm:px-5">
+            <div className="border-b border-slate-200 px-4 py-3 sm:px-5">
               <div className="flex flex-wrap items-center gap-2 text-sm">
                 <span className="rounded-full bg-slate-100 px-3 py-1 font-semibold text-slate-700">
                   {stateLabel(String(round.state || ""))}
@@ -113,7 +113,7 @@ export default async function ItemPage({ params }: { params: { id: string } }) {
                 ) : null}
               </div>
 
-              <h1 className="mt-3 text-2xl font-black tracking-tight text-slate-950 sm:text-3xl">
+              <h1 className="mt-2.5 text-2xl font-black tracking-tight text-slate-950 sm:text-3xl">
                 {item.title}
               </h1>
             </div>
@@ -124,10 +124,10 @@ export default async function ItemPage({ params }: { params: { id: string } }) {
                 fallbackSrc={fallbackImage}
                 alt={item.title}
                 className="overflow-hidden rounded-3xl border border-slate-200 bg-slate-50"
-                imgClassName="h-[240px] w-full object-contain bg-white p-4 sm:h-[300px]"
+                imgClassName="h-[210px] w-full object-contain bg-white p-4 sm:h-[250px]"
               />
 
-              <div className="mt-4 rounded-3xl border border-slate-200 bg-slate-50 p-4">
+              <div className="mt-3 rounded-3xl border border-slate-200 bg-slate-50 p-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -148,7 +148,7 @@ export default async function ItemPage({ params }: { params: { id: string } }) {
                   />
                 </div>
 
-                <p className="mt-3 text-sm text-slate-600">
+                <p className="mt-2.5 text-sm text-slate-600">
                   {round.state === ROUND_STATES.ACTIVATED ? "This prize is live now." : "Activation in progress."}
                 </p>
               </div>
@@ -175,7 +175,7 @@ export default async function ItemPage({ params }: { params: { id: string } }) {
                 ) : null}
               </div>
 
-              <div className="mt-4 flex flex-wrap gap-3">
+              <div className="mt-3 flex flex-wrap gap-3">
                 <Link
                   href={`/item/${item.id}/leaderboard`}
                   className="inline-flex items-center justify-center rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-bold text-slate-900 hover:bg-slate-50"
@@ -218,7 +218,7 @@ export default async function ItemPage({ params }: { params: { id: string } }) {
               <p className="mt-2 text-sm leading-6 text-slate-700">{detailText}</p>
 
               {highlights.length ? (
-                <ul className="mt-4 space-y-2 text-sm text-slate-700">
+                <ul className="mt-3 space-y-2 text-sm text-slate-700">
                   {highlights.map((line) => (
                     <li key={line} className="flex gap-2">
                       <span className="mt-1 h-1.5 w-1.5 rounded-full bg-slate-900" />
@@ -229,7 +229,7 @@ export default async function ItemPage({ params }: { params: { id: string } }) {
               ) : null}
 
               {officialUrl ? (
-                <div className="mt-4">
+                <div className="mt-3">
                   <Link
                     href={officialUrl}
                     target="_blank"

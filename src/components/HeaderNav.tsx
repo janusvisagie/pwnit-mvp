@@ -11,9 +11,9 @@ type MeSummary = {
 type NavItem = {
   href: string;
   label: string;
-  mobileMode: "always" | "home-only" | "never";
-  desktop: boolean;
-  show: boolean;
+  mobileMode?: "always" | "home-only" | "hide-on-detail" | "never";
+  desktop?: boolean;
+  show?: boolean;
 };
 
 export function HeaderNav() {
@@ -55,7 +55,6 @@ export function HeaderNav() {
     ["localhost", "127.0.0.1"].includes(window.location.hostname);
 
   const showAdmin = Boolean(me.isLocalDev || isLocalHost);
-  const isHomePage = pathname === "/";
   const isDetailPage = pathname.startsWith("/item/") || pathname.startsWith("/play/");
 
   const items = useMemo(
@@ -72,29 +71,29 @@ export function HeaderNav() {
         },
         {
           href: "/dashboard",
-          label: "Dashboard",
-          mobileMode: "home-only",
+          label: "Profile",
+          mobileMode: "hide-on-detail",
           desktop: true,
           show: true,
         },
         {
           href: "/referrals",
           label: "Referrals",
-          mobileMode: "home-only",
+          mobileMode: "hide-on-detail",
           desktop: true,
           show: true,
         },
         {
           href: "/feedback",
           label: "Feedback",
-          mobileMode: "home-only",
+          mobileMode: "hide-on-detail",
           desktop: true,
           show: true,
         },
         {
           href: "/terms",
           label: "Terms",
-          mobileMode: "home-only",
+          mobileMode: "hide-on-detail",
           desktop: true,
           show: true,
         },
@@ -105,22 +104,16 @@ export function HeaderNav() {
           desktop: true,
           show: showAdmin,
         },
-      ] satisfies NavItem[]),
+      ] satisfies NavItem[]).filter((item) => item.show !== false),
     [showAdmin]
   );
 
-  const visibleItems = items.filter((item) => item.show);
-
-  const mobileItems = visibleItems.filter((item) => {
+  const mobileItems = items.filter((item) => {
     if (item.mobileMode === "never") return false;
     if (item.mobileMode === "always") return true;
-    if (item.mobileMode === "home-only") return isHomePage && !isDetailPage;
-    return false;
+    if (item.mobileMode === "hide-on-detail") return !isDetailPage;
+    return pathname === "/";
   });
-
-  function isActive(href: string) {
-    return pathname === href || (href !== "/" && pathname.startsWith(href));
-  }
 
   function linkClasses(active: boolean, tone: "mobile" | "desktop") {
     if (tone === "mobile") {
@@ -143,29 +136,37 @@ export function HeaderNav() {
   return (
     <>
       <nav className="flex flex-wrap items-center gap-2 md:hidden">
-        {mobileItems.map((item) => (
-          <Link
-            key={`mobile-${item.href}`}
-            href={item.href}
-            className={linkClasses(isActive(item.href), "mobile")}
-          >
-            {item.label}
-          </Link>
-        ))}
-      </nav>
+        {mobileItems.map((item) => {
+          const active = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
 
-      <nav className="hidden items-center gap-1 md:flex lg:gap-2">
-        {visibleItems
-          .filter((item) => item.desktop)
-          .map((item) => (
+          return (
             <Link
-              key={`desktop-${item.href}`}
+              key={`mobile-${item.href}`}
               href={item.href}
-              className={linkClasses(isActive(item.href), "desktop")}
+              className={linkClasses(active, "mobile")}
             >
               {item.label}
             </Link>
-          ))}
+          );
+        })}
+      </nav>
+
+      <nav className="hidden items-center gap-1 md:flex lg:gap-2">
+        {items
+          .filter((item) => item.desktop)
+          .map((item) => {
+            const active = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
+
+            return (
+              <Link
+                key={`desktop-${item.href}`}
+                href={item.href}
+                className={linkClasses(active, "desktop")}
+              >
+                {item.label}
+              </Link>
+            );
+          })}
       </nav>
     </>
   );

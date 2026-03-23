@@ -96,7 +96,7 @@ export default async function PlayPage({ params }: { params: { itemId: string } 
     const creditsTotal = free + extra;
 
     return (
-      <main className="mx-auto max-w-[1080px] px-4 py-5 sm:px-6 lg:px-8">
+      <main className="mx-auto max-w-[1120px] px-4 py-4 sm:px-5 lg:px-6">
         <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
           <div className="flex flex-wrap items-center gap-2">
             <span className="rounded-full bg-blue-50 px-3 py-1 text-sm font-semibold text-blue-700">
@@ -110,7 +110,7 @@ export default async function PlayPage({ params }: { params: { itemId: string } 
             ) : null}
           </div>
 
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
             <div>
               <div className="text-sm font-semibold uppercase tracking-wide text-slate-500">Play</div>
               <h1 className="mt-1 text-2xl font-black text-slate-950">{item.title}</h1>
@@ -132,7 +132,7 @@ export default async function PlayPage({ params }: { params: { itemId: string } 
             </div>
           </div>
 
-          <div className="mt-5">
+          <div className="mt-4">
             <GameHost itemId={itemId} gameKey={item.gameKey as any} playCost={playCost} credits={creditsTotal} />
           </div>
         </div>
