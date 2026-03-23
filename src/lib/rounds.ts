@@ -38,6 +38,7 @@ export async function getCurrentRound(itemId: string) {
 
 async function createFreshRound(item: any, sequence: number) {
   const now = new Date();
+
   const round = await prisma.itemRound.create({
     data: {
       itemId: item.id,
@@ -75,15 +76,9 @@ export async function ensureCurrentRound(itemId: string) {
     }
   }
 
-  if (
-    round.state === ROUND_STATES.PUBLISHED ||
-    round.state === ROUND_STATES.REFUNDED ||
-    round.state === ROUND_STATES.FAILED ||
-    round.state === ROUND_STATES.CLOSED
-  ) {
-    return createFreshRound(item, Number(round.sequence || 0) + 1);
-  }
-
+  // Do not auto-create a new round after publish/fail/refund.
+  // The item should remain in its terminal state until a deliberate
+  // reset/relaunch flow is added later.
   return round;
 }
 
@@ -97,9 +92,17 @@ async function applyFailedRefunds(roundId: string) {
   const rewardCount = await prisma.creditLedger.count({
     where: { roundId, kind: "FAILED_ROUND_REFUND" },
   });
+
   if (rewardCount > 0) {
-    await prisma.itemRound.update({ where: { id: roundId }, data: { state: ROUND_STATES.REFUNDED } });
-    await prisma.item.update({ where: { id: round.itemId }, data: { state: "FAILED", closesAt: round.fundingEndsAt } });
+    await prisma.itemRound.update({
+      where: { id: roundId },
+      data: { state: ROUND_STATES.REFUNDED },
+    });
+
+    await prisma.item.update({
+      where: { id: round.itemId },
+      data: { state: "FAILED", closesAt: round.fundingEndsAt },
+    });
     return;
   }
 
@@ -110,13 +113,21 @@ async function applyFailedRefunds(roundId: string) {
 
   const refundByUser = new Map<string, number>();
   for (const attempt of attempts) {
-    refundByUser.set(attempt.userId, (refundByUser.get(attempt.userId) ?? 0) + Number(attempt.paidUsed || 0));
+    refundByUser.set(
+      attempt.userId,
+      (refundByUser.get(attempt.userId) ?? 0) + Number(attempt.paidUsed || 0),
+    );
   }
 
   await prisma.$transaction(async (tx) => {
     for (const [userId, credits] of refundByUser.entries()) {
       if (credits <= 0) continue;
-      await tx.user.update({ where: { id: userId }, data: { paidCreditsBalance: { increment: credits } } });
+
+      await tx.user.update({
+        where: { id: userId },
+        data: { paidCreditsBalance: { increment: credits } },
+      });
+
       await tx.creditLedger.create({
         data: {
           userId,
@@ -141,7 +152,9 @@ async function applyFailedRefunds(roundId: string) {
     const bestByUser = new Map<string, { userId: string; scoreMs: number; createdAt: Date }>();
     for (const row of leaderboardAttempts) {
       const current = bestByUser.get(row.userId);
-      if (!current || compareScores(round.item.gameKey, row, current) < 0) bestByUser.set(row.userId, row);
+      if (!current || compareScores(round.item.gameKey, row, current) < 0) {
+        bestByUser.set(row.userId, row);
+      }
     }
 
     const ranked = Array.from(bestByUser.values())
@@ -150,19 +163,28 @@ async function applyFailedRefunds(roundId: string) {
 
     const failedBonuses = [10, 5, 5];
     const userIds = ranked.map((r) => r.userId);
+
     const users = userIds.length
       ? await tx.user.findMany({
           where: { id: { in: userIds } },
           select: { id: true, alias: true, email: true },
         })
       : [];
-    const aliasMap = new Map(users.map((u) => [u.id, (u.alias && u.alias.trim()) || u.email.split("@")[0]]));
+
+    const aliasMap = new Map(
+      users.map((u) => [u.id, (u.alias && u.alias.trim()) || u.email.split("@")[0]])
+    );
 
     for (let idx = 0; idx < ranked.length; idx += 1) {
       const winner = ranked[idx];
       const bonus = failedBonuses[idx] ?? 0;
+
       if (bonus > 0) {
-        await tx.user.update({ where: { id: winner.userId }, data: { paidCreditsBalance: { increment: bonus } } });
+        await tx.user.update({
+          where: { id: winner.userId },
+          data: { paidCreditsBalance: { increment: bonus } },
+        });
+
         await tx.creditLedger.create({
           data: {
             userId: winner.userId,
@@ -174,6 +196,7 @@ async function applyFailedRefunds(roundId: string) {
           },
         });
       }
+
       await tx.winner.create({
         data: {
           itemId: round.itemId,
@@ -189,8 +212,15 @@ async function applyFailedRefunds(roundId: string) {
       });
     }
 
-    await tx.itemRound.update({ where: { id: roundId }, data: { state: ROUND_STATES.REFUNDED } });
-    await tx.item.update({ where: { id: round.itemId }, data: { state: "FAILED", closesAt: round.fundingEndsAt } });
+    await tx.itemRound.update({
+      where: { id: roundId },
+      data: { state: ROUND_STATES.REFUNDED },
+    });
+
+    await tx.item.update({
+      where: { id: round.itemId },
+      data: { state: "FAILED", closesAt: round.fundingEndsAt },
+    });
   });
 }
 
@@ -203,8 +233,12 @@ export async function syncRoundLifecycle(itemId: string) {
 
   const now = new Date();
 
-  if (round.state === ROUND_STATES.BUILDING && round.paidCreditsCollected >= round.activationTargetCredits) {
+  if (
+    round.state === ROUND_STATES.BUILDING &&
+    round.paidCreditsCollected >= round.activationTargetCredits
+  ) {
     const closesAt = addMinutes(now, item.countdownMinutes);
+
     round = await prisma.itemRound.update({
       where: { id: round.id },
       data: {
@@ -214,18 +248,33 @@ export async function syncRoundLifecycle(itemId: string) {
         purchaseGraceEndsAt: addHours(closesAt, item.purchaseGraceHours),
       },
     });
-    await prisma.item.update({ where: { id: item.id }, data: { state: "ACTIVATED", closesAt } });
+
+    await prisma.item.update({
+      where: { id: item.id },
+      data: { state: "ACTIVATED", closesAt },
+    });
   }
 
   if (round.state === ROUND_STATES.BUILDING && now > round.fundingEndsAt) {
-    await prisma.itemRound.update({ where: { id: round.id }, data: { state: ROUND_STATES.FAILED } });
+    await prisma.itemRound.update({
+      where: { id: round.id },
+      data: { state: ROUND_STATES.FAILED },
+    });
+
     await applyFailedRefunds(round.id);
     return prisma.itemRound.findUnique({ where: { id: round.id } });
   }
 
   if (round.state === ROUND_STATES.ACTIVATED && round.closesAt && now >= round.closesAt) {
-    round = await prisma.itemRound.update({ where: { id: round.id }, data: { state: ROUND_STATES.CLOSED } });
-    await prisma.item.update({ where: { id: item.id }, data: { state: "CLOSED", closesAt: round.closesAt } });
+    round = await prisma.itemRound.update({
+      where: { id: round.id },
+      data: { state: ROUND_STATES.CLOSED },
+    });
+
+    await prisma.item.update({
+      where: { id: item.id },
+      data: { state: "CLOSED", closesAt: round.closesAt },
+    });
   }
 
   if (round.state === ROUND_STATES.CLOSED) {
@@ -237,14 +286,15 @@ export async function syncRoundLifecycle(itemId: string) {
 }
 
 export async function syncHomeItems(itemIds?: string[]) {
-  const ids = itemIds && itemIds.length
-    ? itemIds
-    : (
-        await prisma.item.findMany({
-          orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-          select: { id: true },
-        })
-      ).map((i) => i.id);
+  const ids =
+    itemIds && itemIds.length
+      ? itemIds
+      : (
+          await prisma.item.findMany({
+            orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+            select: { id: true },
+          })
+        ).map((i) => i.id);
 
   for (const id of ids) {
     await syncRoundLifecycle(id);
