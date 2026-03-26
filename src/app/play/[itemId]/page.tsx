@@ -96,8 +96,8 @@ export default async function PlayPage({ params }: { params: { itemId: string } 
     const creditsTotal = free + extra;
 
     return (
-      <main className="mx-auto max-w-[1120px] px-4 py-4 sm:px-5 lg:px-6">
-        <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+      <main className="mx-auto max-w-[980px] px-4 py-3 sm:px-5 lg:px-6">
+        <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-4">
           <div className="flex flex-wrap items-center gap-2">
             <span className="rounded-full bg-blue-50 px-3 py-1 text-sm font-semibold text-blue-700">
               {playCost} credits / play
@@ -112,27 +112,27 @@ export default async function PlayPage({ params }: { params: { itemId: string } 
 
           <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
             <div>
-              <div className="text-sm font-semibold uppercase tracking-wide text-slate-500">Play</div>
-              <h1 className="mt-1 text-2xl font-black text-slate-950">{item.title}</h1>
+              <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Play</div>
+              <h1 className="mt-1 text-xl font-black text-slate-950 sm:text-2xl">{item.title}</h1>
             </div>
 
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap gap-2">
               <Link
                 href={`/item/${itemId}/leaderboard`}
-                className="rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-bold text-slate-900"
+                className="rounded-2xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm font-bold text-slate-900"
               >
                 Leaderboard
               </Link>
               <Link
                 href={`/item/${itemId}`}
-                className="rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-bold text-slate-900"
+                className="rounded-2xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm font-bold text-slate-900"
               >
                 Back to item
               </Link>
             </div>
           </div>
 
-          <div className="mt-4">
+          <div className="mt-3">
             <GameHost itemId={itemId} gameKey={item.gameKey as any} playCost={playCost} credits={creditsTotal} />
           </div>
         </div>
