@@ -59,7 +59,7 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
   return (
     <Link
       href={href}
-      className="group flex h-full min-h-[205px] flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+      className="group flex h-full min-h-[220px] flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
     >
       <div className="relative">
         <ProductImage
@@ -67,7 +67,7 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
           fallbackSrc={fallbackImage}
           alt={item.title}
           className="bg-slate-50"
-          imgClassName="h-20 w-full object-contain bg-white p-2 sm:h-24"
+          imgClassName="h-28 w-full object-contain bg-white p-2 sm:h-32"
         />
 
         {isClosed ? (
@@ -111,7 +111,7 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
           ) : null}
         </div>
 
-        <div className="mt-auto pt-2">
+        <div className="mt-auto pt-1.5">
           <div className="mb-1 flex items-center justify-between gap-2">
             <span className="text-[9px] font-semibold uppercase tracking-wide text-slate-500">
               Activation
