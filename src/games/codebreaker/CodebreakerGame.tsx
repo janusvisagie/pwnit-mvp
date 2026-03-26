@@ -15,6 +15,11 @@ type GuessRow = {
   misplaced: number;
 };
 
+type Challenge = {
+  game?: "codebreaker";
+  solution: number[];
+};
+
 function shuffle<T>(values: readonly T[]) {
   const copy = [...values];
   for (let i = copy.length - 1; i > 0; i -= 1) {
@@ -43,8 +48,9 @@ function gradeGuess(guess: number[], solution: number[]) {
   return { exact, misplaced };
 }
 
-export default function CodebreakerGame({ onFinish, disabled }: GameProps) {
-  const solution = useMemo(() => buildCode(), []);
+export default function CodebreakerGame({ onFinish, disabled, challenge: injectedChallenge }: GameProps<Challenge>) {
+  const challenge = useMemo(() => injectedChallenge ?? { solution: buildCode() }, [injectedChallenge]);
+  const solution = challenge.solution;
   const [phase, setPhase] = useState<"READY" | "RUNNING" | "DONE">("READY");
   const [guess, setGuess] = useState<number[]>([]);
   const [rows, setRows] = useState<GuessRow[]>([]);

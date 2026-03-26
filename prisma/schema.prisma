@@ -8,83 +8,86 @@ datasource db {
 }
 
 model User {
-  id                     String                @id @default(cuid())
-  createdAt              DateTime              @default(now())
-  email                  String                @unique
-  passwordHash           String?
-  passwordSetAt          DateTime?
-  alias                  String?
-  referralCode           String?
-  isGuest                Boolean               @default(false)
-  aliasSetByUser         Boolean               @default(false)
-  tier                   Int                   @default(1)
-  freeCreditsBalance     Int                   @default(0)
-  paidCreditsBalance     Int                   @default(0)
+  id                    String                 @id @default(cuid())
+  createdAt             DateTime               @default(now())
+  email                 String                 @unique
+  passwordHash          String?
+  passwordSetAt         DateTime?
+  alias                 String?
+  referralCode          String?
+  isGuest               Boolean                @default(false)
+  aliasSetByUser        Boolean                @default(false)
+  tier                  Int                    @default(1)
+  freeCreditsBalance    Int                    @default(0)
+  paidCreditsBalance    Int                    @default(0)
   lastDailyCreditsDayKey String?
-  emailVerifiedAt        DateTime?
-  attempts               Attempt[]
-  purchases              ItemPurchase[]
-  winners                Winner[]
-  ledgers                CreditLedger[]
-  dailyFreeGrants        DailyFreeBucketGrant[]
-  referralsMade          Referral[]            @relation("ReferralReferrer")
-  referralsReceived      Referral[]            @relation("ReferralReferred")
-  surveyResponses        SurveyResponse[]
+  emailVerifiedAt       DateTime?
+  attempts              Attempt[]
+  purchases             ItemPurchase[]
+  winners               Winner[]
+  ledgers               CreditLedger[]
+  dailyFreeGrants       DailyFreeBucketGrant[]
+  referralsMade         Referral[]             @relation("ReferralReferrer")
+  referralsReceived     Referral[]             @relation("ReferralReferred")
+  surveyResponses       SurveyResponse[]
+  attemptSessions       AttemptSession[]
 }
 
 model Item {
-  id                    String         @id @default(cuid())
-  createdAt             DateTime       @default(now())
+  id                    String          @id @default(cuid())
+  createdAt             DateTime        @default(now())
   title                 String
-  tier                  Int            @default(1)
+  tier                  Int             @default(1)
   prizeType             String
-  prizeValueZAR         Int            @default(0)
-  landedCostZAR         Int            @default(0)
-  allowedSubsidyCredits Int            @default(0)
-  playCostCredits       Int            @default(5)
-  fundingWindowHours    Int            @default(48)
-  purchaseGraceHours    Int            @default(24)
-  sortOrder             Int            @default(0)
-  isHero                Boolean        @default(false)
+  prizeValueZAR         Int             @default(0)
+  landedCostZAR         Int             @default(0)
+  allowedSubsidyCredits Int             @default(0)
+  playCostCredits       Int             @default(5)
+  fundingWindowHours    Int             @default(48)
+  purchaseGraceHours    Int             @default(24)
+  sortOrder             Int             @default(0)
+  isHero                Boolean         @default(false)
   imageUrl              String?
   shortDesc             String?
   productUrl            String?
-  state                 String         @default("OPEN")
-  activationGoalEntries Int            @default(3)
-  countdownMinutes      Int            @default(120)
+  state                 String          @default("OPEN")
+  activationGoalEntries Int             @default(3)
+  countdownMinutes      Int             @default(120)
   opensAt               DateTime?
   closesAt              DateTime?
-  subscriberOnly        Boolean        @default(false)
+  subscriberOnly        Boolean         @default(false)
   gameKey               String?
   attempts              Attempt[]
   winners               Winner[]
   purchases             ItemPurchase[]
   rounds                ItemRound[]
   ledgers               CreditLedger[]
+  attemptSessions       AttemptSession[]
 }
 
 model ItemRound {
-  id                      String         @id @default(cuid())
-  createdAt               DateTime       @default(now())
-  updatedAt               DateTime       @updatedAt
+  id                      String           @id @default(cuid())
+  createdAt               DateTime         @default(now())
+  updatedAt               DateTime         @updatedAt
   itemId                  String
-  sequence                Int            @default(1)
-  state                   String         @default("BUILDING")
-  fundingStartsAt         DateTime       @default(now())
+  sequence                Int              @default(1)
+  state                   String           @default("BUILDING")
+  fundingStartsAt         DateTime         @default(now())
   fundingEndsAt           DateTime
   activatedAt             DateTime?
   closesAt                DateTime?
   purchaseGraceEndsAt     DateTime?
-  activationTargetCredits Int            @default(0)
-  paidCreditsCollected    Int            @default(0)
-  freeCreditsCollected    Int            @default(0)
-  attemptCount            Int            @default(0)
+  activationTargetCredits Int              @default(0)
+  paidCreditsCollected    Int              @default(0)
+  freeCreditsCollected    Int              @default(0)
+  attemptCount            Int              @default(0)
   winnerUserId            String?
-  item                    Item           @relation(fields: [itemId], references: [id])
+  item                    Item             @relation(fields: [itemId], references: [id])
   attempts                Attempt[]
   winners                 Winner[]
   purchases               ItemPurchase[]
   ledgers                 CreditLedger[]
+  attemptSessions         AttemptSession[]
 
   @@index([itemId, state])
   @@unique([itemId, sequence])
@@ -113,6 +116,29 @@ model Attempt {
   @@index([userId, dayKey])
   @@index([itemId, dayKey, userId])
   @@index([roundId, itemId])
+}
+
+model AttemptSession {
+  id               String     @id @default(cuid())
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+  userId           String
+  itemId           String
+  roundId          String?
+  gameKey          String
+  status           String     @default("ISSUED")
+  challengeJson    Json
+  verificationJson Json?
+  issuedAt         DateTime   @default(now())
+  expiresAt        DateTime
+  submittedAt      DateTime?
+  user             User       @relation(fields: [userId], references: [id])
+  item             Item       @relation(fields: [itemId], references: [id])
+  round            ItemRound? @relation(fields: [roundId], references: [id])
+
+  @@index([userId, itemId, status])
+  @@index([itemId, roundId, status])
+  @@index([expiresAt])
 }
 
 model Winner {
@@ -178,13 +204,13 @@ model CreditLedger {
 }
 
 model DailyFreeBucketGrant {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
+  id        String    @id @default(cuid())
+  createdAt DateTime  @default(now())
   bucketKey String
   dayKey    String
   userId    String?
-  credits   Int      @default(0)
-  user      User?    @relation(fields: [userId], references: [id])
+  credits   Int       @default(0)
+  user      User?     @relation(fields: [userId], references: [id])
 
   @@unique([bucketKey, dayKey])
   @@index([userId, dayKey])
@@ -213,7 +239,7 @@ model Referral {
   code                  String
   referrerUserId        String
   referredUserId        String?
-  referredBucketKey     String
+  referredBucketKey     String?
   status                String    @default("PENDING")
   qualifiedAt           DateTime?
   rewardedAt            DateTime?
@@ -230,17 +256,31 @@ model Referral {
 }
 
 model SurveyResponse {
-  id            String   @id @default(cuid())
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  surveyKey     String
-  userId        String?
-  bucketKey     String
-  answersJson   Json
-  rewardCredits Int      @default(0)
-  rewardedAt    DateTime?
-  user          User?    @relation(fields: [userId], references: [id])
+  id           String   @id @default(cuid())
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  surveyKey    String
+  userId       String?
+  bucketKey    String
+  answersJson  Json
+  rewardCredits Int     @default(0)
+  rewardedAt   DateTime?
+  user         User?    @relation(fields: [userId], references: [id])
 
   @@unique([surveyKey, bucketKey])
   @@index([userId, createdAt])
+}
+
+model ApiRateLimit {
+  key        String   @id
+  scope      String
+  subjectKey String
+  windowStart DateTime
+  count      Int      @default(0)
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([scope, subjectKey, windowStart])
+  @@index([expiresAt])
 }

@@ -5,7 +5,7 @@ import { useMemo, useRef, useState } from "react";
 import type { GameProps } from "../types";
 
 type Challenge = {
-  id: string;
+  game?: "route-builder";
   path: number[];
   checkpoints: number[];
   blockers: number[];
@@ -41,7 +41,6 @@ function buildChallenge(): Challenge {
   ).slice(0, 6);
 
   return {
-    id: `${path.join("-")}:${blockers.join("-")}`,
     path,
     checkpoints: [path[2]!, path[5]!],
     blockers,
@@ -56,15 +55,15 @@ function isAdjacent(a: number, b: number) {
   return Math.abs(ax - bx) + Math.abs(ay - by) === 1;
 }
 
-export default function RouteBuilderGame({ onFinish, disabled }: GameProps) {
-  const challenge = useMemo(() => buildChallenge(), []);
+export default function RouteBuilderGame({ onFinish, disabled, challenge: injectedChallenge }: GameProps<Challenge>) {
+  const challenge = useMemo(() => injectedChallenge ?? buildChallenge(), [injectedChallenge]);
   const [phase, setPhase] = useState<"READY" | "RUNNING" | "DONE">("READY");
   const [trail, setTrail] = useState<number[]>([challenge.path[0]!]);
   const [mistakes, setMistakes] = useState(0);
   const [message, setMessage] = useState<string | null>(null);
   const [score, setScore] = useState<number | null>(null);
   const startedAtRef = useRef<number | null>(null);
-  const moveLogRef = useRef<number[]>([]);
+  const clickLogRef = useRef<number[]>([]);
 
   const start = challenge.path[0]!;
   const finish = challenge.path[challenge.path.length - 1]!;
@@ -76,7 +75,7 @@ export default function RouteBuilderGame({ onFinish, disabled }: GameProps) {
     setMessage("Follow the route, pass both checkpoints, and reach F.");
     setScore(null);
     startedAtRef.current = Date.now();
-    moveLogRef.current = [start];
+    clickLogRef.current = [];
   }
 
   function complete(finalTrail: number[], finalMistakes: number) {
@@ -92,20 +91,16 @@ export default function RouteBuilderGame({ onFinish, disabled }: GameProps) {
       scoreMs: computed,
       meta: {
         game: "route-builder",
-        completed: true,
         elapsedMs,
-        mistakes: finalMistakes,
-        pathLength: finalTrail.length,
-        optimalLength: challenge.path.length,
-        checkpoints: challenge.checkpoints,
-        blockers: challenge.blockers,
-        moveLog: moveLogRef.current,
+        clickLog: clickLogRef.current,
       },
     });
   }
 
   function handleCell(cell: number) {
     if (disabled || phase !== "RUNNING") return;
+    clickLogRef.current.push(cell);
+
     if (challenge.blockers.includes(cell)) {
       setMistakes((current) => current + 1);
       setMessage("That tile is blocked.");
@@ -113,13 +108,11 @@ export default function RouteBuilderGame({ onFinish, disabled }: GameProps) {
     }
 
     const current = trail[trail.length - 1]!;
-
     if (cell === current) return;
 
     if (trail.length > 1 && cell === trail[trail.length - 2]) {
       const nextTrail = trail.slice(0, -1);
       setTrail(nextTrail);
-      moveLogRef.current.push(cell);
       setMessage("Backtracked one step.");
       return;
     }
@@ -132,7 +125,6 @@ export default function RouteBuilderGame({ onFinish, disabled }: GameProps) {
 
     const nextTrail = [...trail, cell];
     setTrail(nextTrail);
-    moveLogRef.current.push(cell);
     setMessage(null);
 
     const checkpointsCleared = challenge.checkpoints.every((checkpoint) => nextTrail.includes(checkpoint));

@@ -1,35 +1,22 @@
-PwnIt patch: puzzle-first game pack
+PwnIt verified-play patch
 
-What this patch adds
-- Route Builder
-- Codebreaker
-- Rule Lock
-- Transform Memory
-- Sequence Restore
+What this patch does
+- Replaces direct client score submission with a 2-step flow:
+  - POST /api/attempt/start -> server issues a one-time paid challenge
+  - POST /api/attempt/finish -> server re-verifies the move log and computes the official score
+- Adds DB-backed rate limiting for the paid-play endpoints
+- Adds server-issued challenge sessions to the Prisma schema
+- Keeps the 6 puzzle-style games and wires them into the verified paid flow
+- Blocks paid submissions for legacy client-scored games
 
-Files changed
-- prisma/seed.mjs
-- prisma/seed.demo.mjs
-- prisma/seed.preview.mjs
-- src/app/play/[itemId]/_components/GameHost.tsx
-- src/games/registry.ts
-- src/games/types.ts
-- src/lib/gameRules.ts
-- plus 5 new game component files under src/games/
+Important
+- This patch is intended to be applied on top of your current repo and already includes the puzzle-game files.
+- After copying these files in, run:
+  1. npm install
+  2. npx prisma generate
+  3. npx prisma db push
+- If your current database items still use legacy game keys, re-seed or reassign the first 6 items so they use:
+  sequence-restore, transform-memory, route-builder, codebreaker, rule-lock, balance-grid
 
-Seed mix used in this patch
-- Fuel Voucher -> sequence-restore
-- Checkers Voucher -> transform-memory
-- Takealot Voucher -> route-builder
-- Sony WH-1000XM5 Headphones -> codebreaker
-- Nintendo Switch OLED -> rule-lock
-- GoPro HERO13 Black -> memory-sprint
-
-How to apply
-1. Unzip the patch over the repo root.
-2. Run npm install if needed.
-3. Run npm run db:seed for a full reseed, or npm run db:seed:demo / npm run db:seed:preview if that is your normal flow.
-4. Run npm run dev and test the new games.
-
-Important caveat
-This patch changes the game mix to puzzle-style games that are less attractive to simple timing/tap bots, but it does NOT make the platform server-authoritative. The current /api/attempt flow still accepts client-submitted scores, so this reduces abuse risk but does not eliminate cheating.
+Recommended simple next step
+- After applying the patch, run your existing demo/preview seed so the live item mix moves onto the verified puzzle games.

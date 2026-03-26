@@ -9,8 +9,15 @@ const ACTIVE_COUNT = 5;
 const SHOW_MS = 2200;
 const MAX_SCORE = 24000;
 
+type Challenge = {
+  game?: "transform-memory";
+  ruleId: "rotate-right" | "mirror-horizontal" | "mirror-vertical";
+  ruleLabel: string;
+  basePattern: number[];
+};
+
 type TransformRule = {
-  id: string;
+  id: Challenge["ruleId"];
   label: string;
   apply: (cells: number[]) => number[];
 };
@@ -19,29 +26,33 @@ const RULES: TransformRule[] = [
   {
     id: "rotate-right",
     label: "Rotate the pattern 90° clockwise.",
-    apply: (cells) => cells.map((cell) => {
-      const x = cell % GRID_SIZE;
-      const y = Math.floor(cell / GRID_SIZE);
-      return x * GRID_SIZE + (GRID_SIZE - 1 - y);
-    }),
+    apply: (cells) =>
+      cells.map((cell) => {
+        const x = cell % GRID_SIZE;
+        const y = Math.floor(cell / GRID_SIZE);
+        return x * GRID_SIZE + (GRID_SIZE - 1 - y);
+      }),
   },
   {
     id: "mirror-horizontal",
     label: "Mirror the pattern left to right.",
-    apply: (cells) => cells.map((cell) => {
-      const x = cell % GRID_SIZE;
-      const y = Math.floor(cell / GRID_SIZE);
-      return y * GRID_SIZE + (GRID_SIZE - 1 - x);
-    }),
+    apply: (cells) =>
+      cells.map((cell) => {
+        const x = cell % GRID_SIZE;
+        const y = Math.floor(cell / GRID_SIZE);
+        return y * GRID_SIZE + (GRID_SIZE - 1 - x);
+      }),
   },
   {
     id: "mirror-vertical",
     label: "Mirror the pattern top to bottom.",
-    apply: (cells) => cells.map((cell) => {
-      const x = cell % GRID_SIZE;
-      const y = Math.floor(cell / GRID_SIZE);
-      return (GRID_SIZE - 1 - y) * GRID_SIZE + x;
-    }),
+    apply: (cells) => {
+      return cells.map((cell) => {
+        const x = cell % GRID_SIZE;
+        const y = Math.floor(cell / GRID_SIZE);
+        return (GRID_SIZE - 1 - y) * GRID_SIZE + x;
+      });
+    },
   },
 ];
 
@@ -55,7 +66,9 @@ function shuffle<T>(values: readonly T[]) {
 }
 
 function buildPattern() {
-  return shuffle(Array.from({ length: GRID_SIZE * GRID_SIZE }, (_, index) => index)).slice(0, ACTIVE_COUNT).sort((a, b) => a - b);
+  return shuffle(Array.from({ length: GRID_SIZE * GRID_SIZE }, (_, index) => index))
+    .slice(0, ACTIVE_COUNT)
+    .sort((a, b) => a - b);
 }
 
 function sameSet(a: number[], b: number[]) {
@@ -65,10 +78,19 @@ function sameSet(a: number[], b: number[]) {
   return left.every((value, index) => value === right[index]);
 }
 
-export default function TransformMemoryGame({ onFinish, disabled }: GameProps) {
-  const basePattern = useMemo(() => buildPattern(), []);
-  const rule = useMemo(() => RULES[Math.floor(Math.random() * RULES.length)]!, []);
-  const targetPattern = useMemo(() => rule.apply(basePattern).sort((a, b) => a - b), [basePattern, rule]);
+function buildChallenge(): Challenge {
+  const rule = RULES[Math.floor(Math.random() * RULES.length)]!;
+  return {
+    ruleId: rule.id,
+    ruleLabel: rule.label,
+    basePattern: buildPattern(),
+  };
+}
+
+export default function TransformMemoryGame({ onFinish, disabled, challenge: injectedChallenge }: GameProps<Challenge>) {
+  const challenge = useMemo(() => injectedChallenge ?? buildChallenge(), [injectedChallenge]);
+  const rule = useMemo(() => RULES.find((entry) => entry.id === challenge.ruleId) ?? RULES[0]!, [challenge.ruleId]);
+  const targetPattern = useMemo(() => rule.apply(challenge.basePattern).sort((a, b) => a - b), [challenge.basePattern, rule]);
 
   const [phase, setPhase] = useState<"READY" | "SHOW" | "INPUT" | "DONE">("READY");
   const [selected, setSelected] = useState<number[]>([]);
@@ -91,7 +113,7 @@ export default function TransformMemoryGame({ onFinish, disabled }: GameProps) {
     setPhase("SHOW");
     setSelected([]);
     setScore(null);
-    setMessage(rule.label);
+    setMessage(challenge.ruleLabel);
     startedAtRef.current = null;
   }
 
@@ -116,8 +138,8 @@ export default function TransformMemoryGame({ onFinish, disabled }: GameProps) {
       scoreMs: finalScore,
       meta: {
         game: "transform-memory",
-        rule: rule.id,
-        basePattern,
+        rule: challenge.ruleId,
+        basePattern: challenge.basePattern,
         selected,
         correct,
         elapsedMs,
@@ -126,7 +148,7 @@ export default function TransformMemoryGame({ onFinish, disabled }: GameProps) {
   }
 
   function visibleCells() {
-    if (phase === "SHOW") return basePattern;
+    if (phase === "SHOW") return challenge.basePattern;
     return selected;
   }
 
@@ -144,7 +166,7 @@ export default function TransformMemoryGame({ onFinish, disabled }: GameProps) {
 
       <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
         <div className="font-semibold text-slate-900">Rule</div>
-        <div className="mt-1">{rule.label}</div>
+        <div className="mt-1">{challenge.ruleLabel}</div>
         {message ? <div className="mt-2">{message}</div> : null}
       </div>
 
@@ -159,9 +181,7 @@ export default function TransformMemoryGame({ onFinish, disabled }: GameProps) {
               disabled={disabled || phase !== "INPUT"}
               className={[
                 "aspect-square rounded-2xl border transition",
-                active
-                  ? "border-slate-900 bg-slate-900 text-white"
-                  : "border-slate-200 bg-white text-slate-300",
+                active ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 bg-white text-slate-300",
                 phase === "INPUT" ? "hover:-translate-y-0.5 hover:border-slate-400" : "cursor-default",
               ].join(" ")}
             >

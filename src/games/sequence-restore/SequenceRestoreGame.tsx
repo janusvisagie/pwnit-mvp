@@ -30,8 +30,8 @@ function buildRound(): RoundDef {
   };
 }
 
-export default function SequenceRestoreGame({ onFinish, disabled }: GameProps) {
-  const round = useMemo(() => buildRound(), []);
+export default function SequenceRestoreGame({ onFinish, disabled, challenge: injectedChallenge }: GameProps<RoundDef>) {
+  const round = useMemo(() => injectedChallenge ?? buildRound(), [injectedChallenge]);
   const [phase, setPhase] = useState<"READY" | "SHOW" | "INPUT" | "DONE">("READY");
   const [bank, setBank] = useState<string[]>(round.shuffled);
   const [answer, setAnswer] = useState<string[]>([]);
@@ -112,22 +112,27 @@ export default function SequenceRestoreGame({ onFinish, disabled }: GameProps) {
         <div className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">6-step strip</div>
       </div>
 
-      <p className="mt-3 text-sm text-slate-600">Study the ordered strip, then rebuild it from the shuffled bank.</p>
+      <p className="mt-3 text-sm text-slate-600">Watch the ordered strip, then rebuild the same sequence from the shuffled bank.</p>
 
       <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-        <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-          {phase === "SHOW" ? "Preview" : "Your rebuild"}
-        </div>
+        <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Sequence</div>
         <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
-          {Array.from({ length: round.ordered.length }, (_, index) => (
-            <div key={index} className="rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm font-black text-slate-900">
-              {preview[index] ?? "Empty"}
+          {preview.map((token, index) => (
+            <div key={`${token}-${index}`} className="rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm font-black text-slate-900">
+              {token}
             </div>
           ))}
+          {phase !== "SHOW"
+            ? Array.from({ length: Math.max(0, round.ordered.length - preview.length) }, (_, index) => (
+                <div key={`empty-${index}`} className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-400">
+                  Empty
+                </div>
+              ))
+            : null}
         </div>
       </div>
 
-      {phase !== "SHOW" ? (
+      {phase === "INPUT" ? (
         <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
           <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Bank</div>
           <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">

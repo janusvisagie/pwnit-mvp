@@ -67,7 +67,7 @@ async function main() {
       imageUrl: "/products/gopro-hero.svg",
       activationGoalEntries: 3,
       countdownMinutes: 1,
-      gameKey: "memory-sprint",
+      gameKey: "balance-grid",
     },
   ];
 
@@ -91,7 +91,7 @@ async function main() {
     });
   }
 
-  console.log("Seeded 6 items with a puzzle-first 5-game mix plus Memory Sprint.");
+  console.log("Seeded 6 items with a puzzle-first 5-game mix with 6 puzzle-style games.");
 }
 
 main()

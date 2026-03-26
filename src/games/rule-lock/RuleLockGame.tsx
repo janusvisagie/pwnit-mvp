@@ -20,6 +20,21 @@ type Puzzle = {
   rules: RuleDef[];
 };
 
+type Challenge = {
+  game?: "rule-lock";
+  symbols: SymbolDef[];
+  constraints: {
+    leftId: string;
+    rightId: string;
+    fixedId: string;
+    fixedSlot: number;
+    pairA: string;
+    pairB: string;
+    notEdgeId: string;
+  };
+  rules: Array<{ id: string; text: string }>;
+};
+
 const SYMBOLS: SymbolDef[] = [
   { id: "sun", label: "Sun" },
   { id: "moon", label: "Moon" },
@@ -39,7 +54,7 @@ function shuffle<T>(values: readonly T[]) {
   return copy;
 }
 
-function buildPuzzle(): Puzzle {
+function buildChallenge(): Challenge {
   const arranged = shuffle(SYMBOLS);
   const ids = arranged.map((symbol) => symbol.id);
   const labels = new Map(arranged.map((symbol) => [symbol.id, symbol.label]));
@@ -52,37 +67,56 @@ function buildPuzzle(): Puzzle {
   const pairB = ids[2]!;
   const notEdgeId = ids[3]!;
 
-  const rules: RuleDef[] = [
-    {
-      id: "left-right",
-      text: `${labels.get(leftId)} must be left of ${labels.get(rightId)}.`,
-      check: (slots) => slots.indexOf(leftId) < slots.indexOf(rightId),
+  return {
+    symbols: arranged,
+    constraints: {
+      leftId,
+      rightId,
+      fixedId,
+      fixedSlot: slotOf(fixedId),
+      pairA,
+      pairB,
+      notEdgeId,
     },
-    {
-      id: "fixed-slot",
-      text: `${labels.get(fixedId)} must be in slot ${slotOf(fixedId) + 1}.`,
-      check: (slots) => slots[slotOf(fixedId)] === fixedId,
-    },
-    {
-      id: "adjacent-pair",
-      text: `${labels.get(pairA)} must sit directly next to ${labels.get(pairB)}.`,
-      check: (slots) => Math.abs(slots.indexOf(pairA) - slots.indexOf(pairB)) === 1,
-    },
-    {
-      id: "not-edge",
-      text: `${labels.get(notEdgeId)} cannot be on either edge.`,
-      check: (slots) => {
-        const idx = slots.indexOf(notEdgeId);
-        return idx > 0 && idx < slots.length - 1;
-      },
-    },
-  ];
-
-  return { symbols: arranged, rules };
+    rules: [
+      { id: "left-right", text: `${labels.get(leftId)} must be left of ${labels.get(rightId)}.` },
+      { id: "fixed-slot", text: `${labels.get(fixedId)} must be in slot ${slotOf(fixedId) + 1}.` },
+      { id: "adjacent-pair", text: `${labels.get(pairA)} must sit directly next to ${labels.get(pairB)}.` },
+      { id: "not-edge", text: `${labels.get(notEdgeId)} cannot be on either edge.` },
+    ],
+  };
 }
 
-export default function RuleLockGame({ onFinish, disabled }: GameProps) {
-  const puzzle = useMemo(() => buildPuzzle(), []);
+function toPuzzle(challenge: Challenge): Puzzle {
+  const { constraints } = challenge;
+  return {
+    symbols: challenge.symbols,
+    rules: challenge.rules.map((rule) => ({
+      id: rule.id,
+      text: rule.text,
+      check: (slots: string[]) => {
+        switch (rule.id) {
+          case "left-right":
+            return slots.indexOf(constraints.leftId) < slots.indexOf(constraints.rightId);
+          case "fixed-slot":
+            return slots[constraints.fixedSlot] === constraints.fixedId;
+          case "adjacent-pair":
+            return Math.abs(slots.indexOf(constraints.pairA) - slots.indexOf(constraints.pairB)) === 1;
+          case "not-edge": {
+            const idx = slots.indexOf(constraints.notEdgeId);
+            return idx > 0 && idx < slots.length - 1;
+          }
+          default:
+            return false;
+        }
+      },
+    })),
+  };
+}
+
+export default function RuleLockGame({ onFinish, disabled, challenge: injectedChallenge }: GameProps<Challenge>) {
+  const challenge = useMemo(() => injectedChallenge ?? buildChallenge(), [injectedChallenge]);
+  const puzzle = useMemo(() => toPuzzle(challenge), [challenge]);
   const [phase, setPhase] = useState<"READY" | "RUNNING" | "DONE">("READY");
   const [slots, setSlots] = useState<string[]>(Array.from({ length: 5 }, () => ""));
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -91,9 +125,7 @@ export default function RuleLockGame({ onFinish, disabled }: GameProps) {
   const [score, setScore] = useState<number | null>(null);
   const startedAtRef = useRef<number | null>(null);
 
-  const availableIds = puzzle.symbols
-    .map((symbol) => symbol.id)
-    .filter((id) => !slots.includes(id));
+  const availableIds = puzzle.symbols.map((symbol) => symbol.id).filter((id) => !slots.includes(id));
 
   function start() {
     if (disabled) return;

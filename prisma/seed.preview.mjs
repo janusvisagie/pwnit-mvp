@@ -13,7 +13,7 @@ const PREVIEW_GAME_ASSIGNMENTS = [
   "route-builder",
   "codebreaker",
   "rule-lock",
-  "memory-sprint",
+  "balance-grid",
 ];
 
 async function main() {

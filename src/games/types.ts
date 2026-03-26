@@ -9,14 +9,16 @@ export type GameType =
   | "CODEBREAKER"
   | "RULE_LOCK"
   | "TRANSFORM_MEMORY"
-  | "SEQUENCE_RESTORE";
+  | "SEQUENCE_RESTORE"
+  | "BALANCE_GRID";
 
 export type GameResult = {
   scoreMs: number;
   meta?: Record<string, any>;
 };
 
-export type GameProps = {
+export type GameProps<TChallenge = any> = {
   onFinish: (result: GameResult) => void;
   disabled?: boolean;
+  challenge?: TChallenge;
 };

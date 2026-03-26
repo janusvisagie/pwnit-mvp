@@ -13,7 +13,8 @@ export type SupportedGameKey =
   | "codebreaker"
   | "rule-lock"
   | "transform-memory"
-  | "sequence-restore";
+  | "sequence-restore"
+  | "balance-grid";
 
 type GameMeta = {
   label: string;
@@ -120,6 +121,12 @@ export const GAME_META: Record<string, GameMeta> = {
     description: "Watch the ordered strip, then rebuild the same sequence from memory.",
     formatScore: (score) => `${Math.max(0, Math.floor(Number(score || 0))).toLocaleString("en-ZA")} pts`,
   },
+  "balance-grid": {
+    label: "Balance Grid",
+    higherIsBetter: true,
+    description: "Pick one number from each row and each column to hit the target sum.",
+    formatScore: (score) => `${Math.max(0, Math.floor(Number(score || 0))).toLocaleString("en-ZA")} pts`,
+  },
 };
 
 export function getGameMeta(gameKey?: string | null): GameMeta {
@@ -133,9 +140,7 @@ export function compareScores(
 ) {
   const meta = getGameMeta(gameKey);
   const diff = meta.higherIsBetter ? b.scoreMs - a.scoreMs : a.scoreMs - b.scoreMs;
-
   if (diff !== 0) return diff;
-
   const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
   const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
   return aTime - bTime;
