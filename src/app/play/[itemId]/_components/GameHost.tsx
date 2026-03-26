@@ -55,10 +55,10 @@ function ConfettiOverlay({ show }: { show: boolean }) {
 
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-3xl">
-      {Array.from({ length: 24 }).map((_, i) => {
-        const left = (i * 100) / 24;
+      {Array.from({ length: 18 }).map((_, i) => {
+        const left = (i * 100) / 18;
         const delay = (i % 6) * 0.05;
-        const size = 6 + (i % 4) * 2;
+        const size = 5 + (i % 4) * 2;
 
         return (
           <span
@@ -67,7 +67,7 @@ function ConfettiOverlay({ show }: { show: boolean }) {
             style={{
               left: `${left}%`,
               width: `${size}px`,
-              height: `${size * 1.6}px`,
+              height: `${size * 1.5}px`,
               animationDelay: `${delay}s`,
             }}
           />
@@ -143,13 +143,13 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
   }
 
   return (
-    <div className="relative rounded-3xl border border-slate-200 bg-slate-50 p-3.5">
+    <div className="relative rounded-3xl border border-slate-200 bg-slate-50 p-3">
       <ConfettiOverlay show={status?.state === "LEADING"} />
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Game</div>
-          <h2 className="mt-1 text-lg font-black text-slate-950">{entry.title}</h2>
+          <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Game</div>
+          <h2 className="mt-1 text-base font-black text-slate-950">{entry.title}</h2>
         </div>
 
         <label className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700">
@@ -165,14 +165,14 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
       </div>
 
       {!canPay ? (
-        <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <div className="mt-2.5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           <div className="font-semibold">Not enough credits to submit a score.</div>
           <div className="mt-1">Practice is enabled until you top up.</div>
         </div>
       ) : null}
 
       {status ? (
-        <div className="mt-3 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+        <div className="mt-2.5 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
           <div className="font-semibold">
             Current standing: #{status.myRank} / {status.totalPlayers}
           </div>
@@ -186,20 +186,20 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
       ) : null}
 
       {result ? (
-        <div className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+        <div className="mt-2.5 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
           <div className="font-semibold">{practiceMode ? "Practice result" : "Submitted"}</div>
           <div className="mt-1">Score {result.scoreMs}</div>
         </div>
       ) : null}
 
       {errMsg ? (
-        <div className="mt-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+        <div className="mt-2.5 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
           <div className="font-semibold">Couldn’t submit your score</div>
           <div className="mt-1">{errMsg}</div>
         </div>
       ) : null}
 
-      <div className="mt-3">
+      <div className="mt-2.5">
         <Game
           onFinish={(r: { scoreMs: number; meta?: any }) =>
             submitAttempt({ scoreMs: r.scoreMs, meta: r.meta })
@@ -207,7 +207,7 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
         />
       </div>
 
-      <div className="mt-3 flex flex-wrap gap-2">
+      <div className="mt-2.5 flex flex-wrap gap-2">
         <button
           type="button"
           className="rounded-2xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm font-bold text-slate-900"
