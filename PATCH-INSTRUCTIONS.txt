@@ -1,0 +1,48 @@
+PwnIt patch contents
+====================
+
+This ZIP contains full-file replacements for:
+
+1) src/lib/rounds.ts
+2) scripts/full-reset-items.mjs
+
+What this patch fixes
+---------------------
+
+1) Reopened items become playable again
+   - If an item has been manually reopened to OPEN, but its latest round is still terminal
+     (CLOSED / PUBLISHED / FAILED / REFUNDED), the app will now create a fresh BUILDING round
+     automatically the next time that item is loaded.
+   - This fixes the mismatch where the homepage showed OPEN but the item/play pages still refused play.
+
+2) Windows path bug in full-reset-items.mjs
+   - Fixes the broken backup path like:
+     C:\C:\Users\Janus\...
+   - The script now resolves its root path correctly on Windows.
+
+How to apply
+------------
+
+Replace the files in your repo with the files from this ZIP, preserving paths.
+
+After replacing the files:
+
+A) Restart your local dev server.
+
+B) Reopen items again if needed:
+   node scripts/reopen-all-items.mjs
+
+C) Then open an item page. A fresh BUILDING round should be created automatically.
+
+Full reset usage
+----------------
+
+Dry run:
+  node scripts/full-reset-items.mjs --allow-purchases
+
+Execute for real:
+  node scripts/full-reset-items.mjs --allow-purchases --execute
+
+Important:
+- --allow-purchases allows destructive wiping even when purchase rows exist.
+- --execute is still required before the full reset actually applies changes.

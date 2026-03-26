@@ -29,6 +29,16 @@ function addMinutes(date: Date, minutes: number) {
   return new Date(date.getTime() + Math.max(0, minutes) * 60 * 1000);
 }
 
+function isTerminalRoundState(state?: string | null) {
+  const normalized = String(state || "").toUpperCase();
+  return (
+    normalized === ROUND_STATES.CLOSED ||
+    normalized === ROUND_STATES.PUBLISHED ||
+    normalized === ROUND_STATES.FAILED ||
+    normalized === ROUND_STATES.REFUNDED
+  );
+}
+
 export async function getCurrentRound(itemId: string) {
   return prisma.itemRound.findFirst({
     where: { itemId },
@@ -76,9 +86,14 @@ export async function ensureCurrentRound(itemId: string) {
     }
   }
 
-  // Do not auto-create a new round after publish/fail/refund.
-  // The item should remain in its terminal state until a deliberate
-  // reset/relaunch flow is added later.
+  // Deliberate relaunch path:
+  // if an item was manually reopened to OPEN while its latest round is terminal,
+  // create a brand-new BUILDING round so the item becomes playable again.
+  if (isTerminalRoundState(round.state) && String(item.state || "").toUpperCase() === "OPEN") {
+    return createFreshRound(item, Number((round as any).sequence ?? 0) + 1);
+  }
+
+  // Otherwise, keep the latest round as-is.
   return round;
 }
 
@@ -103,6 +118,7 @@ async function applyFailedRefunds(roundId: string) {
       where: { id: round.itemId },
       data: { state: "FAILED", closesAt: round.fundingEndsAt },
     });
+
     return;
   }
 
@@ -152,18 +168,17 @@ async function applyFailedRefunds(roundId: string) {
     const bestByUser = new Map<string, { userId: string; scoreMs: number; createdAt: Date }>();
     for (const row of leaderboardAttempts) {
       const current = bestByUser.get(row.userId);
-      if (!current || compareScores(round.item.gameKey, row, current) < 0) {
-        bestByUser.set(row.userId, row);
+      if (!current || compareScores(round.item.gameKey, row as any, current as any) < 0) {
+        bestByUser.set(row.userId, row as any);
       }
     }
 
     const ranked = Array.from(bestByUser.values())
-      .sort((a, b) => compareScores(round.item.gameKey, a, b))
+      .sort((a, b) => compareScores(round.item.gameKey, a as any, b as any))
       .slice(0, 3);
 
     const failedBonuses = [10, 5, 5];
     const userIds = ranked.map((r) => r.userId);
-
     const users = userIds.length
       ? await tx.user.findMany({
           where: { id: { in: userIds } },
@@ -235,7 +250,7 @@ export async function syncRoundLifecycle(itemId: string) {
 
   if (
     round.state === ROUND_STATES.BUILDING &&
-    round.paidCreditsCollected >= round.activationTargetCredits
+    Number((round as any).paidCreditsCollected ?? 0) >= Number((round as any).activationTargetCredits ?? 0)
   ) {
     const closesAt = addMinutes(now, item.countdownMinutes);
 
@@ -280,15 +295,14 @@ export async function syncRoundLifecycle(itemId: string) {
 }
 
 export async function syncHomeItems(itemIds?: string[]) {
-  const ids =
-    itemIds && itemIds.length
-      ? itemIds
-      : (
-          await prisma.item.findMany({
-            orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-            select: { id: true },
-          })
-        ).map((i) => i.id);
+  const ids = itemIds && itemIds.length
+    ? itemIds
+    : (
+        await prisma.item.findMany({
+          orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+          select: { id: true },
+        })
+      ).map((i) => i.id);
 
   for (const id of ids) {
     await syncRoundLifecycle(id);
