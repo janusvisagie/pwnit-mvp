@@ -172,7 +172,7 @@ async function applyFailedRefunds(roundId: string) {
       : [];
 
     const aliasMap = new Map(
-      users.map((u) => [u.id, (u.alias && u.alias.trim()) || u.email.split("@")[0]])
+      users.map((u) => [u.id, (u.alias && u.alias.trim()) || u.email.split("@")[0]]),
     );
 
     for (let idx = 0; idx < ranked.length; idx += 1) {
@@ -255,15 +255,9 @@ export async function syncRoundLifecycle(itemId: string) {
     });
   }
 
-  if (round.state === ROUND_STATES.BUILDING && now > round.fundingEndsAt) {
-    await prisma.itemRound.update({
-      where: { id: round.id },
-      data: { state: ROUND_STATES.FAILED },
-    });
-
-    await applyFailedRefunds(round.id);
-    return prisma.itemRound.findUnique({ where: { id: round.id } });
-  }
+  // Expiry disabled for now:
+  // BUILDING rounds no longer fail just because the funding window ended.
+  // They remain BUILDING until they activate or are deliberately reset later.
 
   if (round.state === ROUND_STATES.ACTIVATED && round.closesAt && now >= round.closesAt) {
     round = await prisma.itemRound.update({
