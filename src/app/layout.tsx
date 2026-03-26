@@ -38,8 +38,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
           {children}
 
-          <footer className="mt-2 rounded-3xl border border-slate-200 bg-white px-4 py-2 shadow-sm sm:px-5">
-            <div className="flex flex-wrap items-center justify-between gap-2 text-xs sm:text-sm">
+          <footer className="mt-1.5 rounded-3xl border border-slate-200 bg-white px-4 py-2 shadow-sm sm:px-5">
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs sm:text-sm leading-tight">
               <div className="min-w-0">
                 <span className="font-semibold uppercase tracking-wide text-slate-500">Contact:</span>{" "}
                 <span className="text-slate-600">WhatsApp: +27 82 123 4567 · Email: hello@pwnit.co.za</span>
