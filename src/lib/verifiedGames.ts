@@ -409,8 +409,8 @@ function verifyCodebreaker(challenge: CodebreakerChallenge, meta: Record<string,
   let solvedAtGuess = 0;
   for (let index = 0; index < rawRows.length; index += 1) {
     const row = rawRows[index] || {};
-    const value = Array.isArray(row.value) ? row.value.map((n: unknown) => clampInt(n, 0, 9)) : [];
-    if (value.length !== CODE_LENGTH || new Set(value).size !== CODE_LENGTH || value.some((n) => !CODE_DIGIT_POOL.includes(n))) {
+    const value: number[] = Array.isArray(row.value) ? row.value.map((n: unknown) => clampInt(n, 0, 9)) : [];
+    if (value.length !== CODE_LENGTH || new Set(value).size !== CODE_LENGTH || value.some((n: number) => !CODE_DIGIT_POOL.includes(n))) {
       return { valid: false, scoreMs: 0, flags: { reason: "invalid_guess_shape", guessIndex: index } };
     }
     const graded = gradeGuess(value, challenge.solution);
