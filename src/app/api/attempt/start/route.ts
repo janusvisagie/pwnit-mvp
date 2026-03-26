@@ -45,7 +45,7 @@ export async function POST(req: Request) {
 
     if (!isVerifiedGameKey(item.gameKey)) {
       return NextResponse.json(
-        { ok: false, error: "This paid game is not on the new server-verified flow yet. Re-seed to the puzzle-first mix first." },
+        { ok: false, error: "This game is not on the new server-verified flow yet. Re-seed to the puzzle-first mix first." },
         { status: 409 },
       );
     }

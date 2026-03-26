@@ -2,12 +2,12 @@ PwnIt verified-play patch
 
 What this patch does
 - Replaces direct client score submission with a 2-step flow:
-  - POST /api/attempt/start -> server issues a one-time paid challenge
+  - POST /api/attempt/start -> server issues a one-time challenge
   - POST /api/attempt/finish -> server re-verifies the move log and computes the official score
-- Adds DB-backed rate limiting for the paid-play endpoints
+- Adds DB-backed rate limiting for the competitive play endpoints
 - Adds server-issued challenge sessions to the Prisma schema
-- Keeps the 6 puzzle-style games and wires them into the verified paid flow
-- Blocks paid submissions for legacy client-scored games
+- Keeps the 6 puzzle-style games and wires them into the verified flow
+- Blocks competitive submissions for legacy client-scored games
 
 Important
 - This patch is intended to be applied on top of your current repo and already includes the puzzle-game files.

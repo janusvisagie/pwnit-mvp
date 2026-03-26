@@ -301,6 +301,10 @@ function buildBalanceGridChallenge(): BalanceGridChallenge {
   };
 }
 
+function assertNever(x: never): never {
+  throw new Error(`Unhandled verified game key: ${String(x)}`);
+}
+
 export function buildVerifiedChallenge(gameKey: VerifiedGameKey): VerifiedChallenge {
   switch (gameKey) {
     case "route-builder":
@@ -315,6 +319,8 @@ export function buildVerifiedChallenge(gameKey: VerifiedGameKey): VerifiedChalle
       return buildSequenceRestoreChallenge();
     case "balance-grid":
       return buildBalanceGridChallenge();
+    default:
+      return assertNever(gameKey);
   }
 }
 
@@ -592,6 +598,8 @@ export function verifyVerifiedAttempt(gameKey: VerifiedGameKey, challenge: Verif
       return verifySequenceRestore(challenge as SequenceRestoreChallenge, meta, serverElapsedMs);
     case "balance-grid":
       return verifyBalanceGrid(challenge as BalanceGridChallenge, meta, serverElapsedMs);
+    default:
+      return assertNever(gameKey);
   }
 }
 

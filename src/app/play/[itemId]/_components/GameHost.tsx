@@ -1,14 +1,29 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import AlphabetSprintGame from "@/games/alphabet-sprint/AlphabetSprintGame";
+import BalanceGridGame from "@/games/balance-grid/BalanceGridGame";
+import CodebreakerGame from "@/games/codebreaker/CodebreakerGame";
 import FlashCountGame from "@/games/flash-count/FlashCountGame";
 import MovingZoneGame from "@/games/moving-zone/MovingZoneGame";
 import NumberMemoryGame from "@/games/number-memory/NumberMemoryGame";
 import QuickStopGame from "@/games/quick-stop/QuickStopGame";
+import RouteBuilderGame from "@/games/route-builder/RouteBuilderGame";
+import RuleLockGame from "@/games/rule-lock/RuleLockGame";
+import SequenceRestoreGame from "@/games/sequence-restore/SequenceRestoreGame";
 import TargetGridGame from "@/games/target-grid/TargetGridGame";
+import TransformMemoryGame from "@/games/transform-memory/TransformMemoryGame";
+
+const VERIFIED_GAME_KEYS = new Set([
+  "route-builder",
+  "codebreaker",
+  "rule-lock",
+  "transform-memory",
+  "sequence-restore",
+  "balance-grid",
+]);
 
 type GameKey =
   | "memory-sprint"
@@ -24,7 +39,13 @@ type GameKey =
   | "tap-speed"
   | "target-hold"
   | "stop-zero"
-  | "tap-pattern";
+  | "tap-pattern"
+  | "route-builder"
+  | "codebreaker"
+  | "rule-lock"
+  | "transform-memory"
+  | "sequence-restore"
+  | "balance-grid";
 
 const GAME_REGISTRY: Record<GameKey, { title: string; Component: any }> = {
   "memory-sprint": { title: "Memory Sprint", Component: NumberMemoryGame },
@@ -41,6 +62,12 @@ const GAME_REGISTRY: Record<GameKey, { title: string; Component: any }> = {
   "target-hold": { title: "Target Grid", Component: TargetGridGame },
   "stop-zero": { title: "Quick Stop", Component: QuickStopGame },
   "tap-pattern": { title: "Flash Count", Component: FlashCountGame },
+  "route-builder": { title: "Route Builder", Component: RouteBuilderGame },
+  "codebreaker": { title: "Codebreaker", Component: CodebreakerGame },
+  "rule-lock": { title: "Rule Lock", Component: RuleLockGame },
+  "transform-memory": { title: "Transform Memory", Component: TransformMemoryGame },
+  "sequence-restore": { title: "Sequence Restore", Component: SequenceRestoreGame },
+  "balance-grid": { title: "Balance Grid", Component: BalanceGridGame },
 };
 
 type Props = {
@@ -50,15 +77,21 @@ type Props = {
   credits: number;
 };
 
+type AttemptSession = {
+  attemptId: string;
+  challenge: any;
+  expiresAt: string;
+};
+
 function ConfettiOverlay({ show }: { show: boolean }) {
   if (!show) return null;
 
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-3xl">
-      {Array.from({ length: 16 }).map((_, i) => {
-        const left = (i * 100) / 16;
+      {Array.from({ length: 24 }).map((_, i) => {
+        const left = (i * 100) / 24;
         const delay = (i % 6) * 0.05;
-        const size = 4 + (i % 4) * 2;
+        const size = 6 + (i % 4) * 2;
 
         return (
           <span
@@ -67,7 +100,7 @@ function ConfettiOverlay({ show }: { show: boolean }) {
             style={{
               left: `${left}%`,
               width: `${size}px`,
-              height: `${size * 1.5}px`,
+              height: `${size * 1.6}px`,
               animationDelay: `${delay}s`,
             }}
           />
@@ -80,14 +113,60 @@ function ConfettiOverlay({ show }: { show: boolean }) {
 export default function GameHost({ itemId, gameKey, playCost, credits }: Props) {
   const router = useRouter();
   const canPay = credits >= playCost;
+  const supportsVerifiedMode = VERIFIED_GAME_KEYS.has(gameKey);
   const [practiceMode, setPracticeMode] = useState(!canPay);
   const [submitting, setSubmitting] = useState(false);
+  const [loadingSession, setLoadingSession] = useState(false);
+  const [session, setSession] = useState<AttemptSession | null>(null);
   const [result, setResult] = useState<{ scoreMs: number } | null>(null);
   const [errMsg, setErrMsg] = useState<string | null>(null);
   const [status, setStatus] = useState<{ myRank: number; totalPlayers: number; state: "LEADING" | "BONUS" | "CHASING" } | null>(null);
 
   const entry = GAME_REGISTRY[gameKey] ?? GAME_REGISTRY["quick-stop"];
   const Game = useMemo(() => entry.Component, [entry.Component]);
+
+  const issueSession = useCallback(async () => {
+    if (!canPay || practiceMode || !supportsVerifiedMode) {
+      setSession(null);
+      return;
+    }
+
+    setLoadingSession(true);
+    try {
+      const res = await fetch("/api/attempt/start", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ itemId }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.ok) {
+        setSession(null);
+        setErrMsg(data?.error || `Could not start a verified run (${res.status})`);
+        return;
+      }
+      setSession({
+        attemptId: String(data.attemptId),
+        challenge: data.challenge,
+        expiresAt: String(data.expiresAt),
+      });
+    } catch (e: any) {
+      setSession(null);
+      setErrMsg(e?.message || "Could not start a verified run");
+    } finally {
+      setLoadingSession(false);
+    }
+  }, [canPay, itemId, practiceMode, supportsVerifiedMode]);
+
+  useEffect(() => {
+    if (!canPay) {
+      setPracticeMode(true);
+      setSession(null);
+      return;
+    }
+    if (!practiceMode && supportsVerifiedMode) {
+      void issueSession();
+    }
+  }, [canPay, issueSession, practiceMode, supportsVerifiedMode]);
 
   async function submitAttempt(payload: { scoreMs: number; meta?: any }) {
     if (practiceMode) {
@@ -97,8 +176,19 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
       return;
     }
 
+    if (!supportsVerifiedMode) {
+      setErrMsg("This game is still on the legacy client-scored flow. Apply the puzzle-first game mix before accepting competitive attempts.");
+      return;
+    }
+
     if (credits < playCost) {
       setErrMsg("Not enough credits to submit. Practice mode only.");
+      return;
+    }
+
+    if (!session?.attemptId) {
+      setErrMsg("No active verified run. Start a fresh run.");
+      await issueSession();
       return;
     }
 
@@ -106,12 +196,11 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
     setErrMsg(null);
 
     try {
-      const res = await fetch("/api/attempt", {
+      const res = await fetch("/api/attempt/finish", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          itemId,
-          scoreMs: payload.scoreMs,
+          attemptId: session.attemptId,
           meta: payload.meta ?? null,
         }),
       });
@@ -126,15 +215,18 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
         return;
       }
 
-      setResult({ scoreMs: payload.scoreMs });
+      const officialScore = Number(data.officialScore ?? payload.scoreMs ?? 0);
+      setResult({ scoreMs: officialScore });
       setStatus({
         myRank: Number(data.myRank || 0),
         totalPlayers: Number(data.totalPlayers || 0),
         state: (data.status || "CHASING") as any,
       });
+      setSession(null);
 
       window.dispatchEvent(new Event("pwnit:credits"));
       router.refresh();
+      void issueSession();
     } catch (e: any) {
       setErrMsg(e?.message || "Submit failed");
     } finally {
@@ -142,37 +234,69 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
     }
   }
 
+  const verifiedGameDisabled =
+    submitting ||
+    loadingSession ||
+    (!practiceMode && !supportsVerifiedMode) ||
+    (!practiceMode && supportsVerifiedMode && !session);
+
   return (
-    <div className="relative rounded-3xl border border-slate-200 bg-slate-50 p-2.5">
+    <div className="relative rounded-3xl border border-slate-200 bg-slate-50 p-4">
       <ConfettiOverlay show={status?.state === "LEADING"} />
 
-      <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Game</div>
-          <h2 className="mt-1 text-[15px] font-black text-slate-950">{entry.title}</h2>
+          <div className="text-sm font-semibold uppercase tracking-wide text-slate-500">Game</div>
+          <h2 className="mt-1 text-xl font-black text-slate-950">{entry.title}</h2>
         </div>
 
-        <label className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700">
+        <label className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700">
           <input
             type="checkbox"
             checked={practiceMode}
-            onChange={(e) => setPracticeMode(e.target.checked)}
+            onChange={(e: any) => {
+              const nextPractice = e.target.checked;
+              setPracticeMode(nextPractice);
+              setErrMsg(null);
+              setResult(null);
+              if (nextPractice) setSession(null);
+            }}
             className="h-4 w-4 rounded border-slate-300"
-            disabled={!canPay || submitting}
+            disabled={!canPay || submitting || loadingSession}
           />
           Practice
         </label>
       </div>
 
+      {!supportsVerifiedMode ? (
+        <div className="mt-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+          <div className="font-semibold">Legacy client-scored game detected.</div>
+          <div className="mt-1">Competitive submissions are now blocked for legacy client-scored games. Apply the puzzle-first game mix first.</div>
+        </div>
+      ) : null}
+
       {!canPay ? (
-        <div className="mt-2 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-800">
+        <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           <div className="font-semibold">Not enough credits to submit a score.</div>
           <div className="mt-1">Practice is enabled until you top up.</div>
         </div>
       ) : null}
 
+      {!practiceMode && supportsVerifiedMode ? (
+        <div className="mt-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700">
+          <div className="font-semibold text-slate-900">Verified run</div>
+          <div className="mt-1">
+            {loadingSession
+              ? "Requesting a server-issued challenge..."
+              : session
+                ? "Challenge locked to this run. The server will recompute your score from the submitted move log."
+                : "No active verified run yet."}
+          </div>
+        </div>
+      ) : null}
+
       {status ? (
-        <div className="mt-2 rounded-2xl border border-blue-200 bg-blue-50 px-3 py-2.5 text-sm text-blue-900">
+        <div className="mt-3 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
           <div className="font-semibold">
             Current standing: #{status.myRank} / {status.totalPlayers}
           </div>
@@ -186,31 +310,31 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
       ) : null}
 
       {result ? (
-        <div className="mt-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm text-emerald-800">
-          <div className="font-semibold">{practiceMode ? "Practice result" : "Submitted"}</div>
+        <div className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+          <div className="font-semibold">{practiceMode ? "Practice result" : "Server-verified result"}</div>
           <div className="mt-1">Score {result.scoreMs}</div>
         </div>
       ) : null}
 
       {errMsg ? (
-        <div className="mt-2 rounded-2xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm text-rose-800">
+        <div className="mt-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
           <div className="font-semibold">Couldn’t submit your score</div>
           <div className="mt-1">{errMsg}</div>
         </div>
       ) : null}
 
-      <div className="mt-2">
+      <div className="mt-4">
         <Game
-          onFinish={(r: { scoreMs: number; meta?: any }) =>
-            submitAttempt({ scoreMs: r.scoreMs, meta: r.meta })
-          }
+          disabled={verifiedGameDisabled}
+          challenge={!practiceMode ? session?.challenge : undefined}
+          onFinish={(r: { scoreMs: number; meta?: any }) => submitAttempt({ scoreMs: r.scoreMs, meta: r.meta })}
         />
       </div>
 
-      <div className="mt-2 flex flex-wrap gap-2">
+      <div className="mt-4 flex flex-wrap gap-3">
         <button
           type="button"
-          className="rounded-2xl border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-900"
+          className="rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-bold text-slate-900"
           onClick={() => router.push(`/item/${itemId}/leaderboard`)}
           disabled={submitting}
         >
@@ -219,7 +343,7 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
 
         <button
           type="button"
-          className="rounded-2xl border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-900"
+          className="rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-bold text-slate-900"
           onClick={() => router.push(`/item/${itemId}`)}
           disabled={submitting}
         >
