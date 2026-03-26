@@ -1,36 +1,35 @@
-# PwnIt guest-first auth patch
+PwnIt patch: puzzle-first game pack
 
-This patch replaces the demo-user concept with:
+What this patch adds
+- Route Builder
+- Codebreaker
+- Rule Lock
+- Transform Memory
+- Sequence Restore
 
-- automatic guest sessions via middleware
-- optional email sign-in with one-time codes
-- account-only purchase / credit-buy routes
-- daily free credits guarded by a stable browser bucket, so creating multiple emails on the same device/browser does not mint fresh daily free credits
+Files changed
+- prisma/seed.mjs
+- prisma/seed.demo.mjs
+- prisma/seed.preview.mjs
+- src/app/play/[itemId]/_components/GameHost.tsx
+- src/games/registry.ts
+- src/games/types.ts
+- src/lib/gameRules.ts
+- plus 5 new game component files under src/games/
 
-## Files included
+Seed mix used in this patch
+- Fuel Voucher -> sequence-restore
+- Checkers Voucher -> transform-memory
+- Takealot Voucher -> route-builder
+- Sony WH-1000XM5 Headphones -> codebreaker
+- Nintendo Switch OLED -> rule-lock
+- GoPro HERO13 Black -> memory-sprint
 
-Only changed / new files are included in this patch ZIP.
+How to apply
+1. Unzip the patch over the repo root.
+2. Run npm install if needed.
+3. Run npm run db:seed for a full reseed, or npm run db:seed:demo / npm run db:seed:preview if that is your normal flow.
+4. Run npm run dev and test the new games.
 
-## Apply steps
-
-1. Copy the files into your repo, preserving paths.
-2. Run:
-   - `npx prisma generate`
-   - `npx prisma db push`
-3. Set the new env vars from `.env.example`.
-4. Redeploy.
-
-## Important behaviour change
-
-- Guests can still browse and play.
-- Sign-in is required for buying credits and buying items.
-- A brand new email created on the same browser will not get another daily free-credit grant that day, because grants are bucketed per browser cookie as well as tracked per user.
-
-## Known MVP limitation
-
-If a returning user signs into an already-existing account from a guest browser, this patch signs them into that existing account but does not merge historical guest attempts into that account. For a first-time sign-up on the same browser, the current guest record is converted in place, so credits / discounts / history are preserved.
-
-## Email sending
-
-- In development, if `RESEND_API_KEY` is missing, the request-code API returns `devCode` so you can test without real email delivery.
-- In production, `RESEND_API_KEY` should be set.
+Important caveat
+This patch changes the game mix to puzzle-style games that are less attractive to simple timing/tap bots, but it does NOT make the platform server-authoritative. The current /api/attempt flow still accepts client-submitted scores, so this reduces abuse risk but does not eliminate cheating.

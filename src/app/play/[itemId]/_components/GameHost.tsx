@@ -4,11 +4,16 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import AlphabetSprintGame from "@/games/alphabet-sprint/AlphabetSprintGame";
+import CodebreakerGame from "@/games/codebreaker/CodebreakerGame";
 import FlashCountGame from "@/games/flash-count/FlashCountGame";
 import MovingZoneGame from "@/games/moving-zone/MovingZoneGame";
 import NumberMemoryGame from "@/games/number-memory/NumberMemoryGame";
 import QuickStopGame from "@/games/quick-stop/QuickStopGame";
+import RouteBuilderGame from "@/games/route-builder/RouteBuilderGame";
+import RuleLockGame from "@/games/rule-lock/RuleLockGame";
+import SequenceRestoreGame from "@/games/sequence-restore/SequenceRestoreGame";
 import TargetGridGame from "@/games/target-grid/TargetGridGame";
+import TransformMemoryGame from "@/games/transform-memory/TransformMemoryGame";
 
 type GameKey =
   | "memory-sprint"
@@ -24,7 +29,12 @@ type GameKey =
   | "tap-speed"
   | "target-hold"
   | "stop-zero"
-  | "tap-pattern";
+  | "tap-pattern"
+  | "route-builder"
+  | "codebreaker"
+  | "rule-lock"
+  | "transform-memory"
+  | "sequence-restore";
 
 const GAME_REGISTRY: Record<GameKey, { title: string; Component: any }> = {
   "memory-sprint": { title: "Memory Sprint", Component: NumberMemoryGame },
@@ -41,6 +51,11 @@ const GAME_REGISTRY: Record<GameKey, { title: string; Component: any }> = {
   "target-hold": { title: "Target Grid", Component: TargetGridGame },
   "stop-zero": { title: "Quick Stop", Component: QuickStopGame },
   "tap-pattern": { title: "Flash Count", Component: FlashCountGame },
+  "route-builder": { title: "Route Builder", Component: RouteBuilderGame },
+  "codebreaker": { title: "Codebreaker", Component: CodebreakerGame },
+  "rule-lock": { title: "Rule Lock", Component: RuleLockGame },
+  "transform-memory": { title: "Transform Memory", Component: TransformMemoryGame },
+  "sequence-restore": { title: "Sequence Restore", Component: SequenceRestoreGame },
 };
 
 type Props = {
@@ -156,7 +171,7 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
           <input
             type="checkbox"
             checked={practiceMode}
-            onChange={(e) => setPracticeMode(e.target.checked)}
+            onChange={(e: any) => setPracticeMode(e.target.checked)}
             className="h-4 w-4 rounded border-slate-300"
             disabled={!canPay || submitting}
           />

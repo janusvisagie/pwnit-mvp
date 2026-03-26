@@ -8,7 +8,12 @@ export type SupportedGameKey =
   | "quick-stop"
   | "moving-zone"
   | "trace-run"
-  | "target-grid";
+  | "target-grid"
+  | "route-builder"
+  | "codebreaker"
+  | "rule-lock"
+  | "transform-memory"
+  | "sequence-restore";
 
 type GameMeta = {
   label: string;
@@ -83,6 +88,36 @@ export const GAME_META: Record<string, GameMeta> = {
     label: "Target Grid",
     higherIsBetter: false,
     description: "Hit the target square quickly and cleanly. Lower score wins.",
+    formatScore: (score) => `${Math.max(0, Math.floor(Number(score || 0))).toLocaleString("en-ZA")} pts`,
+  },
+  "route-builder": {
+    label: "Route Builder",
+    higherIsBetter: true,
+    description: "Build the cleanest route through the board while clearing checkpoints.",
+    formatScore: (score) => `${Math.max(0, Math.floor(Number(score || 0))).toLocaleString("en-ZA")} pts`,
+  },
+  codebreaker: {
+    label: "Codebreaker",
+    higherIsBetter: true,
+    description: "Crack the hidden code in as few guesses and as little time as possible.",
+    formatScore: (score) => `${Math.max(0, Math.floor(Number(score || 0))).toLocaleString("en-ZA")} pts`,
+  },
+  "rule-lock": {
+    label: "Rule Lock",
+    higherIsBetter: true,
+    description: "Arrange the seals to satisfy every lock rule at the same time.",
+    formatScore: (score) => `${Math.max(0, Math.floor(Number(score || 0))).toLocaleString("en-ZA")} pts`,
+  },
+  "transform-memory": {
+    label: "Transform Memory",
+    higherIsBetter: true,
+    description: "Memorise the pattern, apply the rule, then rebuild the transformed version.",
+    formatScore: (score) => `${Math.max(0, Math.floor(Number(score || 0))).toLocaleString("en-ZA")} pts`,
+  },
+  "sequence-restore": {
+    label: "Sequence Restore",
+    higherIsBetter: true,
+    description: "Watch the ordered strip, then rebuild the same sequence from memory.",
     formatScore: (score) => `${Math.max(0, Math.floor(Number(score || 0))).toLocaleString("en-ZA")} pts`,
   },
 };

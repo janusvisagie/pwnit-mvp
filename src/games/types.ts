@@ -4,10 +4,15 @@ export type GameType =
   | "MOVING_ZONE"
   | "TRACE_RUN"
   | "FLASH_COUNT"
-  | "TARGET_GRID";
+  | "TARGET_GRID"
+  | "ROUTE_BUILDER"
+  | "CODEBREAKER"
+  | "RULE_LOCK"
+  | "TRANSFORM_MEMORY"
+  | "SEQUENCE_RESTORE";
 
 export type GameResult = {
-  scoreMs: number; // lower is better, regardless of the mini-game's visual metaphor
+  scoreMs: number;
   meta?: Record<string, any>;
 };
 

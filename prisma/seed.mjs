@@ -3,8 +3,6 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 async function main() {
-  // Postgres-safe cleanup for the current schema.
-  // Delete child rows first, then items.
   await prisma.winner.deleteMany();
   await prisma.attempt.deleteMany();
 
@@ -24,7 +22,7 @@ async function main() {
       imageUrl: "/products/petrol-voucher.svg",
       activationGoalEntries: 3,
       countdownMinutes: 1,
-      gameKey: "flash-count",
+      gameKey: "sequence-restore",
     },
     {
       title: "Checkers Voucher",
@@ -33,7 +31,7 @@ async function main() {
       imageUrl: "/products/checkers-voucher.svg",
       activationGoalEntries: 3,
       countdownMinutes: 1,
-      gameKey: "memory-sprint",
+      gameKey: "transform-memory",
     },
     {
       title: "Takealot Voucher",
@@ -42,7 +40,7 @@ async function main() {
       imageUrl: "/products/takealot-voucher.svg",
       activationGoalEntries: 3,
       countdownMinutes: 1,
-      gameKey: "target-grid",
+      gameKey: "route-builder",
     },
     {
       title: "Sony WH-1000XM5 Headphones",
@@ -51,7 +49,7 @@ async function main() {
       imageUrl: "/products/sony-xm5-headphones.svg",
       activationGoalEntries: 3,
       countdownMinutes: 1,
-      gameKey: "quick-stop",
+      gameKey: "codebreaker",
     },
     {
       title: "Nintendo Switch OLED",
@@ -60,7 +58,7 @@ async function main() {
       imageUrl: "/products/nintendo-switch-oled.svg",
       activationGoalEntries: 3,
       countdownMinutes: 1,
-      gameKey: "moving-zone",
+      gameKey: "rule-lock",
     },
     {
       title: "GoPro HERO13 Black",
@@ -69,7 +67,7 @@ async function main() {
       imageUrl: "/products/gopro-hero.svg",
       activationGoalEntries: 3,
       countdownMinutes: 1,
-      gameKey: "trace-run",
+      gameKey: "memory-sprint",
     },
   ];
 
@@ -93,7 +91,7 @@ async function main() {
     });
   }
 
-  console.log("Seeded 6 items with 6 distinct games.");
+  console.log("Seeded 6 items with a puzzle-first 5-game mix plus Memory Sprint.");
 }
 
 main()

@@ -3,18 +3,18 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 const LIVE_GAME_ASSIGNMENTS = [
-  "flash-count",
+  "sequence-restore",
+  "transform-memory",
+  "route-builder",
+  "codebreaker",
+  "rule-lock",
   "memory-sprint",
-  "target-grid",
-  "quick-stop",
-  "moving-zone",
-  "trace-run",
 ];
 
 async function main() {
   const items = await prisma.item.findMany({ orderBy: { createdAt: "asc" }, take: 6 });
 
-  for (let idx = 0; idx < items.length; idx++) {
+  for (let idx = 0; idx < items.length; idx += 1) {
     await prisma.item.update({
       where: { id: items[idx].id },
       data: {
@@ -25,7 +25,7 @@ async function main() {
     });
   }
 
-  console.log("Demo seed refreshed with the live 6-game mix.");
+  console.log("Demo seed refreshed with the puzzle-first 6-item mix.");
 }
 
 main()
