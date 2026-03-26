@@ -79,32 +79,8 @@ export default async function HomePage() {
   const anyActivated = synced.some((item) => item.state === "ACTIVATED");
 
   return (
-    <main className="mx-auto max-w-[1780px] px-3 py-2 sm:px-4 lg:px-5">
+    <main className="px-0 py-0">
       <WelcomeModal />
-
-      <section className="mb-2 rounded-3xl border border-slate-200 bg-white px-4 py-3 shadow-sm sm:px-5">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <div className="leading-none">
-              <span className="text-[22px] font-semibold text-slate-700 sm:text-[26px]">Pick. Play.</span>{" "}
-              <span className="text-[34px] font-black text-blue-600 sm:text-[40px]">PwnIt.</span>
-            </div>
-            <p className="mt-1 text-sm text-slate-600">
-              Choose a prize, play a quick skill game, and try to win it.
-            </p>
-          </div>
-
-          {anyActivated ? (
-            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800">
-              Live prizes are active now.
-            </div>
-          ) : (
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700">
-              New rounds activate as interest builds.
-            </div>
-          )}
-        </div>
-      </section>
 
       <section className="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-3">
         {synced.map((item) => {

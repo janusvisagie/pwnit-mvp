@@ -14,43 +14,48 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className="min-h-screen bg-slate-50 text-slate-900 antialiased">
-        <div className="flex min-h-screen flex-col">
-          <header className="border-b border-slate-200 bg-white/95 backdrop-blur">
-            <div className="mx-auto max-w-7xl px-4 py-3 sm:px-6 lg:px-8">
-              <div className="flex flex-col gap-3 md:gap-2">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <Link href="/" className="shrink-0 leading-none">
-                    <span className="text-lg font-semibold text-slate-700 sm:text-xl">Pick. Play.</span>{" "}
-                    <span className="text-2xl font-black text-sky-600 sm:text-3xl">PwnIt.</span>
-                  </Link>
+      <body className="min-h-screen bg-slate-100 text-slate-900">
+        <div className="mx-auto max-w-[1840px] px-3 py-3 sm:px-4 lg:px-5">
+          <header className="mb-3 rounded-3xl border border-slate-200 bg-white px-4 py-4 shadow-sm sm:px-5">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="min-w-0">
+                <Link href="/" className="inline-block leading-none">
+                  <span className="text-[22px] font-semibold text-slate-700 sm:text-[26px]">Pick. Play.</span>{" "}
+                  <span className="text-[34px] font-black text-blue-600 sm:text-[40px]">PwnIt.</span>
+                </Link>
 
-                  <div className="flex flex-wrap items-center justify-start gap-2 sm:justify-end">
-                    <CreditsPill />
-                    <AuthStatusShell />
-                  </div>
+                <div className="mt-3">
+                  <HeaderNav />
                 </div>
+              </div>
 
-                <HeaderNav />
+              <div className="ml-auto flex flex-wrap items-center gap-3">
+                <CreditsPill />
+                <AuthStatusShell />
               </div>
             </div>
           </header>
 
-          <main className="flex-1">{children}</main>
+          {children}
 
-          <footer className="border-t border-slate-200 bg-white">
-            <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-5 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
-              <div className="leading-none">
-                <span className="font-semibold text-slate-700">Pick. Play.</span>{" "}
-                <span className="font-black text-sky-600">PwnIt.</span>
+          <footer className="mt-4 rounded-3xl border border-slate-200 bg-white px-4 py-4 shadow-sm sm:px-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <div className="text-sm font-semibold uppercase tracking-wide text-slate-500">Contact info</div>
+                <div className="mt-1 text-sm text-slate-600">
+                  Family test phase. Please use Feedback or contact the organiser directly.
+                </div>
               </div>
 
-              <div className="flex flex-wrap items-center gap-4">
-                <Link href="/how-activation-works" className="hover:text-slate-900">
+              <div className="flex flex-wrap items-center gap-3 text-sm font-medium">
+                <Link href="/how-activation-works" className="text-slate-700 hover:text-slate-950">
                   How it works
                 </Link>
-                <Link href="/terms" className="hover:text-slate-900">
+                <Link href="/terms" className="text-slate-700 hover:text-slate-950">
                   Terms
+                </Link>
+                <Link href="/feedback" className="text-slate-700 hover:text-slate-950">
+                  Feedback
                 </Link>
               </div>
             </div>
