@@ -59,7 +59,7 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
   return (
     <Link
       href={href}
-      className="group flex h-full min-h-[232px] flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+      className="group flex h-full min-h-[205px] flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
     >
       <div className="relative">
         <ProductImage
@@ -67,12 +67,12 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
           fallbackSrc={fallbackImage}
           alt={item.title}
           className="bg-slate-50"
-          imgClassName="h-20 w-full object-contain bg-white p-2 sm:h-24"
+          imgClassName="h-16 w-full object-contain bg-white p-2 sm:h-18"
         />
 
         {isClosed ? (
           <div className="pointer-events-none absolute inset-x-0 top-2 flex justify-center">
-            <span className="rounded-full bg-slate-950 px-2.5 py-1 text-[10px] font-bold tracking-wide text-white">
+            <span className="rounded-full bg-slate-950 px-2 py-1 text-[10px] font-bold tracking-wide text-white">
               CLOSED
             </span>
           </div>
@@ -81,31 +81,31 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
 
       <div className="flex flex-1 flex-col p-2.5">
         <div className="flex items-start justify-between gap-2">
-          <div className="text-[15px] font-black text-slate-950">{formatZAR(item.prizeValueZAR)}</div>
+          <div className="text-[14px] font-black text-slate-950">{formatZAR(item.prizeValueZAR)}</div>
           <div className={`rounded-full px-2 py-1 text-[10px] font-semibold ${badgeTone}`}>
             {isClosed ? "Closed" : isActivated ? "Activated" : "Open"}
           </div>
         </div>
 
-        <h3 className="mt-1.5 line-clamp-2 text-[13px] font-black leading-tight text-slate-950">
+        <h3 className="mt-1 line-clamp-2 text-[12px] font-black leading-tight text-slate-950">
           {item.title}
         </h3>
 
-        <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+        <div className="mt-1 flex flex-wrap items-center gap-1">
           {game ? (
-            <span className="rounded-full bg-blue-50 px-2 py-1 text-[10px] font-bold text-blue-700 ring-1 ring-blue-200">
+            <span className="rounded-full bg-blue-50 px-2 py-1 text-[9px] font-bold text-blue-700 ring-1 ring-blue-200">
               {game}
             </span>
           ) : null}
 
           {typeof item.playCostCredits === "number" ? (
-            <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-semibold text-slate-700 ring-1 ring-slate-200">
+            <span className="rounded-full bg-slate-100 px-2 py-1 text-[9px] font-semibold text-slate-700 ring-1 ring-slate-200">
               {item.playCostCredits} credits/play
             </span>
           ) : null}
 
           {hot ? (
-            <span className="rounded-full bg-orange-100 px-2 py-1 text-[10px] font-semibold text-orange-800 ring-1 ring-orange-200">
+            <span className="rounded-full bg-orange-100 px-2 py-1 text-[9px] font-semibold text-orange-800 ring-1 ring-orange-200">
               Hot
             </span>
           ) : null}
@@ -113,7 +113,7 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
 
         <div className="mt-auto pt-2">
           <div className="mb-1 flex items-center justify-between gap-2">
-            <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+            <span className="text-[9px] font-semibold uppercase tracking-wide text-slate-500">
               Activation
             </span>
             {isActivated && item.closesAt ? <CountdownChip closesAt={item.closesAt} state="ACTIVATED" /> : null}
@@ -126,10 +126,11 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
             />
           </div>
 
-          <div className="mt-1 text-[11px] text-slate-600">{progressText}</div>
+          <div className="mt-1 text-[10px] text-slate-600">{progressText}</div>
         </div>
       </div>
     </Link>
   );
 }
+
 export default ItemCard;

@@ -15,21 +15,21 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body className="min-h-screen bg-slate-100 text-slate-900">
-        <div className="mx-auto max-w-[1840px] px-3 py-3 sm:px-4 lg:px-5">
-          <header className="mb-3 rounded-3xl border border-slate-200 bg-white px-4 py-4 shadow-sm sm:px-5">
-            <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="mx-auto max-w-[1840px] px-3 py-2 sm:px-4 lg:px-5">
+          <header className="mb-2 rounded-3xl border border-slate-200 bg-white px-4 py-3 shadow-sm sm:px-5">
+            <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0">
                 <Link href="/" className="inline-block leading-none">
-                  <span className="text-[22px] font-semibold text-slate-700 sm:text-[26px]">Pick. Play.</span>{" "}
-                  <span className="text-[34px] font-black text-blue-600 sm:text-[40px]">PwnIt.</span>
+                  <span className="text-[20px] font-semibold text-slate-700 sm:text-[24px]">Pick. Play.</span>{" "}
+                  <span className="text-[32px] font-black text-blue-600 sm:text-[36px]">PwnIt.</span>
                 </Link>
 
-                <div className="mt-3">
+                <div className="mt-2">
                   <HeaderNav />
                 </div>
               </div>
 
-              <div className="ml-auto flex flex-wrap items-center gap-3">
+              <div className="ml-auto flex flex-wrap items-center gap-2">
                 <CreditsPill />
                 <AuthStatusShell />
               </div>
@@ -38,12 +38,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
           {children}
 
-          <footer className="mt-4 rounded-3xl border border-slate-200 bg-white px-4 py-4 shadow-sm sm:px-5">
-            <div className="flex flex-wrap items-center justify-between gap-3">
+          <footer className="mt-3 rounded-3xl border border-slate-200 bg-white px-4 py-3 shadow-sm sm:px-5">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <div className="text-sm font-semibold uppercase tracking-wide text-slate-500">Contact info</div>
                 <div className="mt-1 text-sm text-slate-600">
-                  Family test phase. Please use Feedback or contact the organiser directly.
+                  WhatsApp: +27 82 123 4567 · Email: hello@pwnit.co.za
                 </div>
               </div>
 
