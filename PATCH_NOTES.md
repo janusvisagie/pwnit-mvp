@@ -1,22 +1,29 @@
-PwnIt verified-play patch
+PwnIt patch: relink current items to the verified puzzle games
 
-What this patch does
-- Replaces direct client score submission with a 2-step flow:
-  - POST /api/attempt/start -> server issues a one-time challenge
-  - POST /api/attempt/finish -> server re-verifies the move log and computes the official score
-- Adds DB-backed rate limiting for the competitive play endpoints
-- Adds server-issued challenge sessions to the Prisma schema
-- Keeps the 6 puzzle-style games and wires them into the verified flow
-- Blocks competitive submissions for legacy client-scored games
+Why this patch exists
+- The new game components are in the codebase, but your current database items can still be linked to legacy game keys.
+- When that happens, the play page shows the legacy-flow warning and blocks competitive submissions.
+
+What this patch adds
+- scripts/relink-verified-games.mjs
+- clearer legacy-link messaging in the play page and attempt start route
+
+What the relink script does
+- updates the current items in the database to the verified puzzle game keys
+- uses the known 6-item title mapping first
+- falls back to a legacy-key-to-verified-key mapping when titles do not match
+- refunds previously consumed play credits from stored attempts
+- clears attempts, attempt sessions, rounds, and winners so legacy and verified results do not mix
+
+How to apply
+1. Unzip this patch over the repo root.
+2. Deploy or rebuild as normal.
+3. Run this once against the database you actually want to fix:
+
+   node scripts/relink-verified-games.mjs
+
+4. Refresh the site and open an item play page again.
 
 Important
-- This patch is intended to be applied on top of your current repo and already includes the puzzle-game files.
-- After copying these files in, run:
-  1. npm install
-  2. npx prisma generate
-  3. npx prisma db push
-- If your current database items still use legacy game keys, re-seed or reassign the first 6 items so they use:
-  sequence-restore, transform-memory, route-builder, codebreaker, rule-lock, balance-grid
-
-Recommended simple next step
-- After applying the patch, run your existing demo/preview seed so the live item mix moves onto the verified puzzle games.
+- This is intended for your current demo/test state.
+- It resets competitive history so the new server-verified puzzle results start cleanly.

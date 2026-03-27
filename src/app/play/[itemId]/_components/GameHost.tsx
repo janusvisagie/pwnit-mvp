@@ -177,7 +177,7 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
     }
 
     if (!supportsVerifiedMode) {
-      setErrMsg("This game is still on the legacy client-scored flow. Apply the puzzle-first game mix before accepting competitive attempts.");
+      setErrMsg("This item is still linked to a legacy game in the database. Run the relink script or reseed to the puzzle-first mix first.");
       return;
     }
 
@@ -271,7 +271,7 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
       {!supportsVerifiedMode ? (
         <div className="mt-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
           <div className="font-semibold">Legacy client-scored game detected.</div>
-          <div className="mt-1">Competitive submissions are now blocked for legacy client-scored games. Apply the puzzle-first game mix first.</div>
+          <div className="mt-1">This usually means the code patch is present, but the current item records in the database still point at the old game keys. Run the relink script or reseed to attach the verified puzzle games.</div>
         </div>
       ) : null}
 
