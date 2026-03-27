@@ -111,6 +111,20 @@ const BALANCE_MAX_SCORE = 22000;
 const PATTERN_MAX_SCORE = 22000;
 const SPOT_MISSING_MAX_SCORE = 21000;
 const PWNIT_WORD_BANK = ["Pick", "Play", "PwnIt", "Prize", "Bonus", "Credit", "Boost", "Target", "Podium", "Voucher", "Unlock", "Winner"];
+const PATTERN_TILE_BANK = [
+  "headset-boost",
+  "camera-drop",
+  "voucher-stack",
+  "gift-burst",
+  "credit-ring",
+  "cart-flash",
+  "crown-rank",
+  "console-spark",
+  "parcel-rush",
+  "prize-shine",
+  "shield-check",
+  "bolt-badge",
+];
 
 const ROUTE_PATH_TEMPLATES: number[][] = [
   [0, 1, 2, 8, 14, 15, 16, 22, 28, 29, 35],
@@ -325,7 +339,7 @@ function buildBalanceGridChallenge(): BalanceGridChallenge {
 }
 
 function buildPatternMatchChallenge(): PatternMatchChallenge {
-  const ordered = shuffle(PWNIT_WORD_BANK).slice(0, 4);
+  const ordered = shuffle(PATTERN_TILE_BANK).slice(0, 4);
   const distractorA = [...ordered];
   [distractorA[1], distractorA[2]] = [distractorA[2]!, distractorA[1]!];
   const distractorB = [...ordered];
@@ -335,7 +349,7 @@ function buildPatternMatchChallenge(): PatternMatchChallenge {
     game: "pattern-match",
     ordered,
     options,
-    correctIndex: options.findIndex((entry) => entry.every((word, index) => word === ordered[index])),
+    correctIndex: options.findIndex((entry) => entry.every((value, index) => value === ordered[index])),
   };
 }
 

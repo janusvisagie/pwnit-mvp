@@ -249,16 +249,16 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
     (!practiceMode && supportsVerifiedMode && !session);
 
   return (
-    <div className="relative rounded-3xl border border-slate-200 bg-slate-50 p-4">
+    <div className="relative rounded-3xl border border-slate-200 bg-slate-50 p-3 sm:p-4">
       <ConfettiOverlay show={status?.state === "LEADING"} />
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <div className="text-sm font-semibold uppercase tracking-wide text-slate-500">Game</div>
-          <h2 className="mt-1 text-xl font-black text-slate-950">{entry.title}</h2>
+          <h2 className="mt-1 text-lg font-black text-slate-950 sm:text-xl">{entry.title}</h2>
         </div>
 
-        <label className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700">
+        <label className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700">
           <input
             type="checkbox"
             checked={practiceMode}
@@ -297,7 +297,7 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
             {loadingSession
               ? "Requesting a server-issued challenge..."
               : session
-                ? "Challenge locked to this run. The server will recompute your score from the submitted move log."
+                ? "Challenge locked to this run. The server will recompute your score from your submitted move log."
                 : "No active verified run yet."}
           </div>
         </div>
@@ -339,10 +339,10 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
         />
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-3">
+      <div className="mt-3 flex flex-wrap gap-2.5">
         <button
           type="button"
-          className="rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-bold text-slate-900"
+          className="rounded-2xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-bold text-slate-900"
           onClick={() => router.push(`/item/${itemId}/leaderboard`)}
           disabled={submitting}
         >
@@ -351,7 +351,7 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
 
         <button
           type="button"
-          className="rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-bold text-slate-900"
+          className="rounded-2xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-bold text-slate-900"
           onClick={() => router.push(`/item/${itemId}`)}
           disabled={submitting}
         >

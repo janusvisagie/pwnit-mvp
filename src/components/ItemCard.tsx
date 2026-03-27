@@ -36,40 +36,61 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
   const game = item.gameKey ? getGameLabel(item.gameKey) : null;
   const hot = useMemo(() => isPlayable && !isActivated && pct >= 75, [isPlayable, isActivated, pct]);
   const progressText = isActivated ? "Activated" : activationStageLabel(pct);
-  const badgeTone = isClosed ? "bg-slate-900 text-white" : isActivated ? "bg-emerald-100 text-emerald-800 ring-1 ring-emerald-200" : "bg-slate-100 text-slate-700 ring-1 ring-slate-200";
+  const badgeTone = isClosed
+    ? "bg-slate-900 text-white"
+    : isActivated
+      ? "bg-emerald-100 text-emerald-800 ring-1 ring-emerald-200"
+      : "bg-white/90 text-slate-700 ring-1 ring-slate-200 backdrop-blur";
 
   return (
-    <Link href={href} className="group relative flex h-full flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+    <Link
+      href={href}
+      className="group relative flex h-full flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+    >
       {isClosed ? (
-        <div className="absolute left-[-3.75rem] top-5 z-10 rotate-[-32deg] bg-slate-950 px-16 py-1.5 text-xs font-black uppercase tracking-[0.18em] text-white">
+        <div className="absolute left-[-4rem] top-4 z-20 rotate-[-32deg] bg-slate-950 px-16 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-white sm:text-[11px]">
           Prize Won
         </div>
       ) : null}
 
-      <div className="aspect-[4/3] w-full bg-slate-100">
-        {primaryImage ? <img src={primaryImage} alt={item.title} className="h-full w-full object-cover" /> : null}
+      <div className="relative aspect-[16/9] w-full overflow-hidden bg-slate-100">
+        {primaryImage ? (
+          <img
+            src={primaryImage}
+            alt={item.title}
+            className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.02]"
+          />
+        ) : null}
+
+        <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-3">
+          <div className="rounded-full bg-white/92 px-3 py-1 text-sm font-black text-slate-950 shadow-sm backdrop-blur">
+            {formatZAR(item.prizeValueZAR)}
+          </div>
+          <div className={`rounded-full px-3 py-1 text-[11px] font-bold ${badgeTone}`}>
+            {isClosed ? "Closed" : isActivated ? "Activated" : "Open"}
+          </div>
+        </div>
       </div>
 
-      <div className="flex flex-1 flex-col p-4">
-        <div className="flex items-center justify-between gap-3">
-          <div className="text-lg font-black text-slate-950">{formatZAR(item.prizeValueZAR)}</div>
-          <div className={`rounded-full px-3 py-1 text-xs font-bold ${badgeTone}`}>{isClosed ? "Closed" : isActivated ? "Activated" : "Open"}</div>
+      <div className="flex flex-1 flex-col p-3.5">
+        <h3 className="min-h-[2.35rem] text-[15px] font-black leading-tight text-slate-950 sm:text-base">
+          {item.title}
+        </h3>
+
+        <div className="mt-2 flex flex-wrap gap-1.5 text-[11px] font-semibold text-slate-600">
+          {game ? <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-800">{game}</span> : null}
+          {typeof item.playCostCredits === "number" ? (
+            <span className="rounded-full bg-slate-100 px-2.5 py-1">{item.playCostCredits} credits/play</span>
+          ) : null}
+          {hot ? <span className="rounded-full bg-amber-100 px-2.5 py-1 text-amber-800">Hot</span> : null}
         </div>
 
-        <h3 className="mt-3 text-lg font-black text-slate-950">{item.title}</h3>
-
-        <div className="mt-2 flex flex-wrap gap-2 text-xs font-semibold text-slate-600">
-          {game ? <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-800">{game}</span> : null}
-          {typeof item.playCostCredits === "number" ? <span className="rounded-full bg-slate-100 px-3 py-1">{item.playCostCredits} credits/play</span> : null}
-          {hot ? <span className="rounded-full bg-amber-100 px-3 py-1 text-amber-800">Hot</span> : null}
-        </div>
-
-        <div className="mt-4">
-          <div className="mb-2 flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-slate-500">
+        <div className="mt-3">
+          <div className="mb-1.5 flex items-center justify-between gap-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
             <span>Activation</span>
-            <span>{progressText}</span>
+            <span className="truncate text-right normal-case tracking-normal">{progressText}</span>
           </div>
-          <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+          <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
             <div className="h-full rounded-full bg-slate-900 transition-all" style={{ width: `${pct}%` }} />
           </div>
         </div>
