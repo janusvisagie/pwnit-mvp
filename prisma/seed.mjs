@@ -22,7 +22,7 @@ async function main() {
       imageUrl: "/products/petrol-voucher.svg",
       activationGoalEntries: 3,
       countdownMinutes: 1,
-      gameKey: "sequence-restore",
+      gameKey: "spot-the-missing",
     },
     {
       title: "Checkers Voucher",
@@ -40,7 +40,7 @@ async function main() {
       imageUrl: "/products/takealot-voucher.svg",
       activationGoalEntries: 3,
       countdownMinutes: 1,
-      gameKey: "route-builder",
+      gameKey: "pattern-match",
     },
     {
       title: "Sony WH-1000XM5 Headphones",
@@ -91,7 +91,7 @@ async function main() {
     });
   }
 
-  console.log("Seeded 6 items with a puzzle-first 5-game mix with 6 puzzle-style games.");
+  console.log("Seeded 6 items with Balance Grid, Codebreaker, Rule Lock, Transform Memory, Spot the Missing, and Pattern Match.");
 }
 
 main()

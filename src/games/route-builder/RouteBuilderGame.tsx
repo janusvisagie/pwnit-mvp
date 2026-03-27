@@ -11,14 +11,15 @@ type Challenge = {
   blockers: number[];
 };
 
-const GRID_SIZE = 5;
-const MAX_SCORE = 22000;
+const GRID_SIZE = 6;
+const MAX_SCORE = 26000;
 const PATH_TEMPLATES: number[][] = [
-  [0, 1, 2, 7, 12, 13, 14, 19, 24],
-  [0, 5, 10, 11, 12, 17, 18, 19, 24],
-  [0, 1, 6, 11, 16, 17, 18, 19, 24],
-  [0, 5, 6, 7, 12, 17, 22, 23, 24],
-  [0, 1, 2, 3, 8, 13, 18, 23, 24],
+  [0, 1, 2, 8, 14, 15, 16, 22, 28, 29, 35],
+  [0, 6, 12, 13, 14, 20, 26, 27, 28, 34, 35],
+  [0, 1, 7, 13, 19, 20, 21, 22, 28, 34, 35],
+  [0, 6, 7, 8, 14, 20, 26, 32, 33, 34, 35],
+  [0, 1, 2, 3, 9, 15, 21, 27, 28, 29, 35],
+  [0, 6, 12, 18, 19, 20, 26, 32, 33, 34, 35],
 ];
 
 function sample<T>(values: readonly T[]): T {
@@ -38,11 +39,12 @@ function buildChallenge(): Challenge {
   const path = sample(PATH_TEMPLATES);
   const blockers = shuffled(
     Array.from({ length: GRID_SIZE * GRID_SIZE }, (_, index) => index).filter((cell) => !path.includes(cell)),
-  ).slice(0, 6);
+  ).slice(0, 10);
 
   return {
+    game: "route-builder",
     path,
-    checkpoints: [path[2]!, path[5]!],
+    checkpoints: [path[2]!, path[5]!, path[8]!],
     blockers,
   };
 }
@@ -72,7 +74,7 @@ export default function RouteBuilderGame({ onFinish, disabled, challenge: inject
     setPhase("RUNNING");
     setTrail([start]);
     setMistakes(0);
-    setMessage("Follow the route, pass both checkpoints, and reach F. Crosses are blocked and cannot be used.");
+    setMessage("Follow the route, clear all three checkpoints, and reach F. Crosses are blocked and cannot be used.");
     setScore(null);
     startedAtRef.current = Date.now();
     clickLogRef.current = [];
@@ -81,7 +83,7 @@ export default function RouteBuilderGame({ onFinish, disabled, challenge: inject
   function complete(finalTrail: number[], finalMistakes: number) {
     const elapsedMs = Math.max(0, Date.now() - (startedAtRef.current ?? Date.now()));
     const extraSteps = Math.max(0, finalTrail.length - challenge.path.length);
-    const computed = Math.max(1000, MAX_SCORE - elapsedMs - finalMistakes * 600 - extraSteps * 250);
+    const computed = Math.max(1000, MAX_SCORE - elapsedMs - finalMistakes * 700 - extraSteps * 320);
 
     setPhase("DONE");
     setScore(computed);
@@ -134,7 +136,7 @@ export default function RouteBuilderGame({ onFinish, disabled, challenge: inject
   }
 
   return (
-    <div className="mx-auto max-w-2xl rounded-3xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
+    <div className="mx-auto max-w-xl rounded-3xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Objective</div>
@@ -149,14 +151,14 @@ export default function RouteBuilderGame({ onFinish, disabled, challenge: inject
         Build a clean route from <span className="font-bold text-slate-900">S</span> to <span className="font-bold text-slate-900">F</span>, pass every checkpoint, and avoid the <span className="font-bold text-slate-900">×</span> blocked tiles.
       </p>
 
-      <div className="mx-auto mt-3 grid max-w-[19rem] grid-cols-5 gap-1.5 sm:gap-2">
+      <div className="mx-auto mt-3 grid max-w-[17rem] grid-cols-6 gap-1.5 sm:gap-2">
         {Array.from({ length: GRID_SIZE * GRID_SIZE }, (_, cell) => {
           const isStart = cell === start;
           const isFinish = cell === finish;
           const isCheckpoint = challenge.checkpoints.includes(cell);
           const isBlocked = challenge.blockers.includes(cell);
           const isOnTrail = trail.includes(cell);
-          const label = isStart ? "S" : isFinish ? "F" : isCheckpoint ? "C" : cell + 1;
+          const label = isStart ? "S" : isFinish ? "F" : isCheckpoint ? "C" : "";
 
           return (
             <button
@@ -165,7 +167,7 @@ export default function RouteBuilderGame({ onFinish, disabled, challenge: inject
               onClick={() => handleCell(cell)}
               disabled={disabled || phase !== "RUNNING"}
               className={[
-                "aspect-square rounded-xl border text-xs font-black transition sm:text-sm",
+                "aspect-square rounded-xl border text-[10px] font-black transition sm:text-xs",
                 isBlocked
                   ? "cursor-not-allowed border-slate-200 bg-slate-200 text-slate-400"
                   : isOnTrail
@@ -185,7 +187,7 @@ export default function RouteBuilderGame({ onFinish, disabled, challenge: inject
 
       <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
         <div className="font-semibold text-slate-900">How it works</div>
-        <div className="mt-1">Crosses are blocked and cannot be used. Fast solves, few mistakes, and short routes score best.</div>
+        <div className="mt-1">Crosses are blocked and cannot be used. This version is longer and denser, so fast solves, few mistakes, and short routes separate scores more clearly.</div>
         <div className="mt-1">Mistakes: {mistakes}</div>
         {message ? <div className="mt-1">{message}</div> : null}
         {score != null ? <div className="mt-2 font-black text-emerald-700">Score {score.toLocaleString("en-ZA")}</div> : null}

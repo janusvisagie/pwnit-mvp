@@ -2,30 +2,96 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-const LIVE_GAME_ASSIGNMENTS = [
-  "sequence-restore",
-  "transform-memory",
-  "route-builder",
-  "codebreaker",
-  "rule-lock",
-  "balance-grid",
-];
-
 async function main() {
-  const items = await prisma.item.findMany({ orderBy: { createdAt: "asc" }, take: 6 });
+  await prisma.winner.deleteMany();
+  await prisma.attempt.deleteMany();
 
-  for (let idx = 0; idx < items.length; idx += 1) {
-    await prisma.item.update({
-      where: { id: items[idx].id },
+  try {
+    await prisma.itemPurchase.deleteMany();
+  } catch {}
+
+  await prisma.item.deleteMany();
+
+  const now = new Date();
+
+  const items = [
+    {
+      title: "Fuel Voucher",
+      prizeType: "Voucher",
+      prizeValueZAR: 300,
+      imageUrl: "/products/petrol-voucher.svg",
+      activationGoalEntries: 3,
+      countdownMinutes: 1,
+      gameKey: "spot-the-missing",
+    },
+    {
+      title: "Checkers Voucher",
+      prizeType: "Voucher",
+      prizeValueZAR: 500,
+      imageUrl: "/products/checkers-voucher.svg",
+      activationGoalEntries: 3,
+      countdownMinutes: 1,
+      gameKey: "transform-memory",
+    },
+    {
+      title: "Takealot Voucher",
+      prizeType: "Voucher",
+      prizeValueZAR: 1000,
+      imageUrl: "/products/takealot-voucher.svg",
+      activationGoalEntries: 3,
+      countdownMinutes: 1,
+      gameKey: "pattern-match",
+    },
+    {
+      title: "Sony WH-1000XM5 Headphones",
+      prizeType: "Physical",
+      prizeValueZAR: 1999,
+      imageUrl: "/products/sony-xm5-headphones.svg",
+      activationGoalEntries: 3,
+      countdownMinutes: 1,
+      gameKey: "codebreaker",
+    },
+    {
+      title: "Nintendo Switch OLED",
+      prizeType: "Physical",
+      prizeValueZAR: 3499,
+      imageUrl: "/products/nintendo-switch-oled.svg",
+      activationGoalEntries: 3,
+      countdownMinutes: 1,
+      gameKey: "rule-lock",
+    },
+    {
+      title: "GoPro HERO13 Black",
+      prizeType: "Physical",
+      prizeValueZAR: 6499,
+      imageUrl: "/products/gopro-hero.svg",
+      activationGoalEntries: 3,
+      countdownMinutes: 1,
+      gameKey: "balance-grid",
+    },
+  ];
+
+  for (const it of items) {
+    await prisma.item.create({
       data: {
-        gameKey: LIVE_GAME_ASSIGNMENTS[idx],
+        title: it.title,
+        tier: 1,
+        prizeType: it.prizeType,
+        prizeValueZAR: it.prizeValueZAR,
+        imageUrl: it.imageUrl,
+        shortDesc: null,
+        productUrl: null,
         state: "OPEN",
-        closesAt: null,
+        activationGoalEntries: it.activationGoalEntries,
+        countdownMinutes: it.countdownMinutes,
+        opensAt: now,
+        subscriberOnly: false,
+        gameKey: it.gameKey,
       },
     });
   }
 
-  console.log("Demo seed refreshed with the puzzle-first 6-item mix.");
+  console.log("Seeded 6 items with Balance Grid, Codebreaker, Rule Lock, Transform Memory, Spot the Missing, and Pattern Match.");
 }
 
 main()

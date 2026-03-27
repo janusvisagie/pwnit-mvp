@@ -46,13 +46,12 @@ const RULES: TransformRule[] = [
   {
     id: "mirror-vertical",
     label: "Mirror the pattern top to bottom.",
-    apply: (cells) => {
-      return cells.map((cell) => {
+    apply: (cells) =>
+      cells.map((cell) => {
         const x = cell % GRID_SIZE;
         const y = Math.floor(cell / GRID_SIZE);
         return (GRID_SIZE - 1 - y) * GRID_SIZE + x;
-      });
-    },
+      }),
   },
 ];
 
@@ -81,6 +80,7 @@ function sameSet(a: number[], b: number[]) {
 function buildChallenge(): Challenge {
   const rule = RULES[Math.floor(Math.random() * RULES.length)]!;
   return {
+    game: "transform-memory",
     ruleId: rule.id,
     ruleLabel: rule.label,
     basePattern: buildPattern(),
@@ -103,7 +103,7 @@ export default function TransformMemoryGame({ onFinish, disabled, challenge: inj
     const timer = window.setTimeout(() => {
       setPhase("INPUT");
       startedAtRef.current = Date.now();
-      setMessage("Now rebuild the transformed pattern.");
+      setMessage("Do not copy the shown pattern. Apply the rule first, then rebuild the transformed version.");
     }, SHOW_MS);
     return () => window.clearTimeout(timer);
   }, [phase]);
@@ -113,7 +113,7 @@ export default function TransformMemoryGame({ onFinish, disabled, challenge: inj
     setPhase("SHOW");
     setSelected([]);
     setScore(null);
-    setMessage(challenge.ruleLabel);
+    setMessage(`Memorise the shown pattern. Then ${challenge.ruleLabel.toLowerCase()} Do not simply copy it.`);
     startedAtRef.current = null;
   }
 
@@ -124,6 +124,11 @@ export default function TransformMemoryGame({ onFinish, disabled, challenge: inj
     );
   }
 
+  function clearSelection() {
+    if (disabled || phase !== "INPUT") return;
+    setSelected([]);
+  }
+
   function submit() {
     if (disabled || phase !== "INPUT" || selected.length !== ACTIVE_COUNT) return;
     const elapsedMs = Math.max(0, Date.now() - (startedAtRef.current ?? Date.now()));
@@ -132,7 +137,7 @@ export default function TransformMemoryGame({ onFinish, disabled, challenge: inj
 
     setPhase("DONE");
     setScore(finalScore);
-    setMessage(correct ? "Pattern transformed correctly." : "Not quite.");
+    setMessage(correct ? "Pattern transformed correctly." : "Not quite. Remember to transform the shown shape instead of copying it.");
 
     onFinish({
       scoreMs: finalScore,
@@ -153,7 +158,7 @@ export default function TransformMemoryGame({ onFinish, disabled, challenge: inj
   }
 
   return (
-    <div className="mx-auto max-w-2xl rounded-3xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
+    <div className="mx-auto max-w-xl rounded-3xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Objective</div>
@@ -162,15 +167,18 @@ export default function TransformMemoryGame({ onFinish, disabled, challenge: inj
         <div className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">Pick {ACTIVE_COUNT} cells</div>
       </div>
 
-      <p className="mt-2 text-sm text-slate-600">Memorise the pattern, apply the rule, then rebuild the transformed version from memory.</p>
+      <p className="mt-2 text-sm text-slate-600">
+        Memorise the shown pattern, then rebuild the <span className="font-bold text-slate-900">transformed</span> version. The goal is not to copy the pattern exactly.
+      </p>
 
       <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
         <div className="font-semibold text-slate-900">Rule</div>
         <div className="mt-1">{challenge.ruleLabel}</div>
+        <div className="mt-1 text-xs text-slate-500">Watch first. Once the board hides, apply the rule mentally and then mark the transformed cells.</div>
         {message ? <div className="mt-2">{message}</div> : null}
       </div>
 
-      <div className="mx-auto mt-3 grid max-w-[18rem] grid-cols-4 gap-1.5 sm:gap-2">
+      <div className="mx-auto mt-3 grid max-w-[16rem] grid-cols-4 gap-1.5 sm:gap-2">
         {Array.from({ length: GRID_SIZE * GRID_SIZE }, (_, cell) => {
           const active = visibleCells().includes(cell);
           return (
@@ -198,7 +206,15 @@ export default function TransformMemoryGame({ onFinish, disabled, challenge: inj
           disabled={disabled}
           className="rounded-2xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
         >
-          {phase === "READY" ? "Start Transform Memory" : "Restart"}
+          {phase === "READY" ? "Start Transform Memory" : "New pattern"}
+        </button>
+        <button
+          type="button"
+          onClick={clearSelection}
+          disabled={disabled || phase !== "INPUT" || selected.length === 0}
+          className="rounded-2xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-bold text-slate-900 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+        >
+          Clear
         </button>
         <button
           type="button"

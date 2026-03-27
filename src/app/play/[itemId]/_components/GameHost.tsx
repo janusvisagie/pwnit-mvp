@@ -9,10 +9,12 @@ import CodebreakerGame from "@/games/codebreaker/CodebreakerGame";
 import FlashCountGame from "@/games/flash-count/FlashCountGame";
 import MovingZoneGame from "@/games/moving-zone/MovingZoneGame";
 import NumberMemoryGame from "@/games/number-memory/NumberMemoryGame";
+import PatternMatchGame from "@/games/pattern-match/PatternMatchGame";
 import QuickStopGame from "@/games/quick-stop/QuickStopGame";
 import RouteBuilderGame from "@/games/route-builder/RouteBuilderGame";
 import RuleLockGame from "@/games/rule-lock/RuleLockGame";
 import SequenceRestoreGame from "@/games/sequence-restore/SequenceRestoreGame";
+import SpotTheMissingGame from "@/games/spot-the-missing/SpotTheMissingGame";
 import TargetGridGame from "@/games/target-grid/TargetGridGame";
 import TransformMemoryGame from "@/games/transform-memory/TransformMemoryGame";
 
@@ -23,6 +25,8 @@ const VERIFIED_GAME_KEYS = new Set([
   "transform-memory",
   "sequence-restore",
   "balance-grid",
+  "pattern-match",
+  "spot-the-missing",
 ]);
 
 type GameKey =
@@ -45,7 +49,9 @@ type GameKey =
   | "rule-lock"
   | "transform-memory"
   | "sequence-restore"
-  | "balance-grid";
+  | "balance-grid"
+  | "pattern-match"
+  | "spot-the-missing";
 
 const GAME_REGISTRY: Record<GameKey, { title: string; Component: any }> = {
   "memory-sprint": { title: "Memory Sprint", Component: NumberMemoryGame },
@@ -68,6 +74,8 @@ const GAME_REGISTRY: Record<GameKey, { title: string; Component: any }> = {
   "transform-memory": { title: "Transform Memory", Component: TransformMemoryGame },
   "sequence-restore": { title: "Sequence Restore", Component: SequenceRestoreGame },
   "balance-grid": { title: "Balance Grid", Component: BalanceGridGame },
+  "pattern-match": { title: "Pattern Match", Component: PatternMatchGame },
+  "spot-the-missing": { title: "Spot the Missing", Component: SpotTheMissingGame },
 };
 
 type Props = {
@@ -177,7 +185,7 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
     }
 
     if (!supportsVerifiedMode) {
-      setErrMsg("This item is still linked to a legacy game in the database. Run the relink script or reseed to the puzzle-first mix first.");
+      setErrMsg("This item is still linked to a legacy game in the database. Run the relink script or reseed to attach one of the server-verified game keys.");
       return;
     }
 
@@ -271,7 +279,7 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
       {!supportsVerifiedMode ? (
         <div className="mt-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
           <div className="font-semibold">Legacy client-scored game detected.</div>
-          <div className="mt-1">This usually means the code patch is present, but the current item records in the database still point at the old game keys. Run the relink script or reseed to attach the verified puzzle games.</div>
+          <div className="mt-1">This usually means the code patch is present, but the current item records in the database still point at an older game key. Run the relink script or reseed to attach one of the verified games.</div>
         </div>
       ) : null}
 

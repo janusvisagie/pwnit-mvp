@@ -24,8 +24,8 @@ type Challenge = {
   game?: "rule-lock";
   symbols: SymbolDef[];
   constraints: {
-    leftId: string;
-    rightId: string;
+    upperId: string;
+    lowerId: string;
     fixedId: string;
     fixedSlot: number;
     pairA: string;
@@ -36,11 +36,11 @@ type Challenge = {
 };
 
 const SYMBOLS: SymbolDef[] = [
-  { id: "sun", label: "Sun" },
-  { id: "moon", label: "Moon" },
-  { id: "star", label: "Star" },
-  { id: "wave", label: "Wave" },
-  { id: "leaf", label: "Leaf" },
+  { id: "pick", label: "Pick" },
+  { id: "play", label: "Play" },
+  { id: "prize", label: "Prize" },
+  { id: "bonus", label: "Bonus" },
+  { id: "boost", label: "Boost" },
 ];
 const MAX_SCORE = 23000;
 const MAX_CHECKS = 3;
@@ -60,18 +60,19 @@ function buildChallenge(): Challenge {
   const labels = new Map(arranged.map((symbol) => [symbol.id, symbol.label]));
   const slotOf = (id: string) => ids.indexOf(id);
 
-  const leftId = ids[0]!;
-  const rightId = ids[2]!;
+  const upperId = ids[0]!;
+  const lowerId = ids[2]!;
   const fixedId = ids[4]!;
   const pairA = ids[1]!;
   const pairB = ids[2]!;
   const notEdgeId = ids[3]!;
 
   return {
+    game: "rule-lock",
     symbols: arranged,
     constraints: {
-      leftId,
-      rightId,
+      upperId,
+      lowerId,
       fixedId,
       fixedSlot: slotOf(fixedId),
       pairA,
@@ -79,10 +80,10 @@ function buildChallenge(): Challenge {
       notEdgeId,
     },
     rules: [
-      { id: "left-right", text: `${labels.get(leftId)} must be left of ${labels.get(rightId)}.` },
+      { id: "above-below", text: `${labels.get(upperId)} must be above ${labels.get(lowerId)}.` },
       { id: "fixed-slot", text: `${labels.get(fixedId)} must be in slot ${slotOf(fixedId) + 1}.` },
       { id: "adjacent-pair", text: `${labels.get(pairA)} must sit directly next to ${labels.get(pairB)}.` },
-      { id: "not-edge", text: `${labels.get(notEdgeId)} cannot be on either edge.` },
+      { id: "not-edge", text: `${labels.get(notEdgeId)} cannot be in the top or bottom slot.` },
     ],
   };
 }
@@ -96,8 +97,8 @@ function toPuzzle(challenge: Challenge): Puzzle {
       text: rule.text,
       check: (slots: string[]) => {
         switch (rule.id) {
-          case "left-right":
-            return slots.indexOf(constraints.leftId) < slots.indexOf(constraints.rightId);
+          case "above-below":
+            return slots.indexOf(constraints.upperId) < slots.indexOf(constraints.lowerId);
           case "fixed-slot":
             return slots[constraints.fixedSlot] === constraints.fixedId;
           case "adjacent-pair":
@@ -135,7 +136,7 @@ export default function RuleLockGame({ onFinish, disabled, challenge: injectedCh
     setSelectedId(null);
     setChecksUsed(0);
     setScore(null);
-    setMessage("Place all five seals, then press Check lock. Each press uses one of your three checks.");
+    setMessage("Drag or click the words into the slots, then press Check lock. Each check uses one of your three checks.");
     startedAtRef.current = Date.now();
   }
 
@@ -217,7 +218,7 @@ export default function RuleLockGame({ onFinish, disabled, challenge: injectedCh
   }
 
   return (
-    <div className="mx-auto max-w-2xl rounded-3xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
+    <div className="mx-auto max-w-xl rounded-3xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Objective</div>
@@ -228,11 +229,13 @@ export default function RuleLockGame({ onFinish, disabled, challenge: injectedCh
         </div>
       </div>
 
-      <p className="mt-2 text-sm text-slate-600">Arrange the five seals so every rule is true at the same time.</p>
+      <p className="mt-2 text-sm text-slate-600">Arrange the five PwnIt words so every rule is true at the same time.</p>
 
       <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
         <div className="font-semibold text-slate-900">Checks left</div>
-        <div className="mt-1">Each time you press <span className="font-bold">Check lock</span>, one check is used. You have {MAX_CHECKS} checks total.</div>
+        <div className="mt-1">
+          Each time you press <span className="font-bold">Check lock</span>, one check is used. You have {MAX_CHECKS} checks total.
+        </div>
       </div>
 
       <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
@@ -246,7 +249,7 @@ export default function RuleLockGame({ onFinish, disabled, challenge: injectedCh
         </div>
       </div>
 
-      <div className="mt-3 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
+      <div className="mt-3 grid gap-3 sm:grid-cols-[minmax(0,1fr)_12.5rem] sm:items-start">
         <div className="grid gap-2">
           {slots.map((slot, index) => {
             const current = puzzle.symbols.find((symbol) => symbol.id === slot);
@@ -267,7 +270,7 @@ export default function RuleLockGame({ onFinish, disabled, challenge: injectedCh
                   handleDrop(index, droppedId || null);
                 }}
                 disabled={disabled || phase !== "RUNNING"}
-                className="min-h-[58px] rounded-2xl border border-slate-300 bg-white px-3 py-2 text-left text-sm font-black text-slate-900 transition hover:-translate-y-0.5 hover:border-slate-400 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+                className="min-h-[54px] rounded-2xl border border-slate-300 bg-white px-3 py-2 text-left text-sm font-black text-slate-900 transition hover:-translate-y-0.5 hover:border-slate-400 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
               >
                 <div className="text-[11px] uppercase tracking-wide text-slate-400">Slot {index + 1}</div>
                 <div className="mt-1">{current?.label ?? "Drop or click here"}</div>
@@ -276,8 +279,8 @@ export default function RuleLockGame({ onFinish, disabled, challenge: injectedCh
           })}
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-3 sm:w-[13rem]">
-          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Seal bank</div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-3">
+          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Word bank</div>
           <div className="mt-2 grid gap-2">
             {puzzle.symbols.map((symbol) => {
               const placed = slots.includes(symbol.id);
@@ -329,7 +332,7 @@ export default function RuleLockGame({ onFinish, disabled, challenge: injectedCh
           {phase === "READY" ? "Start Rule Lock" : "Restart"}
         </button>
         <div className="self-center text-sm text-slate-500">
-          {selectedId ? `Selected: ${puzzle.symbols.find((symbol) => symbol.id === selectedId)?.label}` : `${availableIds.length} seals left to place`}
+          {selectedId ? `Selected: ${puzzle.symbols.find((symbol) => symbol.id === selectedId)?.label}` : `${availableIds.length} words left to place`}
         </div>
       </div>
 

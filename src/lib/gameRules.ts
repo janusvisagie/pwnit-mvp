@@ -14,7 +14,9 @@ export type SupportedGameKey =
   | "rule-lock"
   | "transform-memory"
   | "sequence-restore"
-  | "balance-grid";
+  | "balance-grid"
+  | "pattern-match"
+  | "spot-the-missing";
 
 type GameMeta = {
   label: string;
@@ -94,7 +96,7 @@ export const GAME_META: Record<string, GameMeta> = {
   "route-builder": {
     label: "Route Builder",
     higherIsBetter: true,
-    description: "Build the cleanest route through the board while clearing checkpoints.",
+    description: "Build a longer clean route through the board, clear every checkpoint, and avoid blocked tiles.",
     formatScore: (score) => `${Math.max(0, Math.floor(Number(score || 0))).toLocaleString("en-ZA")} pts`,
   },
   codebreaker: {
@@ -106,19 +108,19 @@ export const GAME_META: Record<string, GameMeta> = {
   "rule-lock": {
     label: "Rule Lock",
     higherIsBetter: true,
-    description: "Arrange the seals to satisfy every lock rule at the same time.",
+    description: "Arrange the PwnIt words to satisfy every lock rule at the same time.",
     formatScore: (score) => `${Math.max(0, Math.floor(Number(score || 0))).toLocaleString("en-ZA")} pts`,
   },
   "transform-memory": {
     label: "Transform Memory",
     higherIsBetter: true,
-    description: "Memorise the pattern, apply the rule, then rebuild the transformed version.",
+    description: "Memorise the shown pattern, transform it according to the rule, then rebuild the transformed version.",
     formatScore: (score) => `${Math.max(0, Math.floor(Number(score || 0))).toLocaleString("en-ZA")} pts`,
   },
   "sequence-restore": {
     label: "Sequence Restore",
     higherIsBetter: true,
-    description: "Watch the ordered strip, then rebuild the same sequence from memory.",
+    description: "Watch the ordered PwnIt strip, then rebuild the same sequence from memory.",
     formatScore: (score) => `${Math.max(0, Math.floor(Number(score || 0))).toLocaleString("en-ZA")} pts`,
   },
   "balance-grid": {
@@ -127,10 +129,27 @@ export const GAME_META: Record<string, GameMeta> = {
     description: "Pick one number from each row and each column to hit the target sum.",
     formatScore: (score) => `${Math.max(0, Math.floor(Number(score || 0))).toLocaleString("en-ZA")} pts`,
   },
+  "pattern-match": {
+    label: "Pattern Match",
+    higherIsBetter: true,
+    description: "Choose the strip that exactly matches the shown PwnIt pattern.",
+    formatScore: (score) => `${Math.max(0, Math.floor(Number(score || 0))).toLocaleString("en-ZA")} pts`,
+  },
+  "spot-the-missing": {
+    label: "Spot the Missing",
+    higherIsBetter: true,
+    description: "Memorise the PwnIt words, then pick the one that disappears.",
+    formatScore: (score) => `${Math.max(0, Math.floor(Number(score || 0))).toLocaleString("en-ZA")} pts`,
+  },
 };
 
 export function getGameMeta(gameKey?: string | null): GameMeta {
   return (gameKey && GAME_META[gameKey]) || DEFAULT_META;
+}
+
+export function getGameLabel(gameKey?: string | null) {
+  if (!gameKey) return DEFAULT_META.label;
+  return getGameMeta(gameKey).label;
 }
 
 export function compareScores(

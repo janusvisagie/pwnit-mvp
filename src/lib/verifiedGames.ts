@@ -7,7 +7,9 @@ export const VERIFIED_GAME_KEYS = [
   "transform-memory",
   "sequence-restore",
   "balance-grid",
-];
+  "pattern-match",
+  "spot-the-missing",
+] as const;
 
 export type VerifiedGameKey = (typeof VERIFIED_GAME_KEYS)[number];
 
@@ -27,8 +29,8 @@ type RuleLockChallenge = {
   game: "rule-lock";
   symbols: Array<{ id: string; label: string }>;
   constraints: {
-    leftId: string;
-    rightId: string;
+    upperId: string;
+    lowerId: string;
     fixedId: string;
     fixedSlot: number;
     pairA: string;
@@ -58,13 +60,30 @@ type BalanceGridChallenge = {
   solution: number[];
 };
 
+type PatternMatchChallenge = {
+  game: "pattern-match";
+  ordered: string[];
+  options: string[][];
+  correctIndex: number;
+};
+
+type SpotTheMissingChallenge = {
+  game: "spot-the-missing";
+  shown: string[];
+  remaining: string[];
+  missing: string;
+  options: string[];
+};
+
 export type VerifiedChallenge =
   | RouteBuilderChallenge
   | CodebreakerChallenge
   | RuleLockChallenge
   | TransformMemoryChallenge
   | SequenceRestoreChallenge
-  | BalanceGridChallenge;
+  | BalanceGridChallenge
+  | PatternMatchChallenge
+  | SpotTheMissingChallenge;
 
 type VerificationResult = {
   valid: boolean;
@@ -72,8 +91,8 @@ type VerificationResult = {
   flags: Record<string, any>;
 };
 
-const ROUTE_GRID_SIZE = 5;
-const ROUTE_MAX_SCORE = 22000;
+const ROUTE_GRID_SIZE = 6;
+const ROUTE_MAX_SCORE = 26000;
 const CODE_DIGIT_POOL = [1, 2, 3, 4, 5, 6];
 const CODE_LENGTH = 4;
 const CODE_MAX_GUESSES = 6;
@@ -84,26 +103,30 @@ const TRANSFORM_GRID_SIZE = 4;
 const TRANSFORM_ACTIVE_COUNT = 5;
 const TRANSFORM_MAX_SCORE = 24000;
 const TRANSFORM_SHOW_MS = 2200;
-const SEQUENCE_TOKENS = ["Sun", "Drum", "Leaf", "Wave", "Spark", "Stone", "Cloud", "Bloom"];
-const SEQUENCE_SHOW_MS = 2600;
+const SEQUENCE_TOKENS = ["Pick", "Play", "PwnIt", "Prize", "Bonus", "Boost", "Credit", "Target", "Podium", "Voucher", "Unlock", "Winner"];
+const SEQUENCE_SHOW_MS = 2300;
 const SEQUENCE_MAX_SCORE = 23000;
 const BALANCE_GRID_SIZE = 3;
 const BALANCE_MAX_SCORE = 22000;
+const PATTERN_MAX_SCORE = 22000;
+const SPOT_MISSING_MAX_SCORE = 21000;
+const PWNIT_WORD_BANK = ["Pick", "Play", "PwnIt", "Prize", "Bonus", "Credit", "Boost", "Target", "Podium", "Voucher", "Unlock", "Winner"];
 
 const ROUTE_PATH_TEMPLATES: number[][] = [
-  [0, 1, 2, 7, 12, 13, 14, 19, 24],
-  [0, 5, 10, 11, 12, 17, 18, 19, 24],
-  [0, 1, 6, 11, 16, 17, 18, 19, 24],
-  [0, 5, 6, 7, 12, 17, 22, 23, 24],
-  [0, 1, 2, 3, 8, 13, 18, 23, 24],
+  [0, 1, 2, 8, 14, 15, 16, 22, 28, 29, 35],
+  [0, 6, 12, 13, 14, 20, 26, 27, 28, 34, 35],
+  [0, 1, 7, 13, 19, 20, 21, 22, 28, 34, 35],
+  [0, 6, 7, 8, 14, 20, 26, 32, 33, 34, 35],
+  [0, 1, 2, 3, 9, 15, 21, 27, 28, 29, 35],
+  [0, 6, 12, 18, 19, 20, 26, 32, 33, 34, 35],
 ];
 
 const RULE_SYMBOLS: Array<{ id: string; label: string }> = [
-  { id: "sun", label: "Sun" },
-  { id: "moon", label: "Moon" },
-  { id: "star", label: "Star" },
-  { id: "wave", label: "Wave" },
-  { id: "leaf", label: "Leaf" },
+  { id: "pick", label: "Pick" },
+  { id: "play", label: "Play" },
+  { id: "prize", label: "Prize" },
+  { id: "bonus", label: "Bonus" },
+  { id: "boost", label: "Boost" },
 ];
 
 const TRANSFORM_RULES = {
@@ -173,12 +196,12 @@ function buildRouteBuilderChallenge(): RouteBuilderChallenge {
   const path = ROUTE_PATH_TEMPLATES[randomInt(ROUTE_PATH_TEMPLATES.length)]!;
   const blockers = shuffle(
     Array.from({ length: ROUTE_GRID_SIZE * ROUTE_GRID_SIZE }, (_, index) => index).filter((cell) => !path.includes(cell)),
-  ).slice(0, 6);
+  ).slice(0, 10);
 
   return {
     game: "route-builder",
     path,
-    checkpoints: [path[2]!, path[5]!],
+    checkpoints: [path[2]!, path[5]!, path[8]!],
     blockers,
   };
 }
@@ -196,8 +219,8 @@ function buildRuleLockChallenge(): RuleLockChallenge {
   const labels = new Map(arranged.map((symbol) => [symbol.id, symbol.label]));
   const slotOf = (id: string) => ids.indexOf(id);
 
-  const leftId = ids[0]!;
-  const rightId = ids[2]!;
+  const upperId = ids[0]!;
+  const lowerId = ids[2]!;
   const fixedId = ids[4]!;
   const pairA = ids[1]!;
   const pairB = ids[2]!;
@@ -207,8 +230,8 @@ function buildRuleLockChallenge(): RuleLockChallenge {
     game: "rule-lock",
     symbols: arranged.map((symbol) => ({ ...symbol })),
     constraints: {
-      leftId,
-      rightId,
+      upperId,
+      lowerId,
       fixedId,
       fixedSlot: slotOf(fixedId),
       pairA,
@@ -217,8 +240,8 @@ function buildRuleLockChallenge(): RuleLockChallenge {
     },
     rules: [
       {
-        id: "left-right",
-        text: `${labels.get(leftId)} must be left of ${labels.get(rightId)}.`,
+        id: "above-below",
+        text: `${labels.get(upperId)} must be above ${labels.get(lowerId)}.`,
       },
       {
         id: "fixed-slot",
@@ -230,7 +253,7 @@ function buildRuleLockChallenge(): RuleLockChallenge {
       },
       {
         id: "not-edge",
-        text: `${labels.get(notEdgeId)} cannot be on either edge.`,
+        text: `${labels.get(notEdgeId)} cannot be in the top or bottom slot.`,
       },
     ],
   };
@@ -249,7 +272,7 @@ function buildTransformMemoryChallenge(): TransformMemoryChallenge {
 }
 
 function buildSequenceRestoreChallenge(): SequenceRestoreChallenge {
-  const ordered = shuffle(SEQUENCE_TOKENS).slice(0, 6);
+  const ordered = shuffle(SEQUENCE_TOKENS).slice(0, 5);
   return {
     game: "sequence-restore",
     ordered,
@@ -301,6 +324,36 @@ function buildBalanceGridChallenge(): BalanceGridChallenge {
   };
 }
 
+function buildPatternMatchChallenge(): PatternMatchChallenge {
+  const ordered = shuffle(PWNIT_WORD_BANK).slice(0, 4);
+  const distractorA = [...ordered];
+  [distractorA[1], distractorA[2]] = [distractorA[2]!, distractorA[1]!];
+  const distractorB = [...ordered];
+  [distractorB[0], distractorB[3]] = [distractorB[3]!, distractorB[0]!];
+  const options = shuffle([ordered, distractorA, distractorB]);
+  return {
+    game: "pattern-match",
+    ordered,
+    options,
+    correctIndex: options.findIndex((entry) => entry.every((word, index) => word === ordered[index])),
+  };
+}
+
+function buildSpotTheMissingChallenge(): SpotTheMissingChallenge {
+  const shown = shuffle(PWNIT_WORD_BANK).slice(0, 6);
+  const missingIndex = randomInt(shown.length);
+  const missing = shown[missingIndex]!;
+  const remaining = shown.filter((_, index) => index !== missingIndex);
+  const distractors = shuffle(PWNIT_WORD_BANK.filter((word) => !shown.includes(word))).slice(0, 3);
+  return {
+    game: "spot-the-missing",
+    shown,
+    remaining,
+    missing,
+    options: shuffle([missing, ...distractors]),
+  };
+}
+
 export function buildVerifiedChallenge(gameKey: VerifiedGameKey): VerifiedChallenge {
   switch (gameKey) {
     case "route-builder":
@@ -315,6 +368,10 @@ export function buildVerifiedChallenge(gameKey: VerifiedGameKey): VerifiedChalle
       return buildSequenceRestoreChallenge();
     case "balance-grid":
       return buildBalanceGridChallenge();
+    case "pattern-match":
+      return buildPatternMatchChallenge();
+    case "spot-the-missing":
+      return buildSpotTheMissingChallenge();
     default:
       throw new Error(`Unhandled verified game key: ${String(gameKey)}`);
   }
@@ -333,7 +390,9 @@ function sanitizedElapsed(metaElapsed: unknown, serverElapsedMs: number, minMs: 
 }
 
 function verifyRouteBuilder(challenge: RouteBuilderChallenge, meta: Record<string, any>, serverElapsedMs: number): VerificationResult {
-  const clickLog = Array.isArray(meta?.clickLog) ? meta.clickLog.map((value: unknown) => clampInt(value, -1, 24)).filter((value: number) => value >= 0) : [];
+  const clickLog = Array.isArray(meta?.clickLog)
+    ? meta.clickLog.map((value: unknown) => clampInt(value, -1, 35)).filter((value: number) => value >= 0)
+    : [];
   if (!clickLog.length) {
     return { valid: false, scoreMs: 0, flags: { reason: "missing_click_log" } };
   }
@@ -369,13 +428,13 @@ function verifyRouteBuilder(challenge: RouteBuilderChallenge, meta: Record<strin
     return { valid: true, scoreMs: 0, flags: { solved: false, mistakes, completed: false } };
   }
 
-  const elapsed = sanitizedElapsed(meta?.elapsedMs, serverElapsedMs, Math.max(1500, clickLog.length * 140));
+  const elapsed = sanitizedElapsed(meta?.elapsedMs, serverElapsedMs, Math.max(1700, clickLog.length * 160));
   if (!elapsed.valid) {
     return { valid: false, scoreMs: 0, flags: { reason: elapsed.reason } };
   }
 
   const extraSteps = Math.max(0, trail.length - challenge.path.length);
-  const scoreMs = Math.max(1000, ROUTE_MAX_SCORE - elapsed.elapsedMs - mistakes * 600 - extraSteps * 250);
+  const scoreMs = Math.max(1000, ROUTE_MAX_SCORE - elapsed.elapsedMs - mistakes * 700 - extraSteps * 320);
   return {
     valid: true,
     scoreMs,
@@ -444,14 +503,14 @@ function verifyCodebreaker(challenge: CodebreakerChallenge, meta: Record<string,
 
 function evaluateRuleLock(challenge: RuleLockChallenge, slots: string[]) {
   const { constraints } = challenge;
-  const leftRight = slots.indexOf(constraints.leftId) < slots.indexOf(constraints.rightId);
+  const aboveBelow = slots.indexOf(constraints.upperId) < slots.indexOf(constraints.lowerId);
   const fixedSlot = slots[constraints.fixedSlot] === constraints.fixedId;
   const adjacentPair = Math.abs(slots.indexOf(constraints.pairA) - slots.indexOf(constraints.pairB)) === 1;
   const notEdge = (() => {
     const idx = slots.indexOf(constraints.notEdgeId);
     return idx > 0 && idx < slots.length - 1;
   })();
-  return leftRight && fixedSlot && adjacentPair && notEdge;
+  return aboveBelow && fixedSlot && adjacentPair && notEdge;
 }
 
 function verifyRuleLock(challenge: RuleLockChallenge, meta: Record<string, any>, serverElapsedMs: number): VerificationResult {
@@ -484,7 +543,9 @@ function verifyRuleLock(challenge: RuleLockChallenge, meta: Record<string, any>,
 }
 
 function verifyTransformMemory(challenge: TransformMemoryChallenge, meta: Record<string, any>, serverElapsedMs: number): VerificationResult {
-  const selected = Array.isArray(meta?.selected) ? meta.selected.map((value: unknown) => clampInt(value, -1, 15)).filter((value: number) => value >= 0) : [];
+  const selected = Array.isArray(meta?.selected)
+    ? meta.selected.map((value: unknown) => clampInt(value, -1, 15)).filter((value: number) => value >= 0)
+    : [];
   if (selected.length !== TRANSFORM_ACTIVE_COUNT || new Set(selected).size !== TRANSFORM_ACTIVE_COUNT) {
     return { valid: false, scoreMs: 0, flags: { reason: "invalid_selection_shape" } };
   }
@@ -548,7 +609,9 @@ function hasUniqueRowsAndCols(cells: number[]) {
 }
 
 function verifyBalanceGrid(challenge: BalanceGridChallenge, meta: Record<string, any>, serverElapsedMs: number): VerificationResult {
-  const selected = Array.isArray(meta?.selected) ? meta.selected.map((value: unknown) => clampInt(value, -1, 8)).filter((value: number) => value >= 0) : [];
+  const selected = Array.isArray(meta?.selected)
+    ? meta.selected.map((value: unknown) => clampInt(value, -1, 8)).filter((value: number) => value >= 0)
+    : [];
   if (selected.length !== BALANCE_GRID_SIZE || new Set(selected).size !== BALANCE_GRID_SIZE) {
     return { valid: false, scoreMs: 0, flags: { reason: "invalid_selection_shape" } };
   }
@@ -580,6 +643,52 @@ function verifyBalanceGrid(challenge: BalanceGridChallenge, meta: Record<string,
   };
 }
 
+function verifyPatternMatch(challenge: PatternMatchChallenge, meta: Record<string, any>, serverElapsedMs: number): VerificationResult {
+  const chosenIndex = clampInt(meta?.chosenIndex, -1, challenge.options.length - 1);
+  if (chosenIndex < 0 || chosenIndex >= challenge.options.length) {
+    return { valid: false, scoreMs: 0, flags: { reason: "invalid_choice_index" } };
+  }
+
+  const chosenOption = challenge.options[chosenIndex]!;
+  const correct = chosenIndex === challenge.correctIndex && sameArray(chosenOption, challenge.ordered);
+  if (!correct) {
+    return { valid: true, scoreMs: 0, flags: { solved: false, correct: false, chosenIndex } };
+  }
+
+  const elapsed = sanitizedElapsed(meta?.elapsedMs, serverElapsedMs, 700);
+  if (!elapsed.valid) {
+    return { valid: false, scoreMs: 0, flags: { reason: elapsed.reason } };
+  }
+
+  return {
+    valid: true,
+    scoreMs: Math.max(1200, PATTERN_MAX_SCORE - elapsed.elapsedMs),
+    flags: { solved: true, chosenIndex, elapsedMs: elapsed.elapsedMs, timingNote: elapsed.reason },
+  };
+}
+
+function verifySpotTheMissing(challenge: SpotTheMissingChallenge, meta: Record<string, any>, serverElapsedMs: number): VerificationResult {
+  const chosen = String(meta?.chosen || "");
+  if (!challenge.options.includes(chosen)) {
+    return { valid: false, scoreMs: 0, flags: { reason: "invalid_missing_choice" } };
+  }
+
+  if (chosen !== challenge.missing) {
+    return { valid: true, scoreMs: 0, flags: { solved: false, correct: false, chosen } };
+  }
+
+  const elapsed = sanitizedElapsed(meta?.elapsedMs, serverElapsedMs, 700);
+  if (!elapsed.valid) {
+    return { valid: false, scoreMs: 0, flags: { reason: elapsed.reason } };
+  }
+
+  return {
+    valid: true,
+    scoreMs: Math.max(1200, SPOT_MISSING_MAX_SCORE - elapsed.elapsedMs),
+    flags: { solved: true, chosen, elapsedMs: elapsed.elapsedMs, timingNote: elapsed.reason },
+  };
+}
+
 export function verifyVerifiedAttempt(gameKey: VerifiedGameKey, challenge: VerifiedChallenge, meta: Record<string, any>, serverElapsedMs: number): VerificationResult {
   switch (gameKey) {
     case "route-builder":
@@ -594,6 +703,10 @@ export function verifyVerifiedAttempt(gameKey: VerifiedGameKey, challenge: Verif
       return verifySequenceRestore(challenge as SequenceRestoreChallenge, meta, serverElapsedMs);
     case "balance-grid":
       return verifyBalanceGrid(challenge as BalanceGridChallenge, meta, serverElapsedMs);
+    case "pattern-match":
+      return verifyPatternMatch(challenge as PatternMatchChallenge, meta, serverElapsedMs);
+    case "spot-the-missing":
+      return verifySpotTheMissing(challenge as SpotTheMissingChallenge, meta, serverElapsedMs);
     default:
       throw new Error(`Unhandled verified game key: ${String(gameKey)}`);
   }

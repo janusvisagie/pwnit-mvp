@@ -29,28 +29,25 @@ function shuffle<T>(values: readonly T[]) {
   return copy;
 }
 
-function buildCode() {
-  return shuffle(DIGIT_POOL).slice(0, CODE_LENGTH);
+function buildChallenge(): Challenge {
+  return {
+    game: "codebreaker",
+    solution: shuffle(DIGIT_POOL).slice(0, CODE_LENGTH),
+  };
 }
 
 function gradeGuess(guess: number[], solution: number[]) {
   let exact = 0;
   let misplaced = 0;
-
   for (let i = 0; i < CODE_LENGTH; i += 1) {
-    if (guess[i] === solution[i]) {
-      exact += 1;
-    } else if (solution.includes(guess[i]!)) {
-      misplaced += 1;
-    }
+    if (guess[i] === solution[i]) exact += 1;
+    else if (solution.includes(guess[i]!)) misplaced += 1;
   }
-
   return { exact, misplaced };
 }
 
 export default function CodebreakerGame({ onFinish, disabled, challenge: injectedChallenge }: GameProps<Challenge>) {
-  const challenge = useMemo(() => injectedChallenge ?? { solution: buildCode() }, [injectedChallenge]);
-  const solution = challenge.solution;
+  const challenge = useMemo(() => injectedChallenge ?? buildChallenge(), [injectedChallenge]);
   const [phase, setPhase] = useState<"READY" | "RUNNING" | "DONE">("READY");
   const [guess, setGuess] = useState<number[]>([]);
   const [rows, setRows] = useState<GuessRow[]>([]);
@@ -63,77 +60,84 @@ export default function CodebreakerGame({ onFinish, disabled, challenge: injecte
     setPhase("RUNNING");
     setGuess([]);
     setRows([]);
-    setMessage("Crack the 4-digit code. Digits do not repeat.");
     setScore(null);
+    setMessage("Crack the hidden code in as few guesses as possible.");
     startedAtRef.current = Date.now();
   }
 
-  function finish(finalScore: number, solved: boolean, finalMessage: string, nextRows: GuessRow[]) {
-    const elapsedMs = Math.max(0, Date.now() - (startedAtRef.current ?? Date.now()));
-    setPhase("DONE");
-    setScore(finalScore);
-    setMessage(finalMessage);
-
-    onFinish({
-      scoreMs: finalScore,
-      meta: {
-        game: "codebreaker",
-        solved,
-        elapsedMs,
-        guessesUsed: nextRows.length,
-        guessLog: nextRows.map((row) => ({ value: row.value, exact: row.exact, misplaced: row.misplaced })),
-      },
-    });
-  }
-
-  function addDigit(value: number) {
-    if (disabled || phase !== "RUNNING" || guess.includes(value) || guess.length >= CODE_LENGTH) return;
-    setGuess((current) => [...current, value]);
+  function addDigit(digit: number) {
+    if (disabled || phase !== "RUNNING" || guess.length >= CODE_LENGTH || guess.includes(digit)) return;
+    setGuess((current) => [...current, digit]);
   }
 
   function removeLast() {
-    if (disabled || phase !== "RUNNING") return;
+    if (disabled || phase !== "RUNNING" || guess.length === 0) return;
     setGuess((current) => current.slice(0, -1));
+  }
+
+  function clearGuess() {
+    if (disabled || phase !== "RUNNING" || guess.length === 0) return;
+    setGuess([]);
   }
 
   function submitGuess() {
     if (disabled || phase !== "RUNNING" || guess.length !== CODE_LENGTH) return;
-
-    const feedback = gradeGuess(guess, solution);
-    const nextRows = [...rows, { value: guess, exact: feedback.exact, misplaced: feedback.misplaced }];
+    const graded = gradeGuess(guess, challenge.solution);
+    const nextRows = [...rows, { value: guess, ...graded }];
     setRows(nextRows);
     setGuess([]);
 
-    if (feedback.exact === CODE_LENGTH) {
+    if (graded.exact === CODE_LENGTH) {
       const elapsedMs = Math.max(0, Date.now() - (startedAtRef.current ?? Date.now()));
-      const finalScore = Math.max(1200, MAX_SCORE - elapsedMs - (nextRows.length - 1) * 2600);
-      finish(finalScore, true, "Code cracked.", nextRows);
+      const finalScore = Math.max(1200, MAX_SCORE - elapsedMs - rows.length * 2600);
+      setPhase("DONE");
+      setScore(finalScore);
+      setMessage("Code cracked.");
+      onFinish({
+        scoreMs: finalScore,
+        meta: {
+          game: "codebreaker",
+          elapsedMs,
+          guessLog: nextRows,
+        },
+      });
       return;
     }
 
     if (nextRows.length >= MAX_GUESSES) {
-      finish(0, false, `Locked out. The code was ${solution.join("")}.`, nextRows);
+      setPhase("DONE");
+      setScore(0);
+      setMessage("Out of guesses.");
+      onFinish({
+        scoreMs: 0,
+        meta: {
+          game: "codebreaker",
+          elapsedMs: Math.max(0, Date.now() - (startedAtRef.current ?? Date.now())),
+          guessLog: nextRows,
+        },
+      });
       return;
     }
 
-    setMessage(`Exact ${feedback.exact} • Misplaced ${feedback.misplaced}`);
+    setMessage(`Exact ${graded.exact}. Misplaced ${graded.misplaced}.`);
   }
 
   return (
-    <div className="mx-auto max-w-2xl rounded-3xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
+    <div className="mx-auto max-w-xl rounded-3xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Objective</div>
           <h3 className="mt-1 text-base font-black text-slate-950 sm:text-lg">Codebreaker</h3>
         </div>
         <div className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">
-          Guess {Math.min(rows.length + 1, MAX_GUESSES)} / {MAX_GUESSES}
+          Guesses {rows.length} / {MAX_GUESSES}
         </div>
       </div>
 
       <p className="mt-2 text-sm text-slate-600">
         Crack the hidden 4-digit code using digits 1–6. After each guess, you’ll see how many digits are exact and how many belong elsewhere.
       </p>
+      <p className="mt-1 text-xs text-slate-500">Clear empties your current unfinished guess. New code starts a fresh round with a different hidden code.</p>
 
       <div className="mt-3 grid gap-3 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-start">
         <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
@@ -184,11 +188,19 @@ export default function CodebreakerGame({ onFinish, disabled, challenge: injecte
         </button>
         <button
           type="button"
+          onClick={clearGuess}
+          disabled={disabled || phase !== "RUNNING" || guess.length === 0}
+          className="rounded-2xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-bold text-slate-900 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+        >
+          Clear
+        </button>
+        <button
+          type="button"
           onClick={start}
           disabled={disabled}
           className="rounded-2xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-bold text-slate-900 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
         >
-          {phase === "READY" ? "Start Codebreaker" : "Restart"}
+          {phase === "READY" ? "Start Codebreaker" : "New code"}
         </button>
       </div>
 

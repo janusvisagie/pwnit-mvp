@@ -3,64 +3,35 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 const TITLE_MAP = {
-  "Fuel Voucher": "sequence-restore",
+  "Fuel Voucher": "spot-the-missing",
   "Checkers Voucher": "transform-memory",
-  "Takealot Voucher": "route-builder",
+  "Takealot Voucher": "pattern-match",
   "Sony WH-1000XM5 Headphones": "codebreaker",
   "Nintendo Switch OLED": "rule-lock",
   "GoPro HERO13 Black": "balance-grid",
 };
 
 const LEGACY_KEY_MAP = {
-  "memory-sprint": "transform-memory",
-  "number-memory": "transform-memory",
-  "quick-stop": "route-builder",
-  "precision-timer": "route-builder",
-  "stop-zero": "route-builder",
+  "memory-sprint": "spot-the-missing",
+  "number-memory": "spot-the-missing",
+  "quick-stop": "pattern-match",
+  "precision-timer": "pattern-match",
+  "stop-zero": "pattern-match",
   "moving-zone": "rule-lock",
   "rhythm-hold": "rule-lock",
-  "trace-run": "sequence-restore",
-  "alphabet-sprint": "sequence-restore",
+  "trace-run": "transform-memory",
+  "alphabet-sprint": "transform-memory",
   "flash-count": "codebreaker",
   "tap-speed": "codebreaker",
   "tap-pattern": "codebreaker",
   "target-grid": "balance-grid",
   "target-hold": "balance-grid",
+  "sequence-restore": "spot-the-missing",
+  "route-builder": "pattern-match",
 };
 
 function pickVerifiedGameKey(item) {
   return TITLE_MAP[item.title] || LEGACY_KEY_MAP[item.gameKey] || item.gameKey;
-}
-
-async function refundConsumedPlayCredits() {
-  const attempts = await prisma.attempt.findMany({
-    select: {
-      userId: true,
-      freeUsed: true,
-      paidUsed: true,
-    },
-  });
-
-  const refunds = new Map();
-
-  for (const attempt of attempts) {
-    const current = refunds.get(attempt.userId) || { free: 0, paid: 0 };
-    current.free += Number(attempt.freeUsed || 0);
-    current.paid += Number(attempt.paidUsed || 0);
-    refunds.set(attempt.userId, current);
-  }
-
-  for (const [userId, refund] of refunds.entries()) {
-    await prisma.user.update({
-      where: { id: userId },
-      data: {
-        freeCreditsBalance: { increment: refund.free },
-        paidCreditsBalance: { increment: refund.paid },
-      },
-    });
-  }
-
-  return refunds;
 }
 
 async function clearCompetitiveState() {
@@ -113,20 +84,13 @@ async function relinkItems() {
 
 async function main() {
   const { items, changed } = await relinkItems();
-  const refunds = await refundConsumedPlayCredits();
   await clearCompetitiveState();
-
-  const refundedUsers = refunds.size;
-  const refundedFree = [...refunds.values()].reduce((sum, row) => sum + row.free, 0);
-  const refundedPaid = [...refunds.values()].reduce((sum, row) => sum + row.paid, 0);
 
   console.log("");
   console.log(`Items checked: ${items.length}`);
   console.log(`Items relinked: ${changed}`);
-  console.log(`Users refunded: ${refundedUsers}`);
-  console.log(`Free credits refunded: ${refundedFree}`);
-  console.log(`Paid credits refunded: ${refundedPaid}`);
-  console.log("Competitive attempts, sessions, rounds, and winners were cleared so legacy and verified results do not mix.");
+  console.log("Competitive attempts, sessions, rounds, and winners were cleared so old results do not mix with the current evaluation set.");
+  console.log("This script no longer auto-refunds credits, so balances should not jump unexpectedly.");
 }
 
 main()

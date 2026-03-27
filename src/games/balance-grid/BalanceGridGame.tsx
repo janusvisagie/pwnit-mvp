@@ -55,6 +55,7 @@ function buildChallenge(): Challenge {
 
     const picked = unique[Math.floor(Math.random() * unique.length)]!;
     return {
+      game: "balance-grid",
       board,
       targetSum: picked.total,
       solution: picked.cells,
@@ -62,6 +63,7 @@ function buildChallenge(): Challenge {
   }
 
   return {
+    game: "balance-grid",
     board: [8, 1, 6, 3, 5, 7, 4, 9, 2],
     targetSum: 15,
     solution: [0, 4, 8],
@@ -158,9 +160,10 @@ export default function BalanceGridGame({ onFinish, disabled, challenge: injecte
   const currentTotal = sumForSelection(challenge.board, selected);
   const rowsCovered = new Set(selected.map(rowOf)).size;
   const colsCovered = new Set(selected.map(colOf)).size;
+  const revealBoard = phase !== "READY";
 
   return (
-    <div className="mx-auto max-w-2xl rounded-3xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
+    <div className="mx-auto max-w-xl rounded-3xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Objective</div>
@@ -174,14 +177,15 @@ export default function BalanceGridGame({ onFinish, disabled, challenge: injecte
       </p>
 
       <div className="mt-3 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-700">
           <div className="font-semibold text-slate-900">Target total</div>
-          <div className="mt-1 text-2xl font-black text-slate-950">{challenge.targetSum}</div>
-          <div className="mt-2 text-xs text-slate-500">Current total: {currentTotal}</div>
+          <div className="mt-1 text-2xl font-black text-slate-950">{revealBoard ? challenge.targetSum : "?"}</div>
+          <div className="mt-2 text-xs text-slate-500">Current total: {revealBoard ? currentTotal : "—"}</div>
           <div className="mt-1 text-xs text-slate-500">Rows covered: {rowsCovered}/3 • Columns covered: {colsCovered}/3</div>
+          {phase === "READY" ? <div className="mt-2 text-xs text-slate-500">The numbers and target only reveal once you start.</div> : null}
         </div>
 
-        <div className="mx-auto grid w-full max-w-[17rem] grid-cols-3 gap-2">
+        <div className="mx-auto grid w-full max-w-[15rem] grid-cols-3 gap-1.5 sm:gap-2">
           {challenge.board.map((value, cell) => {
             const active = selected.includes(cell);
             return (
@@ -191,12 +195,12 @@ export default function BalanceGridGame({ onFinish, disabled, challenge: injecte
                 onClick={() => toggleCell(cell)}
                 disabled={disabled || phase !== "RUNNING"}
                 className={[
-                  "aspect-square rounded-xl border text-lg font-black transition sm:text-xl",
+                  "aspect-square rounded-xl border text-base font-black transition sm:text-lg",
                   active ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 bg-white text-slate-900",
                   phase === "RUNNING" ? "hover:-translate-y-0.5 hover:border-slate-400" : "cursor-default",
                 ].join(" ")}
               >
-                {value}
+                {revealBoard ? value : "•"}
               </button>
             );
           })}
@@ -210,7 +214,7 @@ export default function BalanceGridGame({ onFinish, disabled, challenge: injecte
           disabled={disabled}
           className="rounded-2xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
         >
-          {phase === "READY" ? "Start Balance Grid" : "Restart"}
+          {phase === "READY" ? "Start Balance Grid" : "New grid"}
         </button>
         <button
           type="button"

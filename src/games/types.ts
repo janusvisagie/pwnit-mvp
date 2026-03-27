@@ -10,7 +10,9 @@ export type GameType =
   | "RULE_LOCK"
   | "TRANSFORM_MEMORY"
   | "SEQUENCE_RESTORE"
-  | "BALANCE_GRID";
+  | "BALANCE_GRID"
+  | "PATTERN_MATCH"
+  | "SPOT_THE_MISSING";
 
 export type GameResult = {
   scoreMs: number;

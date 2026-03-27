@@ -4,9 +4,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { GameProps } from "../types";
 
-const TOKENS = ["Sun", "Drum", "Leaf", "Wave", "Spark", "Stone", "Cloud", "Bloom"];
-const SHOW_MS = 2600;
+const TOKENS = ["Pick", "Play", "PwnIt", "Prize", "Bonus", "Boost", "Credit", "Target", "Podium", "Voucher", "Unlock", "Winner"];
+const SHOW_MS = 2300;
 const MAX_SCORE = 23000;
+const STRIP_LENGTH = 5;
 
 type RoundDef = {
   ordered: string[];
@@ -23,7 +24,7 @@ function shuffle<T>(values: readonly T[]) {
 }
 
 function buildRound(): RoundDef {
-  const ordered = shuffle(TOKENS).slice(0, 6);
+  const ordered = shuffle(TOKENS).slice(0, STRIP_LENGTH);
   return {
     ordered,
     shuffled: shuffle(ordered),
@@ -55,7 +56,7 @@ export default function SequenceRestoreGame({ onFinish, disabled, challenge: inj
     setBank(round.shuffled);
     setAnswer([]);
     setScore(null);
-    setMessage("Watch the full sequence carefully.");
+    setMessage("Watch the full PwnIt sequence carefully.");
     startedAtRef.current = null;
   }
 
@@ -103,17 +104,16 @@ export default function SequenceRestoreGame({ onFinish, disabled, challenge: inj
   const preview = phase === "SHOW" ? round.ordered : answer;
 
   return (
-    <div className="mx-auto max-w-2xl rounded-3xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
+    <div className="mx-auto max-w-xl rounded-3xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Objective</div>
           <h3 className="mt-1 text-base font-black text-slate-950 sm:text-lg">Sequence Restore</h3>
         </div>
-        <div className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">6-step strip</div>
+        <div className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">{round.ordered.length}-step strip</div>
       </div>
 
-      <p className="mt-2 text-sm text-slate-600">Watch the ordered strip, then rebuild the same sequence from the shuffled bank.</p>
-      <p className="mt-1 text-xs text-slate-500">The words are simply neutral markers. They currently come from one small rotating word bank, so there is no deeper meaning behind the chosen words.</p>
+      <p className="mt-2 text-sm text-slate-600">Watch the ordered PwnIt strip, then rebuild the same sequence from the shuffled bank.</p>
 
       <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
         <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Sequence</div>
@@ -159,7 +159,7 @@ export default function SequenceRestoreGame({ onFinish, disabled, challenge: inj
           disabled={disabled}
           className="rounded-2xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
         >
-          {phase === "READY" ? "Start Sequence Restore" : "Restart"}
+          {phase === "READY" ? "Start Sequence Restore" : "New strip"}
         </button>
         <button
           type="button"
