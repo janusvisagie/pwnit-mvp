@@ -1,0 +1,6 @@
+diff --git a/src/app/item/[id]/page.tsx b/src/app/item/[id]/page.tsx
+--- a/src/app/item/[id]/page.tsx
++++ b/src/app/item/[id]/page.tsx
+@@ -95,7 +95,7 @@
+-                <div className="h-full rounded-full bg-slate-900" style={{ width: `${Math.max(0, Math.min(100, Number(progress.percent ?? 0)))}%` }} />
++                <div className="h-full rounded-full bg-slate-900" style={{ width: `${Math.max(0, Math.min(100, Number(progress.pct ?? 0)))}%` }} />
