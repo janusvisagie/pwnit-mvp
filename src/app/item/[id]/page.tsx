@@ -92,7 +92,7 @@ export default async function ItemPage({ params }: { params: { id: string } }) {
               <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Activation progress</div>
               <div className="mt-2 text-lg font-black text-slate-950">{progress.label}</div>
               <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
-                <div className="h-full rounded-full bg-slate-900" style={{ width: `${Math.max(0, Math.min(100, Number(progress.percent ?? 0)))}%` }} />
+                <div className="h-full rounded-full bg-slate-900" style={{ width: `${Math.max(0, Math.min(100, Number(progress.pct ?? 0)))}%` }} />
               </div>
               <div className="mt-2 text-sm text-slate-600">
                 {round.state === ROUND_STATES.ACTIVATED ? "This prize is live now." : "Activation in progress."}
