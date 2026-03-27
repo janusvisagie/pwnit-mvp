@@ -153,24 +153,24 @@ export default function TransformMemoryGame({ onFinish, disabled, challenge: inj
   }
 
   return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="mx-auto max-w-2xl rounded-3xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <div className="text-sm font-semibold uppercase tracking-wide text-slate-500">Objective</div>
-          <h3 className="mt-1 text-lg font-black text-slate-950">Transform Memory</h3>
+          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Objective</div>
+          <h3 className="mt-1 text-base font-black text-slate-950 sm:text-lg">Transform Memory</h3>
         </div>
         <div className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">Pick {ACTIVE_COUNT} cells</div>
       </div>
 
-      <p className="mt-3 text-sm text-slate-600">Memorise the pattern, apply the rule, then rebuild the transformed version from memory.</p>
+      <p className="mt-2 text-sm text-slate-600">Memorise the pattern, apply the rule, then rebuild the transformed version from memory.</p>
 
-      <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+      <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
         <div className="font-semibold text-slate-900">Rule</div>
         <div className="mt-1">{challenge.ruleLabel}</div>
         {message ? <div className="mt-2">{message}</div> : null}
       </div>
 
-      <div className="mt-4 grid grid-cols-4 gap-2">
+      <div className="mx-auto mt-3 grid max-w-[18rem] grid-cols-4 gap-1.5 sm:gap-2">
         {Array.from({ length: GRID_SIZE * GRID_SIZE }, (_, cell) => {
           const active = visibleCells().includes(cell);
           return (
@@ -180,7 +180,7 @@ export default function TransformMemoryGame({ onFinish, disabled, challenge: inj
               onClick={() => toggleCell(cell)}
               disabled={disabled || phase !== "INPUT"}
               className={[
-                "aspect-square rounded-2xl border transition",
+                "aspect-square rounded-xl border transition",
                 active ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 bg-white text-slate-300",
                 phase === "INPUT" ? "hover:-translate-y-0.5 hover:border-slate-400" : "cursor-default",
               ].join(" ")}
@@ -191,27 +191,27 @@ export default function TransformMemoryGame({ onFinish, disabled, challenge: inj
         })}
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-3">
+      <div className="mt-3 flex flex-wrap gap-2">
         <button
           type="button"
           onClick={start}
           disabled={disabled}
-          className="rounded-2xl bg-slate-900 px-4 py-3 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+          className="rounded-2xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
         >
-          {phase === "READY" ? "Start transform memory" : "Restart"}
+          {phase === "READY" ? "Start Transform Memory" : "Restart"}
         </button>
         <button
           type="button"
           onClick={submit}
           disabled={disabled || phase !== "INPUT" || selected.length !== ACTIVE_COUNT}
-          className="rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-bold text-slate-900 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+          className="rounded-2xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-bold text-slate-900 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
         >
           Submit pattern
         </button>
       </div>
 
       {score != null ? (
-        <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-black text-emerald-700">
+        <div className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-black text-emerald-700">
           Score {score.toLocaleString("en-ZA")}
         </div>
       ) : null}

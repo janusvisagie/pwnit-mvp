@@ -123,6 +123,7 @@ export default function RuleLockGame({ onFinish, disabled, challenge: injectedCh
   const [checksUsed, setChecksUsed] = useState(0);
   const [message, setMessage] = useState<string | null>(null);
   const [score, setScore] = useState<number | null>(null);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
   const startedAtRef = useRef<number | null>(null);
 
   const availableIds = puzzle.symbols.map((symbol) => symbol.id).filter((id) => !slots.includes(id));
@@ -134,20 +135,19 @@ export default function RuleLockGame({ onFinish, disabled, challenge: injectedCh
     setSelectedId(null);
     setChecksUsed(0);
     setScore(null);
-    setMessage("Place all five seals, then check the lock.");
+    setMessage("Place all five seals, then press Check lock. Each press uses one of your three checks.");
     startedAtRef.current = Date.now();
   }
 
-  function placeInSlot(index: number) {
-    if (disabled || phase !== "RUNNING" || !selectedId) return;
-
+  function placeSymbol(id: string, index: number) {
     setSlots((current) => {
       const next = [...current];
-      const existingIndex = next.indexOf(selectedId);
+      const existingIndex = next.indexOf(id);
       if (existingIndex >= 0) next[existingIndex] = "";
-      next[index] = selectedId;
+      next[index] = id;
       return next;
     });
+    setSelectedId(id);
   }
 
   function clearSlot(index: number) {
@@ -157,6 +157,12 @@ export default function RuleLockGame({ onFinish, disabled, challenge: injectedCh
       next[index] = "";
       return next;
     });
+  }
+
+  function handleDrop(index: number, droppedId: string | null) {
+    if (disabled || phase !== "RUNNING" || !droppedId) return;
+    placeSymbol(droppedId, index);
+    setDraggingId(null);
   }
 
   function checkLock() {
@@ -207,81 +213,110 @@ export default function RuleLockGame({ onFinish, disabled, challenge: injectedCh
       return;
     }
 
-    setMessage(`Not quite. ${MAX_CHECKS - nextChecks} checks left.`);
+    setMessage(`Not quite. ${MAX_CHECKS - nextChecks} checks remaining.`);
   }
 
   return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="mx-auto max-w-2xl rounded-3xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <div className="text-sm font-semibold uppercase tracking-wide text-slate-500">Objective</div>
-          <h3 className="mt-1 text-lg font-black text-slate-950">Rule Lock</h3>
+          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Objective</div>
+          <h3 className="mt-1 text-base font-black text-slate-950 sm:text-lg">Rule Lock</h3>
         </div>
         <div className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">
-          Checks left {Math.max(0, MAX_CHECKS - checksUsed)}
+          Checks remaining {Math.max(0, MAX_CHECKS - checksUsed)}
         </div>
       </div>
 
-      <p className="mt-3 text-sm text-slate-600">Arrange the five seals so every rule is true at the same time.</p>
+      <p className="mt-2 text-sm text-slate-600">Arrange the five seals so every rule is true at the same time.</p>
 
-      <div className="mt-4 space-y-2 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
-        {puzzle.rules.map((rule, index) => (
-          <div key={rule.id} className="flex gap-2">
-            <span className="font-black text-slate-900">{index + 1}.</span>
-            <span>{rule.text}</span>
+      <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+        <div className="font-semibold text-slate-900">Checks left</div>
+        <div className="mt-1">Each time you press <span className="font-bold">Check lock</span>, one check is used. You have {MAX_CHECKS} checks total.</div>
+      </div>
+
+      <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+        <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Rules</div>
+        <div className="mt-2 space-y-2 text-sm text-slate-700">
+          {puzzle.rules.map((rule, index) => (
+            <div key={rule.id} className="rounded-xl bg-white px-3 py-2">
+              <span className="font-black text-slate-900">{index + 1}.</span> {rule.text}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-3 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
+        <div className="grid gap-2">
+          {slots.map((slot, index) => {
+            const current = puzzle.symbols.find((symbol) => symbol.id === slot);
+            return (
+              <button
+                key={index}
+                type="button"
+                onClick={() => {
+                  if (slot) clearSlot(index);
+                  else if (selectedId) placeSymbol(selectedId, index);
+                }}
+                onDragOver={(event) => {
+                  if (phase === "RUNNING") event.preventDefault();
+                }}
+                onDrop={(event) => {
+                  event.preventDefault();
+                  const droppedId = event.dataTransfer.getData("text/plain") || draggingId;
+                  handleDrop(index, droppedId || null);
+                }}
+                disabled={disabled || phase !== "RUNNING"}
+                className="min-h-[58px] rounded-2xl border border-slate-300 bg-white px-3 py-2 text-left text-sm font-black text-slate-900 transition hover:-translate-y-0.5 hover:border-slate-400 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+              >
+                <div className="text-[11px] uppercase tracking-wide text-slate-400">Slot {index + 1}</div>
+                <div className="mt-1">{current?.label ?? "Drop or click here"}</div>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-white p-3 sm:w-[13rem]">
+          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Seal bank</div>
+          <div className="mt-2 grid gap-2">
+            {puzzle.symbols.map((symbol) => {
+              const placed = slots.includes(symbol.id);
+              const selected = selectedId === symbol.id;
+              return (
+                <button
+                  key={symbol.id}
+                  type="button"
+                  draggable={!placed && phase === "RUNNING"}
+                  onDragStart={(event) => {
+                    event.dataTransfer.setData("text/plain", symbol.id);
+                    setDraggingId(symbol.id);
+                  }}
+                  onDragEnd={() => setDraggingId(null)}
+                  onClick={() => setSelectedId(symbol.id)}
+                  disabled={disabled || phase !== "RUNNING" || placed}
+                  className={[
+                    "rounded-2xl border px-3 py-2 text-sm font-black transition",
+                    placed
+                      ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400"
+                      : selected
+                        ? "border-slate-900 bg-slate-900 text-white"
+                        : "border-slate-200 bg-white text-slate-900 hover:-translate-y-0.5 hover:border-slate-300",
+                  ].join(" ")}
+                >
+                  {symbol.label}
+                </button>
+              );
+            })}
           </div>
-        ))}
+        </div>
       </div>
 
-      <div className="mt-4 grid grid-cols-5 gap-2">
-        {slots.map((slot, index) => {
-          const current = puzzle.symbols.find((symbol) => symbol.id === slot);
-          return (
-            <button
-              key={`slot-${index}`}
-              type="button"
-              onClick={() => (slot ? clearSlot(index) : placeInSlot(index))}
-              disabled={disabled || phase !== "RUNNING"}
-              className="min-h-[72px] rounded-2xl border border-slate-300 bg-white px-2 py-3 text-sm font-black text-slate-900 transition hover:-translate-y-0.5 hover:border-slate-400 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
-            >
-              <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Slot {index + 1}</div>
-              <div className="mt-2">{current?.label ?? "Empty"}</div>
-            </button>
-          );
-        })}
-      </div>
-
-      <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-5">
-        {puzzle.symbols.map((symbol) => {
-          const placed = slots.includes(symbol.id);
-          const selected = selectedId === symbol.id;
-          return (
-            <button
-              key={symbol.id}
-              type="button"
-              onClick={() => setSelectedId(symbol.id)}
-              disabled={disabled || phase !== "RUNNING" || placed}
-              className={[
-                "rounded-2xl border px-3 py-3 text-sm font-black transition",
-                placed
-                  ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400"
-                  : selected
-                    ? "border-slate-900 bg-slate-900 text-white"
-                    : "border-slate-200 bg-white text-slate-900 hover:-translate-y-0.5 hover:border-slate-300",
-              ].join(" ")}
-            >
-              {symbol.label}
-            </button>
-          );
-        })}
-      </div>
-
-      <div className="mt-4 flex flex-wrap gap-3">
+      <div className="mt-3 flex flex-wrap gap-2">
         <button
           type="button"
           onClick={checkLock}
           disabled={disabled || phase !== "RUNNING" || slots.some((slot) => !slot)}
-          className="rounded-2xl bg-slate-900 px-4 py-3 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+          className="rounded-2xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
         >
           Check lock
         </button>
@@ -289,21 +324,19 @@ export default function RuleLockGame({ onFinish, disabled, challenge: injectedCh
           type="button"
           onClick={start}
           disabled={disabled}
-          className="rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-bold text-slate-900 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+          className="rounded-2xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-bold text-slate-900 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
         >
-          {phase === "READY" ? "Start rule lock" : "Restart"}
+          {phase === "READY" ? "Start Rule Lock" : "Restart"}
         </button>
         <div className="self-center text-sm text-slate-500">
           {selectedId ? `Selected: ${puzzle.symbols.find((symbol) => symbol.id === selectedId)?.label}` : `${availableIds.length} seals left to place`}
         </div>
       </div>
 
-      {message ? (
-        <div className="mt-4 rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-900">{message}</div>
-      ) : null}
+      {message ? <div className="mt-3 rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-900">{message}</div> : null}
 
       {score != null ? (
-        <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-black text-emerald-700">
+        <div className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-black text-emerald-700">
           Score {score.toLocaleString("en-ZA")}
         </div>
       ) : null}

@@ -103,28 +103,29 @@ export default function SequenceRestoreGame({ onFinish, disabled, challenge: inj
   const preview = phase === "SHOW" ? round.ordered : answer;
 
   return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="mx-auto max-w-2xl rounded-3xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <div className="text-sm font-semibold uppercase tracking-wide text-slate-500">Objective</div>
-          <h3 className="mt-1 text-lg font-black text-slate-950">Sequence Restore</h3>
+          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Objective</div>
+          <h3 className="mt-1 text-base font-black text-slate-950 sm:text-lg">Sequence Restore</h3>
         </div>
         <div className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">6-step strip</div>
       </div>
 
-      <p className="mt-3 text-sm text-slate-600">Watch the ordered strip, then rebuild the same sequence from the shuffled bank.</p>
+      <p className="mt-2 text-sm text-slate-600">Watch the ordered strip, then rebuild the same sequence from the shuffled bank.</p>
+      <p className="mt-1 text-xs text-slate-500">The words are simply neutral markers. They currently come from one small rotating word bank, so there is no deeper meaning behind the chosen words.</p>
 
-      <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+      <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
         <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Sequence</div>
-        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+        <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
           {preview.map((token, index) => (
-            <div key={`${token}-${index}`} className="rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm font-black text-slate-900">
+            <div key={`${token}-${index}`} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-black text-slate-900">
               {token}
             </div>
           ))}
           {phase !== "SHOW"
             ? Array.from({ length: Math.max(0, round.ordered.length - preview.length) }, (_, index) => (
-                <div key={`empty-${index}`} className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-400">
+                <div key={`empty-${index}`} className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-400">
                   Empty
                 </div>
               ))
@@ -133,16 +134,16 @@ export default function SequenceRestoreGame({ onFinish, disabled, challenge: inj
       </div>
 
       {phase === "INPUT" ? (
-        <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
+        <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-3">
           <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Bank</div>
-          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+          <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
             {bank.map((token, index) => (
               <button
                 key={`${token}-${index}`}
                 type="button"
                 onClick={() => takeToken(token)}
                 disabled={disabled || phase !== "INPUT"}
-                className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-black text-slate-900 transition hover:-translate-y-0.5 hover:border-slate-300 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+                className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-black text-slate-900 transition hover:-translate-y-0.5 hover:border-slate-300 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
               >
                 {token}
               </button>
@@ -151,20 +152,20 @@ export default function SequenceRestoreGame({ onFinish, disabled, challenge: inj
         </div>
       ) : null}
 
-      <div className="mt-4 flex flex-wrap gap-3">
+      <div className="mt-3 flex flex-wrap gap-2">
         <button
           type="button"
           onClick={start}
           disabled={disabled}
-          className="rounded-2xl bg-slate-900 px-4 py-3 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+          className="rounded-2xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
         >
-          {phase === "READY" ? "Start sequence restore" : "Restart"}
+          {phase === "READY" ? "Start Sequence Restore" : "Restart"}
         </button>
         <button
           type="button"
           onClick={undo}
           disabled={disabled || phase !== "INPUT" || answer.length === 0}
-          className="rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-bold text-slate-900 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+          className="rounded-2xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-bold text-slate-900 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
         >
           Undo
         </button>
@@ -172,18 +173,16 @@ export default function SequenceRestoreGame({ onFinish, disabled, challenge: inj
           type="button"
           onClick={submit}
           disabled={disabled || phase !== "INPUT" || answer.length !== round.ordered.length}
-          className="rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-bold text-slate-900 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+          className="rounded-2xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-bold text-slate-900 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
         >
           Submit order
         </button>
       </div>
 
-      {message ? (
-        <div className="mt-4 rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-900">{message}</div>
-      ) : null}
+      {message ? <div className="mt-3 rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-900">{message}</div> : null}
 
       {score != null ? (
-        <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-black text-emerald-700">
+        <div className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-black text-emerald-700">
           Score {score.toLocaleString("en-ZA")}
         </div>
       ) : null}
