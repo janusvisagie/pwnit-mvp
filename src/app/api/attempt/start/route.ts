@@ -43,7 +43,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Item not found" }, { status: 404 });
     }
 
-    if (!isVerifiedGameKey(item.gameKey)) {
+    const gameKey = item.gameKey ?? "";
+
+    if (!isVerifiedGameKey(gameKey)) {
       return NextResponse.json(
         {
           ok: false,
@@ -68,7 +70,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const privateChallenge = buildVerifiedChallenge(item.gameKey);
+    const privateChallenge = buildVerifiedChallenge(gameKey);
     const publicChallenge = buildPublicVerifiedChallenge(privateChallenge);
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
@@ -90,7 +92,7 @@ export async function POST(req: Request) {
         userId: user.id,
         itemId,
         roundId: round.id,
-        gameKey: item.gameKey,
+        gameKey,
         status: "ISSUED",
         challengeJson: privateChallenge,
         expiresAt,
