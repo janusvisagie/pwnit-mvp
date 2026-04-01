@@ -9,6 +9,7 @@ import RuleLockGame from "./rule-lock/RuleLockGame";
 import SequenceRestoreGame from "./sequence-restore/SequenceRestoreGame";
 import TargetGridGame from "./target-grid/TargetGridGame";
 import TransformMemoryGame from "./transform-memory/TransformMemoryGame";
+import RapidMathRelayGame from "./rapid-math-relay/RapidMathRelayGame";
 
 export function getGameComponent(t: GameType) {
   switch (t) {
@@ -30,6 +31,8 @@ export function getGameComponent(t: GameType) {
       return TransformMemoryGame;
     case "SEQUENCE_RESTORE":
       return SequenceRestoreGame;
+    case "RAPID_MATH_RELAY":
+      return RapidMathRelayGame;
     case "MOVING_ZONE":
     case "TRACE_RUN":
     default:

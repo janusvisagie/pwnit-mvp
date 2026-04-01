@@ -16,7 +16,7 @@ export type SupportedGameKey =
   | "sequence-restore"
   | "balance-grid"
   | "pattern-match"
-  | "spot-the-missing";
+  | "spot-the-missing" | "rapid-math-relay";
 
 type GameMeta = {
   label: string;

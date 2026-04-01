@@ -5,6 +5,7 @@ export const VERIFIED_GAME_KEYS = [
   "balance-grid",
   "pattern-match",
   "spot-the-missing",
+  "rapid-math-relay",
 ] as const;
 
 export type VerifiedGameKey = (typeof VERIFIED_GAME_KEYS)[number];
@@ -73,6 +74,12 @@ type SpotTheMissingChallenge = {
   options: string[];
 };
 
+type RapidMathRelayChallenge = {
+  game: "rapid-math-relay";
+  rounds: Array<{ prompt: string; answer: number }>;
+  timeLimitMs: number;
+};
+
 export type VerifiedChallenge =
   | RouteBuilderChallenge
   | CodebreakerChallenge
@@ -81,7 +88,8 @@ export type VerifiedChallenge =
   | SequenceRestoreChallenge
   | BalanceGridChallenge
   | PatternMatchChallenge
-  | SpotTheMissingChallenge;
+  | SpotTheMissingChallenge
+  | RapidMathRelayChallenge;
 
 export type PublicVerifiedChallenge =
   | RuleLockChallenge
@@ -89,7 +97,8 @@ export type PublicVerifiedChallenge =
   | SequenceRestoreChallenge
   | { game: "balance-grid"; board: number[]; targetSum: number }
   | { game: "pattern-match"; ordered: string[]; options: string[][] }
-  | { game: "spot-the-missing"; shown: string[]; remaining: string[]; options: string[] };
+  | { game: "spot-the-missing"; shown: string[]; remaining: string[]; options: string[] }
+  | { game: "rapid-math-relay"; rounds: Array<{ prompt: string }>; timeLimitMs: number };
 
 type VerificationResult = {
   valid: boolean;
@@ -108,6 +117,9 @@ const BALANCE_GRID_SIZE = 3;
 const BALANCE_MAX_SCORE = 22000;
 const PATTERN_MAX_SCORE = 22000;
 const SPOT_MISSING_MAX_SCORE = 21000;
+const RAPID_MATH_ROUNDS = 6;
+const RAPID_MATH_TIME_LIMIT_MS = 45000;
+const RAPID_MATH_MAX_SCORE = 24000;
 const PWNIT_WORD_BANK = ["Pick", "Play", "PwnIt", "Prize", "Bonus", "Credit", "Boost", "Target", "Podium", "Voucher", "Unlock", "Winner"] as const;
 const PATTERN_TILE_BANK = [...PWNIT_WORD_BANK] as const;
 const SYMBOLS: SymbolDef[] = [
@@ -198,6 +210,32 @@ function hasUniqueRowsAndCols(cells: number[]) {
   const rows = new Set(cells.map(rowOf));
   const cols = new Set(cells.map(colOf));
   return rows.size === cells.length && cols.size === cells.length;
+}
+
+
+function buildRapidMathQuestion() {
+  const op = randomChoice(["+", "-", "×"] as const);
+  if (op === "+") {
+    const left = randomInt(6, 31);
+    const right = randomInt(4, 21);
+    return { prompt: `${left} + ${right}`, answer: left + right };
+  }
+  if (op === "-") {
+    const left = randomInt(15, 61);
+    const right = randomInt(3, Math.min(26, left));
+    return { prompt: `${left} - ${right}`, answer: left - right };
+  }
+  const left = randomInt(3, 13);
+  const right = randomInt(2, 13);
+  return { prompt: `${left} × ${right}`, answer: left * right };
+}
+
+function buildRapidMathRelayChallenge(): RapidMathRelayChallenge {
+  return {
+    game: "rapid-math-relay",
+    rounds: Array.from({ length: RAPID_MATH_ROUNDS }, () => buildRapidMathQuestion()),
+    timeLimitMs: RAPID_MATH_TIME_LIMIT_MS,
+  };
 }
 
 function buildRuleLockChallenge(): RuleLockChallenge {
@@ -342,6 +380,8 @@ export function buildVerifiedChallenge(gameKey: VerifiedGameKey): VerifiedChalle
       return buildPatternMatchChallenge();
     case "spot-the-missing":
       return buildSpotTheMissingChallenge();
+    case "rapid-math-relay":
+      return buildRapidMathRelayChallenge();
     default:
       throw new Error(`Unhandled verified game key: ${String(gameKey)}`);
   }
@@ -360,6 +400,8 @@ export function buildPublicVerifiedChallenge(gameKeyOrChallenge: VerifiedGameKey
       return { game: challenge.game, ordered: challenge.ordered, options: challenge.options };
     case "spot-the-missing":
       return { game: challenge.game, shown: challenge.shown, remaining: challenge.remaining, options: challenge.options };
+    case "rapid-math-relay":
+      return { game: challenge.game, rounds: challenge.rounds.map((round) => ({ prompt: round.prompt })), timeLimitMs: challenge.timeLimitMs };
     default:
       throw new Error(`Unhandled public verified game key: ${String((challenge as any).game)}`);
   }
@@ -503,6 +545,43 @@ function verifySpotTheMissing(challenge: SpotTheMissingChallenge, meta: Record<s
   };
 }
 
+
+function verifyRapidMathRelay(challenge: RapidMathRelayChallenge, meta: Record<string, any>, serverElapsedMs: number): VerificationResult {
+  const answers = Array.isArray(meta?.answers)
+    ? meta.answers.map((value: unknown) => String(value ?? "").trim())
+    : [];
+  if (answers.length !== challenge.rounds.length) {
+    return { valid: false, scoreMs: 0, flags: { reason: "invalid_answer_count" } };
+  }
+
+  const normalizedExpected = challenge.rounds.map((round) => String(round.answer));
+  const correctCount = answers.reduce((count, value, index) => count + (value === normalizedExpected[index] ? 1 : 0), 0);
+  const wrongCount = answers.length - correctCount;
+  const elapsed = sanitizedElapsed(meta?.elapsedMs, serverElapsedMs, Math.max(2800, challenge.rounds.length * 700));
+
+  const speedBonus = Math.max(0, 12000 - elapsed.elapsedMs);
+  const scoreMs = Math.max(
+    0,
+    Math.min(
+      RAPID_MATH_MAX_SCORE,
+      correctCount * 2800 + speedBonus - wrongCount * 1000,
+    ),
+  );
+
+  return {
+    valid: true,
+    scoreMs,
+    flags: {
+      solved: correctCount === challenge.rounds.length,
+      correctCount,
+      wrongCount,
+      elapsedMs: elapsed.elapsedMs,
+      timingNote: elapsed.reason,
+    },
+  };
+}
+
+
 export function isVerifiedGameKey(gameKey: string): gameKey is VerifiedGameKey {
   return (VERIFIED_GAME_KEYS as readonly string[]).includes(gameKey);
 }
@@ -536,6 +615,9 @@ export function verifyVerifiedAttempt(
     case "spot-the-missing":
       if (challenge.game !== "spot-the-missing") return { valid: false, scoreMs: 0, flags: { reason: "challenge_game_mismatch" } };
       return verifySpotTheMissing(challenge, meta, serverElapsedMs);
+    case "rapid-math-relay":
+      if (challenge.game !== "rapid-math-relay") return { valid: false, scoreMs: 0, flags: { reason: "challenge_game_mismatch" } };
+      return verifyRapidMathRelay(challenge, meta, serverElapsedMs);
     default:
       return { valid: false, scoreMs: 0, flags: { reason: "unsupported_verified_game" } };
   }

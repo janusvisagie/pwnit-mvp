@@ -10,6 +10,7 @@ import FlashCountGame from "@/games/flash-count/FlashCountGame";
 import MovingZoneGame from "@/games/moving-zone/MovingZoneGame";
 import NumberMemoryGame from "@/games/number-memory/NumberMemoryGame";
 import PatternMatchGame from "@/games/pattern-match/PatternMatchGame";
+import RapidMathRelayGame from "@/games/rapid-math-relay/RapidMathRelayGame";
 import QuickStopGame from "@/games/quick-stop/QuickStopGame";
 import RouteBuilderGame from "@/games/route-builder/RouteBuilderGame";
 import RuleLockGame from "@/games/rule-lock/RuleLockGame";
@@ -19,14 +20,13 @@ import TargetGridGame from "@/games/target-grid/TargetGridGame";
 import TransformMemoryGame from "@/games/transform-memory/TransformMemoryGame";
 
 const VERIFIED_GAME_KEYS = new Set([
-  "route-builder",
-  "codebreaker",
   "rule-lock",
   "transform-memory",
   "sequence-restore",
   "balance-grid",
   "pattern-match",
   "spot-the-missing",
+  "rapid-math-relay",
 ]);
 
 type GameKey =
@@ -51,7 +51,8 @@ type GameKey =
   | "sequence-restore"
   | "balance-grid"
   | "pattern-match"
-  | "spot-the-missing";
+  | "spot-the-missing"
+  | "rapid-math-relay";
 
 const GAME_REGISTRY: Record<GameKey, { title: string; Component: any }> = {
   "memory-sprint": { title: "Memory Sprint", Component: NumberMemoryGame },
@@ -76,6 +77,7 @@ const GAME_REGISTRY: Record<GameKey, { title: string; Component: any }> = {
   "balance-grid": { title: "Balance Grid", Component: BalanceGridGame },
   "pattern-match": { title: "Pattern Match", Component: PatternMatchGame },
   "spot-the-missing": { title: "Spot the Missing", Component: SpotTheMissingGame },
+  "rapid-math-relay": { title: "Rapid Math Relay", Component: RapidMathRelayGame },
 };
 
 type Props = {

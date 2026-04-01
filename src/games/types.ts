@@ -12,7 +12,8 @@ export type GameType =
   | "SEQUENCE_RESTORE"
   | "BALANCE_GRID"
   | "PATTERN_MATCH"
-  | "SPOT_THE_MISSING";
+  | "SPOT_THE_MISSING"
+  | "RAPID_MATH_RELAY";
 
 export type GameResult = {
   scoreMs: number;
