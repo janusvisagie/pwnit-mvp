@@ -169,6 +169,14 @@ function shuffle<T>(values: readonly T[]): T[] {
   return copy;
 }
 
+function randomChoice<T>(values: readonly T[]): T {
+  return values[Math.floor(Math.random() * values.length)]!;
+}
+
+function randomInt(min: number, max: number) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
 function clampInt(value: unknown, min: number, max: number) {
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return min;
