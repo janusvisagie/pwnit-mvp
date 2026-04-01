@@ -241,7 +241,7 @@ function buildRapidMathRelayChallenge(): RapidMathRelayChallenge {
 function buildRuleLockChallenge(): RuleLockChallenge {
   const arranged = shuffle(SYMBOLS);
   const ids = arranged.map((symbol) => symbol.id);
-  const labels = new Map(arranged.map((symbol) => [symbol.id, symbol.label]));
+  const getLabel = (id: string) => arranged.find((symbol) => symbol.id === id)?.label ?? id;
   const upperId = ids[0]!;
   const lowerId = ids[2]!;
   const fixedId = ids[3]!;
@@ -263,10 +263,10 @@ function buildRuleLockChallenge(): RuleLockChallenge {
       notEdgeId,
     },
     rules: [
-      { id: "above-below", text: `${labels.get(upperId)} must be above ${labels.get(lowerId)}.` },
-      { id: "fixed-slot", text: `${labels.get(fixedId)} is locked into slot ${fixedSlot + 1}.` },
-      { id: "adjacent-pair", text: `${labels.get(pairA)} must sit directly next to ${labels.get(pairB)}.` },
-      { id: "not-edge", text: `${labels.get(notEdgeId)} cannot be in the top or bottom slot.` },
+      { id: "above-below", text: `${getLabel(upperId)} must be above ${getLabel(lowerId)}.` },
+      { id: "fixed-slot", text: `${getLabel(fixedId)} is locked into slot ${fixedSlot + 1}.` },
+      { id: "adjacent-pair", text: `${getLabel(pairA)} must sit directly next to ${getLabel(pairB)}.` },
+      { id: "not-edge", text: `${getLabel(notEdgeId)} cannot be in the top or bottom slot.` },
     ],
   };
 }
