@@ -1,40 +1,25 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+
 import type { GameProps } from "../types";
 
+const WORD_BANK = ["Pick", "Play", "PwnIt", "Prize", "Bonus", "Credit", "Boost", "Target", "Podium", "Voucher", "Unlock", "Winner"];
+const SHOW_MS = 1800;
+const MAX_SCORE = 21000;
+
 type Challenge = {
-  game: "spot-the-missing";
+  game?: "spot-the-missing";
   shown: string[];
   remaining: string[];
+  missing?: string;
   options: string[];
 };
 
-const SHOW_MS = 2400;
-const MAX_SCORE = 10000;
-const WORD_BANK = [
-  "prize",
-  "pixel",
-  "boost",
-  "route",
-  "focus",
-  "switch",
-  "vault",
-  "signal",
-  "glow",
-  "rocket",
-  "cipher",
-  "badge",
-] as const;
-
-function randomInt(max: number) {
-  return Math.floor(Math.random() * max);
-}
-
-function shuffle<T>(values: readonly T[]): T[] {
+function shuffle<T>(values: readonly T[]) {
   const copy = [...values];
   for (let i = copy.length - 1; i > 0; i -= 1) {
-    const j = randomInt(i + 1);
+    const j = Math.floor(Math.random() * (i + 1));
     [copy[i], copy[j]] = [copy[j]!, copy[i]!];
   }
   return copy;
@@ -42,7 +27,7 @@ function shuffle<T>(values: readonly T[]): T[] {
 
 function buildChallenge(): Challenge {
   const shown = shuffle(WORD_BANK).slice(0, 6);
-  const missingIndex = randomInt(shown.length);
+  const missingIndex = Math.floor(Math.random() * shown.length);
   const missing = shown[missingIndex]!;
   const remaining = shown.filter((_, index) => index !== missingIndex);
   const distractors = shuffle(WORD_BANK.filter((word) => !shown.includes(word))).slice(0, 3);
@@ -50,12 +35,14 @@ function buildChallenge(): Challenge {
     game: "spot-the-missing",
     shown,
     remaining,
+    missing,
     options: shuffle([missing, ...distractors]),
   };
 }
 
-function deriveMissing(challenge: Challenge) {
-  return challenge.shown.find((word) => !challenge.remaining.includes(word));
+function deriveMissingWord(challenge: Challenge) {
+  if (challenge.missing) return challenge.missing;
+  return challenge.shown.find((word) => !challenge.remaining.includes(word)) ?? "";
 }
 
 export default function SpotTheMissingGame({ onFinish, disabled, challenge: injectedChallenge }: GameProps<Challenge>) {
@@ -64,20 +51,22 @@ export default function SpotTheMissingGame({ onFinish, disabled, challenge: inje
   const [message, setMessage] = useState<string | null>(null);
   const [score, setScore] = useState<number | null>(null);
   const startedAtRef = useRef<number | null>(null);
+  const missingWord = useMemo(() => deriveMissingWord(challenge), [challenge]);
 
   useEffect(() => {
-    if (phase !== "SHOW") return;
+    if (phase !== "SHOW") return undefined;
     const timer = window.setTimeout(() => {
       setPhase("INPUT");
-      setMessage("Which word disappeared?");
       startedAtRef.current = Date.now();
+      setMessage("One word disappeared. Pick the missing one.");
     }, SHOW_MS);
     return () => window.clearTimeout(timer);
   }, [phase]);
 
-  function reset() {
+  function start() {
+    if (disabled) return;
     setPhase("SHOW");
-    setMessage("Memorise the full set.");
+    setMessage("Memorise all six words.");
     setScore(null);
     startedAtRef.current = null;
   }
@@ -85,17 +74,20 @@ export default function SpotTheMissingGame({ onFinish, disabled, challenge: inje
   function choose(word: string) {
     if (disabled || phase !== "INPUT") return;
     const elapsedMs = Math.max(0, Date.now() - (startedAtRef.current ?? Date.now()));
-    const correctWord = deriveMissing(challenge);
-    const correct = word === correctWord;
+    const correct = word === missingWord;
     const finalScore = correct ? Math.max(1200, MAX_SCORE - elapsedMs) : 0;
+
     setPhase("DONE");
     setScore(finalScore);
-    setMessage(correct ? "Correct." : `Not quite. The missing word was ${correctWord}.`);
+    setMessage(correct ? "Correct." : missingWord ? `Not quite. The missing word was ${missingWord}.` : "Not quite.");
+
     onFinish({
       scoreMs: finalScore,
       meta: {
         game: "spot-the-missing",
         chosen: word,
+        ...(missingWord ? { missing: missingWord } : {}),
+        elapsedMs,
       },
     });
   }
@@ -106,49 +98,57 @@ export default function SpotTheMissingGame({ onFinish, disabled, challenge: inje
     <div className="mx-auto max-w-xl rounded-3xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Spot the Missing</div>
-          <div className="text-lg font-black text-slate-900">Recall the hidden word</div>
+          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Objective</div>
+          <h3 className="mt-1 text-base font-black text-slate-950 sm:text-lg">Spot the Missing</h3>
         </div>
-        <button
-          type="button"
-          onClick={reset}
-          disabled={disabled}
-          className="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          {phase === "READY" ? "Start" : "Replay"}
-        </button>
+        <div className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">6 words</div>
       </div>
 
-      {score !== null ? <div className="mt-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Score: {score}</div> : null}
+      <p className="mt-2 text-sm text-slate-600">Watch the set of PwnIt words, then choose the one that disappears.</p>
 
       <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
-        <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Word bank</div>
+        <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Visible words</div>
         <div className="mt-2 flex flex-wrap gap-2">
-          {visibleWords.map((word) => (
-            <span key={word} className="rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 shadow-sm">
-              {word}
-            </span>
-          ))}
+          {visibleWords.length ? (
+            visibleWords.map((word) => (
+              <span key={word} className="rounded-full bg-white px-3 py-2 text-sm font-semibold text-slate-800 shadow-sm">
+                {word}
+              </span>
+            ))
+          ) : (
+            <span className="text-sm text-slate-500">Press start to reveal the set.</span>
+          )}
         </div>
       </div>
 
-      {phase === "INPUT" || phase === "DONE" ? (
-        <div className="mt-3 grid gap-2 sm:grid-cols-2">
-          {challenge.options.map((word) => (
-            <button
-              key={word}
-              type="button"
-              onClick={() => choose(word)}
-              disabled={disabled || phase !== "INPUT"}
-              className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left text-sm font-semibold text-slate-900 shadow-sm transition hover:border-slate-300 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {word}
-            </button>
-          ))}
-        </div>
-      ) : null}
+      <div className="mt-4 grid gap-2 sm:grid-cols-2">
+        {challenge.options.map((word) => (
+          <button
+            key={word}
+            type="button"
+            onClick={() => choose(word)}
+            disabled={disabled || phase !== "INPUT"}
+            className="rounded-2xl border border-slate-200 bg-white px-3 py-3 text-left text-sm font-semibold text-slate-800 shadow-sm transition hover:border-slate-900 disabled:opacity-50"
+          >
+            {word}
+          </button>
+        ))}
+      </div>
 
-      {message ? <p className="mt-3 text-sm text-slate-600">{message}</p> : null}
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        {phase === "READY" ? (
+          <button type="button" onClick={start} disabled={disabled} className="rounded-full bg-slate-900 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">
+            Start
+          </button>
+        ) : phase === "DONE" ? (
+          <button type="button" onClick={start} disabled={disabled} className="rounded-full bg-slate-900 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">
+            Replay
+          </button>
+        ) : null}
+      </div>
+
+      {message ? <p className="mt-3 text-sm text-slate-700">{message}</p> : null}
+      {typeof score === "number" ? <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Local score: {score}</p> : null}
     </div>
   );
 }

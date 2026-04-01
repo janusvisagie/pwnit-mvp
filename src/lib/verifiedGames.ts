@@ -1,7 +1,4 @@
-import { randomInt } from "crypto";
-
 export const VERIFIED_GAME_KEYS = [
-  "route-builder",
   "rule-lock",
   "transform-memory",
   "sequence-restore",
@@ -12,110 +9,7 @@ export const VERIFIED_GAME_KEYS = [
 
 export type VerifiedGameKey = (typeof VERIFIED_GAME_KEYS)[number];
 
-const ROUTE_GRID_SIZE = 6;
-const RULE_LOCK_MAX_CHECKS = 4;
-const TRANSFORM_GRID_SIZE = 16;
-const TRANSFORM_ACTIVE_COUNT = 4;
-const BALANCE_GRID_SIZE = 3;
-const CODE_LENGTH = 4;
-const SEQUENCE_SHOW_MS = 2200;
-const TRANSFORM_SHOW_MS = 2200;
-
-const ROUTE_MAX_SCORE = 12000;
-const RULE_LOCK_MAX_SCORE = 14000;
-const TRANSFORM_MAX_SCORE = 11000;
-const SEQUENCE_MAX_SCORE = 11000;
-const BALANCE_MAX_SCORE = 12000;
-const PATTERN_MAX_SCORE = 10000;
-const SPOT_MISSING_MAX_SCORE = 10000;
-
-const ROUTE_PATH_TEMPLATES: number[][] = [
-  [0, 1, 2, 8, 14, 20, 26, 27, 28, 29, 35],
-  [6, 7, 13, 19, 20, 21, 22, 23, 29, 35],
-  [30, 24, 18, 12, 13, 14, 15, 16, 10, 4, 5],
-  [31, 25, 19, 18, 12, 6, 7, 8, 14, 20, 26],
-  [1, 7, 13, 14, 15, 21, 27, 28, 29, 23, 17],
-];
-
-const RULE_SYMBOLS = [
-  { id: "ember", label: "Ember" },
-  { id: "nova", label: "Nova" },
-  { id: "comet", label: "Comet" },
-  { id: "echo", label: "Echo" },
-  { id: "pulse", label: "Pulse" },
-] as const;
-
-const TRANSFORM_RULES = {
-  "rotate-right": {
-    label: "Rotate right",
-    apply(pattern: number[]) {
-      return pattern.map((cell) => {
-        const row = Math.floor(cell / 4);
-        const col = cell % 4;
-        return col * 4 + (3 - row);
-      });
-    },
-  },
-  "mirror-horizontal": {
-    label: "Mirror left ↔ right",
-    apply(pattern: number[]) {
-      return pattern.map((cell) => {
-        const row = Math.floor(cell / 4);
-        const col = cell % 4;
-        return row * 4 + (3 - col);
-      });
-    },
-  },
-  "mirror-vertical": {
-    label: "Mirror top ↕ bottom",
-    apply(pattern: number[]) {
-      return pattern.map((cell) => {
-        const row = Math.floor(cell / 4);
-        const col = cell % 4;
-        return (3 - row) * 4 + col;
-      });
-    },
-  },
-} as const;
-
-const SEQUENCE_TOKEN_BANK = [
-  "Bolt",
-  "Orbit",
-  "Pulse",
-  "Cipher",
-  "Flux",
-  "Vector",
-  "Signal",
-  "Spark",
-  "Nova",
-  "Glide",
-] as const;
-
-const PATTERN_TILE_BANK = [
-  "PwnIt",
-  "Rocket",
-  "Shield",
-  "Bolt",
-  "Puzzle",
-  "Spark",
-  "Orbit",
-  "Crown",
-] as const;
-
-const PWNIT_WORD_BANK = [
-  "prize",
-  "pixel",
-  "boost",
-  "route",
-  "focus",
-  "switch",
-  "vault",
-  "signal",
-  "glow",
-  "rocket",
-  "cipher",
-  "badge",
-] as const;
+type SymbolDef = { id: string; label: string };
 
 type RouteBuilderChallenge = {
   game: "route-builder";
@@ -124,9 +18,14 @@ type RouteBuilderChallenge = {
   blockers: number[];
 };
 
+type CodebreakerChallenge = {
+  game: "codebreaker";
+  solution: number[];
+};
+
 type RuleLockChallenge = {
   game: "rule-lock";
-  symbols: Array<{ id: string; label: string }>;
+  symbols: SymbolDef[];
   constraints: {
     upperId: string;
     lowerId: string;
@@ -141,7 +40,7 @@ type RuleLockChallenge = {
 
 type TransformMemoryChallenge = {
   game: "transform-memory";
-  ruleId: keyof typeof TRANSFORM_RULES;
+  ruleId: "rotate-right" | "mirror-horizontal" | "mirror-vertical";
   ruleLabel: string;
   basePattern: number[];
 };
@@ -176,6 +75,7 @@ type SpotTheMissingChallenge = {
 
 export type VerifiedChallenge =
   | RouteBuilderChallenge
+  | CodebreakerChallenge
   | RuleLockChallenge
   | TransformMemoryChallenge
   | SequenceRestoreChallenge
@@ -184,33 +84,12 @@ export type VerifiedChallenge =
   | SpotTheMissingChallenge;
 
 export type PublicVerifiedChallenge =
-  | {
-      game: "route-builder";
-      start: number;
-      finish: number;
-      checkpoints: number[];
-      blockers: number[];
-      idealLength: number;
-    }
   | RuleLockChallenge
   | TransformMemoryChallenge
   | SequenceRestoreChallenge
-  | {
-      game: "balance-grid";
-      board: number[];
-      targetSum: number;
-    }
-  | {
-      game: "pattern-match";
-      ordered: string[];
-      options: string[][];
-    }
-  | {
-      game: "spot-the-missing";
-      shown: string[];
-      remaining: string[];
-      options: string[];
-    };
+  | { game: "balance-grid"; board: number[]; targetSum: number }
+  | { game: "pattern-match"; ordered: string[]; options: string[][] }
+  | { game: "spot-the-missing"; shown: string[]; remaining: string[]; options: string[] };
 
 type VerificationResult = {
   valid: boolean;
@@ -218,24 +97,70 @@ type VerificationResult = {
   flags: Record<string, any>;
 };
 
+const RULE_LOCK_MAX_SCORE = 23000;
+const RULE_LOCK_MAX_CHECKS = 3;
+const TRANSFORM_GRID_SIZE = 4;
+const TRANSFORM_ACTIVE_COUNT = 5;
+const TRANSFORM_MAX_SCORE = 24000;
+const SEQUENCE_TOKENS = ["Pick", "Play", "PwnIt", "Prize", "Bonus", "Boost", "Credit", "Target", "Podium", "Voucher", "Unlock", "Winner"];
+const SEQUENCE_MAX_SCORE = 23000;
+const BALANCE_GRID_SIZE = 3;
+const BALANCE_MAX_SCORE = 22000;
+const PATTERN_MAX_SCORE = 22000;
+const SPOT_MISSING_MAX_SCORE = 21000;
+const PWNIT_WORD_BANK = ["Pick", "Play", "PwnIt", "Prize", "Bonus", "Credit", "Boost", "Target", "Podium", "Voucher", "Unlock", "Winner"] as const;
+const PATTERN_TILE_BANK = [...PWNIT_WORD_BANK] as const;
+const SYMBOLS: SymbolDef[] = [
+  { id: "pick", label: "Pick" },
+  { id: "play", label: "Play" },
+  { id: "prize", label: "Prize" },
+  { id: "bonus", label: "Bonus" },
+  { id: "boost", label: "Boost" },
+];
+
+const TRANSFORM_RULES = {
+  "rotate-right": {
+    label: "Rotate the pattern 90° clockwise.",
+    apply: (cells: number[]) =>
+      cells.map((cell) => {
+        const x = cell % TRANSFORM_GRID_SIZE;
+        const y = Math.floor(cell / TRANSFORM_GRID_SIZE);
+        return x * TRANSFORM_GRID_SIZE + (TRANSFORM_GRID_SIZE - 1 - y);
+      }),
+  },
+  "mirror-horizontal": {
+    label: "Mirror the pattern left to right.",
+    apply: (cells: number[]) =>
+      cells.map((cell) => {
+        const x = cell % TRANSFORM_GRID_SIZE;
+        const y = Math.floor(cell / TRANSFORM_GRID_SIZE);
+        return y * TRANSFORM_GRID_SIZE + (TRANSFORM_GRID_SIZE - 1 - x);
+      }),
+  },
+  "mirror-vertical": {
+    label: "Mirror the pattern top to bottom.",
+    apply: (cells: number[]) =>
+      cells.map((cell) => {
+        const x = cell % TRANSFORM_GRID_SIZE;
+        const y = Math.floor(cell / TRANSFORM_GRID_SIZE);
+        return (TRANSFORM_GRID_SIZE - 1 - y) * TRANSFORM_GRID_SIZE + x;
+      }),
+  },
+} as const;
+
 function shuffle<T>(values: readonly T[]): T[] {
   const copy = [...values];
   for (let i = copy.length - 1; i > 0; i -= 1) {
-    const j = randomInt(i + 1);
+    const j = Math.floor(Math.random() * (i + 1));
     [copy[i], copy[j]] = [copy[j]!, copy[i]!];
   }
   return copy;
 }
 
 function clampInt(value: unknown, min: number, max: number) {
-  const num = Number(value);
-  if (!Number.isFinite(num)) return min;
-  return Math.max(min, Math.min(max, Math.round(num)));
-}
-
-function boundedElapsed(serverElapsedMs: number, minMs: number, maxSlackMs = 0) {
-  const upper = Math.max(minMs, serverElapsedMs + maxSlackMs);
-  return Math.max(minMs, Math.min(upper, serverElapsedMs));
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return min;
+  return Math.max(min, Math.min(max, Math.round(parsed)));
 }
 
 function sameArray<T>(a: T[], b: T[]) {
@@ -243,72 +168,85 @@ function sameArray<T>(a: T[], b: T[]) {
 }
 
 function sameNumberSet(a: number[], b: number[]) {
+  if (a.length !== b.length) return false;
   const left = [...a].sort((x, y) => x - y);
   const right = [...b].sort((x, y) => x - y);
-  return sameArray(left, right);
+  return left.every((value, index) => value === right[index]);
 }
 
-function buildRouteBuilderChallenge(): RouteBuilderChallenge {
-  const path = ROUTE_PATH_TEMPLATES[randomInt(ROUTE_PATH_TEMPLATES.length)]!;
-  const blockers = shuffle(
-    Array.from({ length: ROUTE_GRID_SIZE * ROUTE_GRID_SIZE }, (_, index) => index).filter((cell) => !path.includes(cell)),
-  ).slice(0, 10);
+function isVerifiedChallenge(value: unknown): value is VerifiedChallenge {
+  return !!value && typeof value === "object" && typeof (value as any).game === "string";
+}
 
+function sanitizedElapsed(_metaElapsed: unknown, serverElapsedMs: number, minMs: number) {
   return {
-    game: "route-builder",
-    path,
-    checkpoints: [path[2]!, path[5]!, path[8]!],
-    blockers,
+    valid: true,
+    elapsedMs: Math.max(minMs, Math.round(serverElapsedMs)),
+    reason: serverElapsedMs < minMs ? "server_elapsed_clamped_to_plausible_minimum" : null,
   };
 }
 
-function buildRuleLockChallenge(): RuleLockChallenge {
-  const arranged = shuffle(RULE_SYMBOLS);
-  const ids: string[] = arranged.map((symbol) => symbol.id);
-  const labels = new Map(arranged.map((symbol) => [symbol.id, symbol.label]));
-  const slotOf = (id: string) => ids.indexOf(id);
+function rowOf(cell: number) {
+  return Math.floor(cell / BALANCE_GRID_SIZE);
+}
 
+function colOf(cell: number) {
+  return cell % BALANCE_GRID_SIZE;
+}
+
+function hasUniqueRowsAndCols(cells: number[]) {
+  const rows = new Set(cells.map(rowOf));
+  const cols = new Set(cells.map(colOf));
+  return rows.size === cells.length && cols.size === cells.length;
+}
+
+function buildRuleLockChallenge(): RuleLockChallenge {
+  const arranged = shuffle(SYMBOLS);
+  const ids = arranged.map((symbol) => symbol.id);
+  const labels = new Map(arranged.map((symbol) => [symbol.id, symbol.label]));
   const upperId = ids[0]!;
   const lowerId = ids[2]!;
-  const fixedId = ids[4]!;
+  const fixedId = ids[3]!;
+  const fixedSlot = 4;
   const pairA = ids[1]!;
-  const pairB = ids[2]!;
-  const notEdgeId = ids[3]!;
+  const pairB = ids[4]!;
+  const notEdgeId = ids[2]!;
 
   return {
     game: "rule-lock",
-    symbols: arranged.map((symbol) => ({ ...symbol })),
+    symbols: arranged,
     constraints: {
       upperId,
       lowerId,
       fixedId,
-      fixedSlot: slotOf(fixedId),
+      fixedSlot,
       pairA,
       pairB,
       notEdgeId,
     },
     rules: [
       { id: "above-below", text: `${labels.get(upperId)} must be above ${labels.get(lowerId)}.` },
-      { id: "fixed-slot", text: `${labels.get(fixedId)} must be in slot ${slotOf(fixedId) + 1}.` },
+      { id: "fixed-slot", text: `${labels.get(fixedId)} is locked into slot ${fixedSlot + 1}.` },
       { id: "adjacent-pair", text: `${labels.get(pairA)} must sit directly next to ${labels.get(pairB)}.` },
-      { id: "not-edge", text: `${labels.get(notEdgeId)} may not sit on either edge.` },
+      { id: "not-edge", text: `${labels.get(notEdgeId)} cannot be in the top or bottom slot.` },
     ],
   };
 }
 
 function buildTransformMemoryChallenge(): TransformMemoryChallenge {
-  const basePattern = shuffle(Array.from({ length: TRANSFORM_GRID_SIZE }, (_, index) => index)).slice(0, TRANSFORM_ACTIVE_COUNT).sort((a, b) => a - b);
-  const ruleId = Object.keys(TRANSFORM_RULES)[randomInt(Object.keys(TRANSFORM_RULES).length)] as keyof typeof TRANSFORM_RULES;
+  const ruleId = shuffle(Object.keys(TRANSFORM_RULES) as Array<keyof typeof TRANSFORM_RULES>)[0]!;
   return {
     game: "transform-memory",
     ruleId,
     ruleLabel: TRANSFORM_RULES[ruleId].label,
-    basePattern,
+    basePattern: shuffle(Array.from({ length: TRANSFORM_GRID_SIZE * TRANSFORM_GRID_SIZE }, (_, index) => index))
+      .slice(0, TRANSFORM_ACTIVE_COUNT)
+      .sort((a, b) => a - b),
   };
 }
 
 function buildSequenceRestoreChallenge(): SequenceRestoreChallenge {
-  const ordered = shuffle(SEQUENCE_TOKEN_BANK).slice(0, 5);
+  const ordered = shuffle(SEQUENCE_TOKENS).slice(0, 5);
   return {
     game: "sequence-restore",
     ordered,
@@ -317,7 +255,7 @@ function buildSequenceRestoreChallenge(): SequenceRestoreChallenge {
 }
 
 function buildPermutations(values: number[]): number[][] {
-  if (values.length === 1) return [values];
+  if (values.length <= 1) return [values];
   const output: number[][] = [];
   for (let i = 0; i < values.length; i += 1) {
     const current = values[i]!;
@@ -336,15 +274,13 @@ function sumForSelection(board: number[], cells: number[]) {
 }
 
 function buildBalanceGridChallenge(): BalanceGridChallenge {
-  for (let tries = 0; tries < 80; tries += 1) {
-    const board = Array.from({ length: 9 }, () => randomInt(1, 10));
-    const candidates = COLUMN_PERMUTATIONS.map((cols) => {
-      const cells = cols.map((col, row) => row * 3 + col);
-      return { cells, total: sumForSelection(board, cells) };
-    });
+  for (let tries = 0; tries < 60; tries += 1) {
+    const board = shuffle([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    const candidates = COLUMN_PERMUTATIONS.map((perm) => ({ cells: perm.map((col, row) => row * BALANCE_GRID_SIZE + col) }))
+      .map((entry) => ({ ...entry, total: sumForSelection(board, entry.cells) }));
     const unique = candidates.filter((candidate) => candidates.filter((other) => other.total === candidate.total).length === 1);
     if (!unique.length) continue;
-    const picked = unique[randomInt(unique.length)]!;
+    const picked = unique[Math.floor(Math.random() * unique.length)]!;
     return {
       game: "balance-grid",
       board,
@@ -352,7 +288,6 @@ function buildBalanceGridChallenge(): BalanceGridChallenge {
       solution: picked.cells,
     };
   }
-
   return {
     game: "balance-grid",
     board: [8, 1, 6, 3, 5, 7, 4, 9, 2],
@@ -363,25 +298,27 @@ function buildBalanceGridChallenge(): BalanceGridChallenge {
 
 function buildPatternMatchChallenge(): PatternMatchChallenge {
   const ordered = shuffle(PATTERN_TILE_BANK).slice(0, 4);
-  const distractorA = [...ordered];
-  [distractorA[1], distractorA[2]] = [distractorA[2]!, distractorA[1]!];
-  const distractorB = [...ordered];
-  [distractorB[0], distractorB[3]] = [distractorB[3]!, distractorB[0]!];
-  const options = shuffle([ordered, distractorA, distractorB]);
+  const distractors = new Set<string>();
+  while (distractors.size < 3) {
+    const candidate = shuffle(ordered).join("|");
+    if (candidate !== ordered.join("|")) distractors.add(candidate);
+  }
+  const options = shuffle([ordered, ...Array.from(distractors).map((entry) => entry.split("|"))]);
+  const correctIndex = options.findIndex((option) => sameArray(option, ordered));
   return {
     game: "pattern-match",
     ordered,
     options,
-    correctIndex: options.findIndex((entry) => entry.every((value, index) => value === ordered[index])),
+    correctIndex,
   };
 }
 
 function buildSpotTheMissingChallenge(): SpotTheMissingChallenge {
-  const shown = shuffle(PWNIT_WORD_BANK).slice(0, 6);
-  const missingIndex = randomInt(shown.length);
+  const shown = shuffle(PWNIT_WORD_BANK).slice(0, 6) as string[];
+  const missingIndex = Math.floor(Math.random() * shown.length);
   const missing = shown[missingIndex]!;
   const remaining = shown.filter((_, index) => index !== missingIndex);
-  const distractors = shuffle(PWNIT_WORD_BANK.filter((word) => !shown.includes(word))).slice(0, 3);
+  const distractors = shuffle(PWNIT_WORD_BANK.filter((word) => !shown.includes(word))).slice(0, 3) as string[];
   return {
     game: "spot-the-missing",
     shown,
@@ -393,8 +330,6 @@ function buildSpotTheMissingChallenge(): SpotTheMissingChallenge {
 
 export function buildVerifiedChallenge(gameKey: VerifiedGameKey): VerifiedChallenge {
   switch (gameKey) {
-    case "route-builder":
-      return buildRouteBuilderChallenge();
     case "rule-lock":
       return buildRuleLockChallenge();
     case "transform-memory":
@@ -412,131 +347,22 @@ export function buildVerifiedChallenge(gameKey: VerifiedGameKey): VerifiedChalle
   }
 }
 
-export function buildPublicVerifiedChallenge(challenge: VerifiedChallenge): PublicVerifiedChallenge {
+export function buildPublicVerifiedChallenge(gameKeyOrChallenge: VerifiedGameKey | VerifiedChallenge): PublicVerifiedChallenge {
+  const challenge = typeof gameKeyOrChallenge === "string" ? buildVerifiedChallenge(gameKeyOrChallenge) : gameKeyOrChallenge;
   switch (challenge.game) {
-    case "route-builder":
-      return {
-        game: "route-builder",
-        start: challenge.path[0]!,
-        finish: challenge.path[challenge.path.length - 1]!,
-        checkpoints: [...challenge.checkpoints],
-        blockers: [...challenge.blockers],
-        idealLength: challenge.path.length,
-      };
     case "rule-lock":
-      return {
-        game: "rule-lock",
-        symbols: challenge.symbols.map((symbol) => ({ ...symbol })),
-        constraints: { ...challenge.constraints },
-        rules: challenge.rules.map((rule) => ({ ...rule })),
-      };
     case "transform-memory":
-      return {
-        game: "transform-memory",
-        ruleId: challenge.ruleId,
-        ruleLabel: challenge.ruleLabel,
-        basePattern: [...challenge.basePattern],
-      };
     case "sequence-restore":
-      return {
-        game: "sequence-restore",
-        ordered: [...challenge.ordered],
-        shuffled: [...challenge.shuffled],
-      };
+      return challenge;
     case "balance-grid":
-      return {
-        game: "balance-grid",
-        board: [...challenge.board],
-        targetSum: challenge.targetSum,
-      };
+      return { game: challenge.game, board: challenge.board, targetSum: challenge.targetSum };
     case "pattern-match":
-      return {
-        game: "pattern-match",
-        ordered: [...challenge.ordered],
-        options: challenge.options.map((entry) => [...entry]),
-      };
+      return { game: challenge.game, ordered: challenge.ordered, options: challenge.options };
     case "spot-the-missing":
-      return {
-        game: "spot-the-missing",
-        shown: [...challenge.shown],
-        remaining: [...challenge.remaining],
-        options: [...challenge.options],
-      };
+      return { game: challenge.game, shown: challenge.shown, remaining: challenge.remaining, options: challenge.options };
     default:
-      throw new Error(`Unhandled public verified game challenge: ${String((challenge as any)?.game)}`);
+      throw new Error(`Unhandled public verified game key: ${String((challenge as any).game)}`);
   }
-}
-
-function isAdjacent(a: number, b: number) {
-  const ax = a % ROUTE_GRID_SIZE;
-  const ay = Math.floor(a / ROUTE_GRID_SIZE);
-  const bx = b % ROUTE_GRID_SIZE;
-  const by = Math.floor(b / ROUTE_GRID_SIZE);
-  return Math.abs(ax - bx) + Math.abs(ay - by) === 1;
-}
-
-function verifyRouteBuilder(challenge: RouteBuilderChallenge, meta: Record<string, any>, serverElapsedMs: number): VerificationResult {
-  const clickLog = Array.isArray(meta?.clickLog)
-    ? meta.clickLog.map((value: unknown) => clampInt(value, -1, 35)).filter((value: number) => value >= 0)
-    : [];
-
-  if (!clickLog.length) {
-    return { valid: false, scoreMs: 0, flags: { reason: "missing_click_log" } };
-  }
-
-  let trail = [challenge.path[0]!];
-  let mistakes = 0;
-  let solved = false;
-
-  for (const cell of clickLog) {
-    const current = trail[trail.length - 1]!;
-    if (challenge.blockers.includes(cell)) {
-      mistakes += 1;
-      continue;
-    }
-    if (cell === current) continue;
-    if (trail.length > 1 && cell === trail[trail.length - 2]) {
-      trail = trail.slice(0, -1);
-      continue;
-    }
-    if (!isAdjacent(current, cell)) {
-      mistakes += 1;
-      continue;
-    }
-    trail = [...trail, cell];
-    if (sameArray(trail, challenge.path)) {
-      solved = true;
-      break;
-    }
-  }
-
-  if (!solved) {
-    return {
-      valid: true,
-      scoreMs: 0,
-      flags: {
-        solved: false,
-        mistakes,
-        checkpointsHit: challenge.checkpoints.filter((cell) => trail.includes(cell)).length,
-      },
-    };
-  }
-
-  const elapsedMs = boundedElapsed(serverElapsedMs, 1200);
-  const extraSteps = Math.max(0, trail.length - challenge.path.length);
-  const scoreMs = Math.max(1200, ROUTE_MAX_SCORE - elapsedMs - mistakes * 700 - extraSteps * 320);
-
-  return {
-    valid: true,
-    scoreMs,
-    flags: {
-      solved: true,
-      mistakes,
-      checkpointsHit: challenge.checkpoints.length,
-      elapsedMs,
-      timingSource: "server",
-    },
-  };
 }
 
 function evaluateRuleLock(challenge: RuleLockChallenge, slots: string[]) {
@@ -555,27 +381,22 @@ function verifyRuleLock(challenge: RuleLockChallenge, meta: Record<string, any>,
   const placements = Array.isArray(meta?.placements) ? meta.placements.map((value: unknown) => String(value || "")) : [];
   const checksUsed = clampInt(meta?.checksUsed, 0, RULE_LOCK_MAX_CHECKS);
   const symbolIds = challenge.symbols.map((symbol) => symbol.id);
-
   if (placements.length !== symbolIds.length || new Set(placements).size !== symbolIds.length || placements.some((slot) => !symbolIds.includes(slot))) {
     return { valid: false, scoreMs: 0, flags: { reason: "invalid_placements" } };
   }
-
   if (checksUsed < 1 || checksUsed > RULE_LOCK_MAX_CHECKS) {
     return { valid: false, scoreMs: 0, flags: { reason: "invalid_checks_used" } };
   }
-
   const solved = evaluateRuleLock(challenge, placements);
   if (!solved) {
     return { valid: true, scoreMs: 0, flags: { solved: false, checksUsed } };
   }
-
-  const elapsedMs = boundedElapsed(serverElapsedMs, Math.max(1600, checksUsed * 450));
-  const scoreMs = Math.max(1200, RULE_LOCK_MAX_SCORE - elapsedMs - (checksUsed - 1) * 2200);
-
+  const elapsed = sanitizedElapsed(meta?.elapsedMs, serverElapsedMs, Math.max(1600, checksUsed * 450));
+  const scoreMs = Math.max(1200, RULE_LOCK_MAX_SCORE - elapsed.elapsedMs - (checksUsed - 1) * 2200);
   return {
     valid: true,
     scoreMs,
-    flags: { solved: true, checksUsed, elapsedMs, timingSource: "server" },
+    flags: { solved: true, checksUsed, elapsedMs: elapsed.elapsedMs, timingNote: elapsed.reason },
   };
 }
 
@@ -583,25 +404,21 @@ function verifyTransformMemory(challenge: TransformMemoryChallenge, meta: Record
   const selected = Array.isArray(meta?.selected)
     ? meta.selected.map((value: unknown) => clampInt(value, -1, 15)).filter((value: number) => value >= 0)
     : [];
-
   if (selected.length !== TRANSFORM_ACTIVE_COUNT || new Set(selected).size !== TRANSFORM_ACTIVE_COUNT) {
     return { valid: false, scoreMs: 0, flags: { reason: "invalid_selection_shape" } };
   }
-
   const rule = TRANSFORM_RULES[challenge.ruleId];
   const targetPattern = rule.apply(challenge.basePattern).sort((a, b) => a - b);
   const correct = sameNumberSet(selected, targetPattern);
   if (!correct) {
     return { valid: true, scoreMs: 0, flags: { solved: false, correct: false } };
   }
-
-  const elapsedMs = boundedElapsed(serverElapsedMs, 900);
-  const scoreMs = Math.max(1200, TRANSFORM_MAX_SCORE - elapsedMs);
-
+  const elapsed = sanitizedElapsed(meta?.elapsedMs, serverElapsedMs, 900);
+  const scoreMs = Math.max(1200, TRANSFORM_MAX_SCORE - elapsed.elapsedMs);
   return {
     valid: true,
     scoreMs,
-    flags: { solved: true, elapsedMs, ruleId: challenge.ruleId, timingSource: "server" },
+    flags: { solved: true, elapsedMs: elapsed.elapsedMs, ruleId: challenge.ruleId, timingNote: elapsed.reason },
   };
 }
 
@@ -614,48 +431,30 @@ function verifySequenceRestore(challenge: SequenceRestoreChallenge, meta: Record
   if (!correct) {
     return { valid: true, scoreMs: 0, flags: { solved: false, correct: false } };
   }
-
-  const elapsedMs = boundedElapsed(serverElapsedMs, 1000);
-  const scoreMs = Math.max(1200, SEQUENCE_MAX_SCORE - elapsedMs);
+  const elapsed = sanitizedElapsed(meta?.elapsedMs, serverElapsedMs, 1000);
+  const scoreMs = Math.max(1200, SEQUENCE_MAX_SCORE - elapsed.elapsedMs);
   return {
     valid: true,
     scoreMs,
-    flags: { solved: true, elapsedMs, timingSource: "server" },
+    flags: { solved: true, elapsedMs: elapsed.elapsedMs, timingNote: elapsed.reason },
   };
-}
-
-function rowOf(cell: number) {
-  return Math.floor(cell / BALANCE_GRID_SIZE);
-}
-
-function colOf(cell: number) {
-  return cell % BALANCE_GRID_SIZE;
-}
-
-function hasUniqueRowsAndCols(cells: number[]) {
-  const rows = new Set(cells.map(rowOf));
-  const cols = new Set(cells.map(colOf));
-  return rows.size === cells.length && cols.size === cells.length;
 }
 
 function verifyBalanceGrid(challenge: BalanceGridChallenge, meta: Record<string, any>, serverElapsedMs: number): VerificationResult {
   const selected = Array.isArray(meta?.selected)
     ? meta.selected.map((value: unknown) => clampInt(value, -1, 8)).filter((value: number) => value >= 0)
     : [];
-
   if (selected.length !== BALANCE_GRID_SIZE || new Set(selected).size !== BALANCE_GRID_SIZE) {
     return { valid: false, scoreMs: 0, flags: { reason: "invalid_selection_shape" } };
   }
-
   const uniquePlacement = hasUniqueRowsAndCols(selected);
   const total = sumForSelection(challenge.board, selected);
   const correct = uniquePlacement && total === challenge.targetSum;
   if (!correct) {
-    return { valid: true, scoreMs: 0, flags: { solved: false, uniquePlacement, total } };
+    return { valid: true, scoreMs: 0, flags: { solved: false, correct: false, uniquePlacement, total } };
   }
-
-  const elapsedMs = boundedElapsed(serverElapsedMs, 900);
-  const scoreMs = Math.max(1200, BALANCE_MAX_SCORE - elapsedMs);
+  const elapsed = sanitizedElapsed(meta?.elapsedMs, serverElapsedMs, 900);
+  const scoreMs = Math.max(1200, BALANCE_MAX_SCORE - elapsed.elapsedMs);
   return {
     valid: true,
     scoreMs,
@@ -664,8 +463,8 @@ function verifyBalanceGrid(challenge: BalanceGridChallenge, meta: Record<string,
       uniquePlacement,
       total,
       exactSolution: sameNumberSet(selected, challenge.solution),
-      elapsedMs,
-      timingSource: "server",
+      elapsedMs: elapsed.elapsedMs,
+      timingNote: elapsed.reason,
     },
   };
 }
@@ -675,18 +474,16 @@ function verifyPatternMatch(challenge: PatternMatchChallenge, meta: Record<strin
   if (chosenIndex < 0 || chosenIndex >= challenge.options.length) {
     return { valid: false, scoreMs: 0, flags: { reason: "invalid_choice_index" } };
   }
-
   const chosenOption = challenge.options[chosenIndex]!;
   const correct = chosenIndex === challenge.correctIndex && sameArray(chosenOption, challenge.ordered);
   if (!correct) {
     return { valid: true, scoreMs: 0, flags: { solved: false, correct: false, chosenIndex } };
   }
-
-  const elapsedMs = boundedElapsed(serverElapsedMs, 700);
+  const elapsed = sanitizedElapsed(meta?.elapsedMs, serverElapsedMs, 700);
   return {
     valid: true,
-    scoreMs: Math.max(1200, PATTERN_MAX_SCORE - elapsedMs),
-    flags: { solved: true, chosenIndex, elapsedMs, timingSource: "server" },
+    scoreMs: Math.max(1200, PATTERN_MAX_SCORE - elapsed.elapsedMs),
+    flags: { solved: true, chosenIndex, elapsedMs: elapsed.elapsedMs, timingNote: elapsed.reason },
   };
 }
 
@@ -695,50 +492,51 @@ function verifySpotTheMissing(challenge: SpotTheMissingChallenge, meta: Record<s
   if (!challenge.options.includes(chosen)) {
     return { valid: false, scoreMs: 0, flags: { reason: "invalid_missing_choice" } };
   }
-
   if (chosen !== challenge.missing) {
     return { valid: true, scoreMs: 0, flags: { solved: false, correct: false, chosen } };
   }
-
-  const elapsedMs = boundedElapsed(serverElapsedMs, 700);
+  const elapsed = sanitizedElapsed(meta?.elapsedMs, serverElapsedMs, 700);
   return {
     valid: true,
-    scoreMs: Math.max(1200, SPOT_MISSING_MAX_SCORE - elapsedMs),
-    flags: { solved: true, chosen, elapsedMs, timingSource: "server" },
+    scoreMs: Math.max(1200, SPOT_MISSING_MAX_SCORE - elapsed.elapsedMs),
+    flags: { solved: true, chosen, elapsedMs: elapsed.elapsedMs, timingNote: elapsed.reason },
   };
+}
+
+export function isVerifiedGameKey(gameKey: string): gameKey is VerifiedGameKey {
+  return (VERIFIED_GAME_KEYS as readonly string[]).includes(gameKey);
 }
 
 export function verifyVerifiedAttempt(
   gameKey: VerifiedGameKey,
-  challenge: VerifiedChallenge,
+  challenge: unknown,
   meta: Record<string, any>,
   serverElapsedMs: number,
 ): VerificationResult {
+  if (!isVerifiedChallenge(challenge)) {
+    return { valid: false, scoreMs: 0, flags: { reason: "invalid_server_challenge" } };
+  }
+
   switch (gameKey) {
-    case "route-builder":
-      return verifyRouteBuilder(challenge as RouteBuilderChallenge, meta, serverElapsedMs);
     case "rule-lock":
-      return verifyRuleLock(challenge as RuleLockChallenge, meta, serverElapsedMs);
+      if (challenge.game !== "rule-lock") return { valid: false, scoreMs: 0, flags: { reason: "challenge_game_mismatch" } };
+      return verifyRuleLock(challenge, meta, serverElapsedMs);
     case "transform-memory":
-      return verifyTransformMemory(challenge as TransformMemoryChallenge, meta, serverElapsedMs);
+      if (challenge.game !== "transform-memory") return { valid: false, scoreMs: 0, flags: { reason: "challenge_game_mismatch" } };
+      return verifyTransformMemory(challenge, meta, serverElapsedMs);
     case "sequence-restore":
-      return verifySequenceRestore(challenge as SequenceRestoreChallenge, meta, serverElapsedMs);
+      if (challenge.game !== "sequence-restore") return { valid: false, scoreMs: 0, flags: { reason: "challenge_game_mismatch" } };
+      return verifySequenceRestore(challenge, meta, serverElapsedMs);
     case "balance-grid":
-      return verifyBalanceGrid(challenge as BalanceGridChallenge, meta, serverElapsedMs);
+      if (challenge.game !== "balance-grid") return { valid: false, scoreMs: 0, flags: { reason: "challenge_game_mismatch" } };
+      return verifyBalanceGrid(challenge, meta, serverElapsedMs);
     case "pattern-match":
-      return verifyPatternMatch(challenge as PatternMatchChallenge, meta, serverElapsedMs);
+      if (challenge.game !== "pattern-match") return { valid: false, scoreMs: 0, flags: { reason: "challenge_game_mismatch" } };
+      return verifyPatternMatch(challenge, meta, serverElapsedMs);
     case "spot-the-missing":
-      return verifySpotTheMissing(challenge as SpotTheMissingChallenge, meta, serverElapsedMs);
+      if (challenge.game !== "spot-the-missing") return { valid: false, scoreMs: 0, flags: { reason: "challenge_game_mismatch" } };
+      return verifySpotTheMissing(challenge, meta, serverElapsedMs);
     default:
-      throw new Error(`Unhandled verified game key: ${String(gameKey)}`);
+      return { valid: false, scoreMs: 0, flags: { reason: "unsupported_verified_game" } };
   }
 }
-
-export function isVerifiedGameKey(value: string | null | undefined): value is VerifiedGameKey {
-  return VERIFIED_GAME_KEYS.includes(String(value || "") as VerifiedGameKey);
-}
-
-export const VERIFIED_GAME_CONSTANTS = {
-  sequenceShowMs: SEQUENCE_SHOW_MS,
-  transformShowMs: TRANSFORM_SHOW_MS,
-};

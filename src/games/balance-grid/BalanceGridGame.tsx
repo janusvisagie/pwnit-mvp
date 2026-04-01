@@ -1,39 +1,53 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
+
 import type { GameProps } from "../types";
 
+const GRID_SIZE = 3;
+const MAX_SCORE = 22000;
+
 type Challenge = {
-  game: "balance-grid";
+  game?: "balance-grid";
   board: number[];
   targetSum: number;
+  solution?: number[];
 };
 
-const MAX_SCORE = 12000;
-
-function randomInt(max: number) {
-  return Math.floor(Math.random() * max);
+function shuffle<T>(values: readonly T[]) {
+  const copy = [...values];
+  for (let i = copy.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j]!, copy[i]!];
+  }
+  return copy;
 }
 
-function buildChallenge(): Challenge {
-  const boards = [
-    [8, 1, 6, 3, 5, 7, 4, 9, 2],
-    [2, 7, 6, 9, 5, 1, 4, 3, 8],
-    [6, 7, 2, 1, 5, 9, 8, 3, 4],
-  ];
-  return {
-    game: "balance-grid",
-    board: boards[randomInt(boards.length)]!,
-    targetSum: 15,
-  };
+function buildPermutations(values: number[]): number[][] {
+  if (values.length <= 1) return [values];
+  const output: number[][] = [];
+  for (let i = 0; i < values.length; i += 1) {
+    const current = values[i]!;
+    const rest = [...values.slice(0, i), ...values.slice(i + 1)];
+    for (const tail of buildPermutations(rest)) {
+      output.push([current, ...tail]);
+    }
+  }
+  return output;
+}
+
+const COLUMN_PERMUTATIONS = buildPermutations([0, 1, 2]);
+
+function sumForSelection(board: number[], cells: number[]) {
+  return cells.reduce((sum, cell) => sum + (board[cell] ?? 0), 0);
 }
 
 function rowOf(cell: number) {
-  return Math.floor(cell / 3);
+  return Math.floor(cell / GRID_SIZE);
 }
 
 function colOf(cell: number) {
-  return cell % 3;
+  return cell % GRID_SIZE;
 }
 
 function hasUniqueRowsAndCols(cells: number[]) {
@@ -42,31 +56,77 @@ function hasUniqueRowsAndCols(cells: number[]) {
   return rows.size === cells.length && cols.size === cells.length;
 }
 
-function sumForSelection(board: number[], cells: number[]) {
-  return cells.reduce((sum, cell) => sum + board[cell]!, 0);
+function sameSelection(a: number[], b?: number[]) {
+  if (!b || a.length !== b.length) return false;
+  const left = [...a].sort((x, y) => x - y);
+  const right = [...b].sort((x, y) => x - y);
+  return left.every((value, index) => value === right[index]);
+}
+
+function buildChallenge(): Challenge {
+  for (let tries = 0; tries < 60; tries += 1) {
+    const board = shuffle([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    const candidates = COLUMN_PERMUTATIONS.map((perm) => ({ cells: perm.map((col, row) => row * GRID_SIZE + col) }))
+      .map((entry) => ({ ...entry, total: sumForSelection(board, entry.cells) }));
+    const unique = candidates.filter((candidate) => candidates.filter((other) => other.total === candidate.total).length === 1);
+    if (!unique.length) continue;
+    const picked = unique[Math.floor(Math.random() * unique.length)]!;
+    return {
+      game: "balance-grid",
+      board,
+      targetSum: picked.total,
+      solution: picked.cells,
+    };
+  }
+
+  return {
+    game: "balance-grid",
+    board: [8, 1, 6, 3, 5, 7, 4, 9, 2],
+    targetSum: 15,
+    solution: [0, 4, 8],
+  };
 }
 
 export default function BalanceGridGame({ onFinish, disabled, challenge: injectedChallenge }: GameProps<Challenge>) {
   const challenge = useMemo(() => injectedChallenge ?? buildChallenge(), [injectedChallenge]);
-  const [selected, setSelected] = useState<number[]>([]);
   const [phase, setPhase] = useState<"READY" | "RUNNING" | "DONE">("READY");
+  const [selected, setSelected] = useState<number[]>([]);
   const [message, setMessage] = useState<string | null>(null);
   const [score, setScore] = useState<number | null>(null);
   const startedAtRef = useRef<number | null>(null);
 
-  function reset() {
-    setSelected([]);
+  function start() {
+    if (disabled) return;
     setPhase("RUNNING");
-    setMessage("Pick exactly one number from each row and each column to hit the target.");
+    setSelected([]);
     setScore(null);
+    setMessage("Pick one number from each row and each column so the total matches the target.");
     startedAtRef.current = Date.now();
   }
 
-  function complete(finalSelection: number[]) {
+  function toggleCell(cell: number) {
+    if (disabled || phase !== "RUNNING") return;
+    setSelected((current) => {
+      if (current.includes(cell)) return current.filter((value) => value !== cell);
+      if (current.length >= GRID_SIZE) return current;
+      return [...current, cell];
+    });
+  }
+
+  function clear() {
+    if (disabled || phase !== "RUNNING") return;
+    setSelected([]);
+    setMessage("Selection cleared.");
+  }
+
+  function submit() {
+    if (disabled || phase !== "RUNNING" || selected.length !== GRID_SIZE) return;
+
     const elapsedMs = Math.max(0, Date.now() - (startedAtRef.current ?? Date.now()));
-    const uniquePlacement = hasUniqueRowsAndCols(finalSelection);
-    const total = sumForSelection(challenge.board, finalSelection);
+    const uniquePlacement = hasUniqueRowsAndCols(selected);
+    const total = sumForSelection(challenge.board, selected);
     const correct = uniquePlacement && total === challenge.targetSum;
+    const exactSolution = challenge.solution ? sameSelection(selected, challenge.solution) : undefined;
     const finalScore = correct ? Math.max(1200, MAX_SCORE - elapsedMs) : 0;
 
     setPhase("DONE");
@@ -76,79 +136,47 @@ export default function BalanceGridGame({ onFinish, disabled, challenge: injecte
         ? "Balanced. You matched the target with a valid row-and-column set."
         : uniquePlacement
           ? `Not quite. Your total was ${total}, target was ${challenge.targetSum}.`
-          : "Invalid shape. You need one pick per row and one pick per column.",
+          : "Invalid shape. You need one pick per row and one per column.",
     );
 
     onFinish({
       scoreMs: finalScore,
       meta: {
         game: "balance-grid",
-        selected: finalSelection,
+        board: challenge.board,
+        targetSum: challenge.targetSum,
+        selected,
+        correct,
+        ...(typeof exactSolution === "boolean" ? { exactSolution } : {}),
+        elapsedMs,
       },
     });
   }
 
-  function toggleCell(cell: number) {
-    if (disabled || phase !== "RUNNING") return;
-
-    setSelected((current) => {
-      const exists = current.includes(cell);
-      let next = exists ? current.filter((value) => value !== cell) : [...current, cell];
-      if (!exists && next.length > 3) {
-        next = [...next.slice(1)];
-      }
-      if (next.length === 3) {
-        queueMicrotask(() => complete(next));
-      }
-      return next;
-    });
-  }
-
   const currentTotal = sumForSelection(challenge.board, selected);
-  const rowsCovered = new Set(selected.map(rowOf)).size;
-  const colsCovered = new Set(selected.map(colOf)).size;
 
   return (
     <div className="mx-auto max-w-xl rounded-3xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex items-center justify-between gap-3">
         <div>
-          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Balance Grid</div>
-          <div className="text-lg font-black text-slate-900">Find the matching trio</div>
+          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Objective</div>
+          <h3 className="mt-1 text-base font-black text-slate-950 sm:text-lg">Balance Grid</h3>
         </div>
-        <button
-          type="button"
-          onClick={reset}
-          disabled={disabled}
-          className="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          {phase === "READY" ? "Start" : "Replay"}
-        </button>
+        <div className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">Target {challenge.targetSum}</div>
       </div>
 
-      <p className="mt-2 text-sm text-slate-600">Pick exactly three numbers so the total equals <span className="font-bold text-slate-900">{challenge.targetSum}</span>, using one cell from each row and one from each column.</p>
+      <p className="mt-2 text-sm text-slate-600">Choose exactly three cells so you cover one row and one column each and hit the target sum.</p>
 
-      <div className="mt-3 flex flex-wrap gap-3 text-xs font-semibold text-slate-600">
-        <div>Current total: {currentTotal}</div>
-        <div>Rows covered: {rowsCovered} / 3</div>
-        <div>Cols covered: {colsCovered} / 3</div>
-        {score !== null ? <div>Score: {score}</div> : null}
-      </div>
-
-      <div className="mx-auto mt-4 grid max-w-[15rem] grid-cols-3 gap-2">
-        {challenge.board.map((value, cell) => {
-          const active = selected.includes(cell);
+      <div className="mt-4 grid grid-cols-3 gap-2">
+        {challenge.board.map((value, index) => {
+          const active = selected.includes(index);
           return (
             <button
-              key={cell}
+              key={index}
               type="button"
-              onClick={() => toggleCell(cell)}
+              onClick={() => toggleCell(index)}
               disabled={disabled || phase !== "RUNNING"}
-              className={[
-                "aspect-square rounded-3xl border text-xl font-black transition",
-                active
-                  ? "border-emerald-500 bg-emerald-100 text-emerald-900"
-                  : "border-slate-200 bg-slate-50 text-slate-900 hover:border-slate-300 hover:bg-slate-100",
-              ].join(" ")}
+              className={`aspect-square rounded-2xl border text-lg font-black transition ${active ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 bg-slate-50 text-slate-900"}`}
             >
               {value}
             </button>
@@ -156,7 +184,30 @@ export default function BalanceGridGame({ onFinish, disabled, challenge: injecte
         })}
       </div>
 
-      {message ? <p className="mt-3 text-sm text-slate-600">{message}</p> : null}
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        {phase === "READY" ? (
+          <button type="button" onClick={start} disabled={disabled} className="rounded-full bg-slate-900 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">
+            Start
+          </button>
+        ) : phase === "RUNNING" ? (
+          <>
+            <button type="button" onClick={submit} disabled={disabled || selected.length !== GRID_SIZE} className="rounded-full bg-slate-900 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">
+              Submit
+            </button>
+            <button type="button" onClick={clear} disabled={disabled} className="rounded-full border border-slate-200 px-4 py-2 text-sm font-bold text-slate-700 disabled:opacity-50">
+              Clear
+            </button>
+            <span className="rounded-full bg-slate-100 px-3 py-2 text-xs font-bold text-slate-700">Current total: {currentTotal}</span>
+          </>
+        ) : (
+          <button type="button" onClick={start} disabled={disabled} className="rounded-full bg-slate-900 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">
+            Replay
+          </button>
+        )}
+      </div>
+
+      {message ? <p className="mt-3 text-sm text-slate-700">{message}</p> : null}
+      {typeof score === "number" ? <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Local score: {score}</p> : null}
     </div>
   );
 }

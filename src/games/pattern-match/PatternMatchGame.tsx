@@ -1,76 +1,51 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+
 import type { GameProps } from "../types";
 
+const WORD_BANK = ["Pick", "Play", "PwnIt", "Prize", "Bonus", "Credit", "Boost", "Target", "Podium", "Voucher", "Unlock", "Winner"] as const;
+const SHOW_MS = 1800;
+const MAX_SCORE = 22000;
+
 type Challenge = {
-  game: "pattern-match";
+  game?: "pattern-match";
   ordered: string[];
   options: string[][];
+  correctIndex?: number;
 };
 
-const SHOW_MS = 2200;
-const MAX_SCORE = 10000;
-
-const TILE_SKINS: Record<string, { icon: string; chip: string; accent: string; code: string }> = {
-  PwnIt: { icon: "🎯", chip: "bg-rose-100", accent: "bg-rose-400", code: "PWN" },
-  Rocket: { icon: "🚀", chip: "bg-indigo-100", accent: "bg-indigo-400", code: "RKT" },
-  Shield: { icon: "🛡️", chip: "bg-sky-100", accent: "bg-sky-400", code: "SHD" },
-  Bolt: { icon: "⚡", chip: "bg-amber-100", accent: "bg-amber-400", code: "BLT" },
-  Puzzle: { icon: "🧩", chip: "bg-emerald-100", accent: "bg-emerald-400", code: "PZL" },
-  Spark: { icon: "✨", chip: "bg-fuchsia-100", accent: "bg-fuchsia-400", code: "SPK" },
-  Orbit: { icon: "🪐", chip: "bg-violet-100", accent: "bg-violet-400", code: "ORB" },
-  Crown: { icon: "👑", chip: "bg-yellow-100", accent: "bg-yellow-400", code: "CRN" },
-};
-
-function randomInt(max: number) {
-  return Math.floor(Math.random() * max);
-}
-
-function shuffle<T>(values: readonly T[]): T[] {
+function shuffle<T>(values: readonly T[]) {
   const copy = [...values];
   for (let i = copy.length - 1; i > 0; i -= 1) {
-    const j = randomInt(i + 1);
+    const j = Math.floor(Math.random() * (i + 1));
     [copy[i], copy[j]] = [copy[j]!, copy[i]!];
   }
   return copy;
-}
-
-function buildChallenge(): Challenge {
-  const bank = Object.keys(TILE_SKINS);
-  const ordered = shuffle(bank).slice(0, 4);
-  const distractorA = [...ordered];
-  [distractorA[1], distractorA[2]] = [distractorA[2]!, distractorA[1]!];
-  const distractorB = [...ordered];
-  [distractorB[0], distractorB[3]] = [distractorB[3]!, distractorB[0]!];
-  return {
-    game: "pattern-match",
-    ordered,
-    options: shuffle([ordered, distractorA, distractorB]).map((entry) => [...entry]),
-  };
 }
 
 function sameArray<T>(a: T[], b: T[]) {
   return a.length === b.length && a.every((value, index) => value === b[index]);
 }
 
-function PatternTile({ value, hidden = false }: { value: string; hidden?: boolean }) {
-  const skin = TILE_SKINS[value] ?? TILE_SKINS.PwnIt;
-  if (hidden) {
-    return <div className="h-16 w-16 rounded-2xl border border-dashed border-slate-300 bg-slate-100" />;
+function buildChallenge(): Challenge {
+  const ordered = shuffle(WORD_BANK).slice(0, 4) as string[];
+  const distractors = new Set<string>();
+  while (distractors.size < 3) {
+    const candidate = shuffle(ordered).join("|");
+    if (candidate !== ordered.join("|")) distractors.add(candidate);
   }
+  const options = shuffle([ordered, ...Array.from(distractors).map((entry) => entry.split("|"))]);
+  return {
+    game: "pattern-match",
+    ordered,
+    options,
+    correctIndex: options.findIndex((option) => sameArray(option, ordered)),
+  };
+}
 
-  return (
-    <div className="flex h-16 w-16 flex-col justify-between rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
-      <div className="text-lg leading-none drop-shadow-sm">{skin.icon}</div>
-      <div className="space-y-1">
-        <div className={`h-1.5 w-5 rounded-full ${skin.accent}`} />
-        <div className={`inline-flex rounded-full px-1.5 py-0.5 text-[8px] font-black tracking-[0.18em] text-slate-900 ${skin.chip}`}>
-          {skin.code}
-        </div>
-      </div>
-    </div>
-  );
+function stripLabel(tokens: string[]) {
+  return tokens.join(" • ");
 }
 
 export default function PatternMatchGame({ onFinish, disabled, challenge: injectedChallenge }: GameProps<Challenge>) {
@@ -90,17 +65,18 @@ export default function PatternMatchGame({ onFinish, disabled, challenge: inject
   }, [injectedChallenge]);
 
   useEffect(() => {
-    if (phase !== "SHOW") return;
+    if (phase !== "SHOW") return undefined;
     const timer = window.setTimeout(() => {
       setPhase("INPUT");
-      setMessage("Pick the strip that matches what you just saw.");
       startedAtRef.current = Date.now();
+      setMessage("Choose the strip with the exact same visual order.");
     }, SHOW_MS);
     return () => window.clearTimeout(timer);
   }, [phase]);
 
-  function reset() {
-    if (!injectedChallenge) {
+  function start(fresh: boolean) {
+    if (disabled) return;
+    if (fresh && !injectedChallenge) {
       setLocalChallenge(buildChallenge());
     }
     setPhase("SHOW");
@@ -112,7 +88,8 @@ export default function PatternMatchGame({ onFinish, disabled, challenge: inject
   function choose(index: number) {
     if (disabled || phase !== "INPUT") return;
     const elapsedMs = Math.max(0, Date.now() - (startedAtRef.current ?? Date.now()));
-    const correct = sameArray(challenge.options[index] ?? [], challenge.ordered);
+    const chosen = challenge.options[index] ?? [];
+    const correct = typeof challenge.correctIndex === "number" ? index === challenge.correctIndex : sameArray(chosen, challenge.ordered);
     const finalScore = correct ? Math.max(1200, MAX_SCORE - elapsedMs) : 0;
 
     setPhase("DONE");
@@ -124,6 +101,8 @@ export default function PatternMatchGame({ onFinish, disabled, challenge: inject
       meta: {
         game: "pattern-match",
         chosenIndex: index,
+        ...(typeof challenge.correctIndex === "number" ? { correctIndex: challenge.correctIndex } : {}),
+        elapsedMs,
       },
     });
   }
@@ -132,51 +111,49 @@ export default function PatternMatchGame({ onFinish, disabled, challenge: inject
     <div className="mx-auto max-w-xl rounded-3xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Pattern Match</div>
-          <div className="text-lg font-black text-slate-900">Memorise the strip</div>
+          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Objective</div>
+          <h3 className="mt-1 text-base font-black text-slate-950 sm:text-lg">Pattern Match</h3>
         </div>
-        <button
-          type="button"
-          onClick={reset}
-          disabled={disabled}
-          className="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          {phase === "READY" ? "Start" : "Replay"}
-        </button>
+        <div className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">Visual strip</div>
       </div>
 
-      {score !== null ? <div className="mt-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Score: {score}</div> : null}
+      <p className="mt-2 text-sm text-slate-600">Watch the strip, then choose the option that matches exactly in the same order.</p>
 
       <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
         <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Shown pattern</div>
-        <div className="mt-2 flex flex-wrap gap-2">
-          {challenge.ordered.map((value, index) => (
-            <PatternTile key={`${value}-${index}`} value={value} hidden={phase !== "SHOW"} />
-          ))}
+        <div className="mt-2 rounded-2xl border border-slate-200 bg-white px-3 py-4 text-center text-sm font-semibold text-slate-800">
+          {phase === "SHOW" ? stripLabel(challenge.ordered) : phase === "READY" ? "Press start to reveal the strip." : "Pattern hidden"}
         </div>
       </div>
 
-      {phase === "INPUT" || phase === "DONE" ? (
-        <div className="mt-3 space-y-2">
-          {challenge.options.map((option, index) => (
-            <button
-              key={index}
-              type="button"
-              onClick={() => choose(index)}
-              disabled={disabled || phase !== "INPUT"}
-              className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-3 text-left shadow-sm transition hover:border-slate-300 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <div className="flex flex-wrap gap-2">
-                {option.map((value, optionIndex) => (
-                  <PatternTile key={`${index}-${optionIndex}-${value}`} value={value} />
-                ))}
-              </div>
-            </button>
-          ))}
-        </div>
-      ) : null}
+      <div className="mt-4 grid gap-2">
+        {challenge.options.map((option, index) => (
+          <button
+            key={index}
+            type="button"
+            onClick={() => choose(index)}
+            disabled={disabled || phase !== "INPUT"}
+            className="rounded-2xl border border-slate-200 bg-white px-3 py-3 text-left text-sm font-semibold text-slate-800 shadow-sm transition hover:border-slate-900 disabled:opacity-50"
+          >
+            {String.fromCharCode(65 + index)}. {stripLabel(option)}
+          </button>
+        ))}
+      </div>
 
-      {message ? <p className="mt-3 text-sm text-slate-600">{message}</p> : null}
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        {phase === "READY" ? (
+          <button type="button" onClick={() => start(true)} disabled={disabled} className="rounded-full bg-slate-900 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">
+            Start
+          </button>
+        ) : phase === "DONE" ? (
+          <button type="button" onClick={() => start(true)} disabled={disabled} className="rounded-full bg-slate-900 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">
+            Replay
+          </button>
+        ) : null}
+      </div>
+
+      {message ? <p className="mt-3 text-sm text-slate-700">{message}</p> : null}
+      {typeof score === "number" ? <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Local score: {score}</p> : null}
     </div>
   );
 }
