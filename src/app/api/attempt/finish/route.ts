@@ -1,7 +1,6 @@
 export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
-
 import { getCurrentActor, getRequestIp, hashForRateLimit } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { compareScores } from "@/lib/gameRules";
@@ -31,6 +30,7 @@ export async function POST(req: Request) {
     const actor = await getCurrentActor();
     const user = actor.user;
     const subject = `${user.id}:${actor.bucketKey}:${hashForRateLimit(getRequestIp())}:${attemptId}`;
+
     const rate = await consumeRateLimit({
       scope: "attempt_finish",
       subject,
@@ -57,6 +57,7 @@ export async function POST(req: Request) {
         challengeJson: true,
         issuedAt: true,
         expiresAt: true,
+        submittedAt: true,
       },
     });
 
@@ -69,10 +70,11 @@ export async function POST(req: Request) {
     }
 
     if (new Date(session.expiresAt).getTime() < Date.now()) {
-      await (prisma as any).attemptSession.update({
-        where: { id: session.id },
+      await (prisma as any).attemptSession.updateMany({
+        where: { id: session.id, userId: user.id, status: "ISSUED" },
         data: { status: "EXPIRED", verificationJson: { reason: "expired_before_finish" } },
       });
+
       return NextResponse.json({ ok: false, error: "This attempt session expired. Start a new run." }, { status: 409 });
     }
 
@@ -97,24 +99,26 @@ export async function POST(req: Request) {
     const synced = await syncRoundLifecycle(session.itemId);
     const currentState = synced?.state ?? round.state;
     if (!["BUILDING", "ACTIVATED"].includes(currentState)) {
-      return NextResponse.json(
-        { ok: false, error: "This prize is not accepting plays right now." },
-        { status: 409 },
-      );
+      return NextResponse.json({ ok: false, error: "This prize is not accepting plays right now." }, { status: 409 });
     }
 
     const serverElapsedMs = Math.max(0, Date.now() - new Date(session.issuedAt).getTime());
     const verification = verifyVerifiedAttempt(session.gameKey, session.challengeJson as any, meta, serverElapsedMs);
 
     if (!verification.valid) {
-      await (prisma as any).attemptSession.update({
-        where: { id: session.id },
+      const rejected = await (prisma as any).attemptSession.updateMany({
+        where: { id: session.id, userId: user.id, status: "ISSUED" },
         data: {
           status: "REJECTED",
           submittedAt: new Date(),
           verificationJson: verification.flags,
         },
       });
+
+      if (!rejected.count) {
+        return NextResponse.json({ ok: false, error: "This attempt session is no longer active." }, { status: 409 });
+      }
+
       return NextResponse.json(
         { ok: false, error: "Attempt rejected by server verification.", flags: verification.flags },
         { status: 422 },
@@ -125,6 +129,28 @@ export async function POST(req: Request) {
     const playCost = playCostForPrize(item.prizeValueZAR);
 
     const txRes = await prisma.$transaction(async (tx) => {
+      const claim = await (tx as any).attemptSession.updateMany({
+        where: {
+          id: session.id,
+          userId: user.id,
+          status: "ISSUED",
+          submittedAt: null,
+        },
+        data: {
+          status: "SUBMITTING",
+          submittedAt: new Date(),
+          verificationJson: {
+            phase: "claiming",
+            verified: true,
+            serverElapsedMs,
+          },
+        },
+      });
+
+      if (!claim.count) {
+        return { ok: false as const, status: 409 as const, error: "This attempt session is no longer active." };
+      }
+
       const freshUser: any = await tx.user.findUnique({
         where: { id: user.id },
         select: { id: true, paidCreditsBalance: true, freeCreditsBalance: true },
@@ -135,8 +161,22 @@ export async function POST(req: Request) {
       const totalBal = freeBal + paidBal;
 
       if (totalBal < playCost) {
+        await (tx as any).attemptSession.update({
+          where: { id: session.id },
+          data: {
+            status: "REJECTED",
+            verificationJson: {
+              reason: "insufficient_credits_at_finish",
+              requiredCredits: playCost,
+              freeBalance: freeBal,
+              paidBalance: paidBal,
+            },
+          },
+        });
+
         return {
           ok: false as const,
+          status: 402 as const,
           error: "Not enough credits",
           playCost,
           freeBalance: freeBal,
@@ -225,6 +265,7 @@ export async function POST(req: Request) {
           submittedAt: new Date(),
           verificationJson: {
             scoreMs: verification.scoreMs,
+            serverElapsedMs,
             ...verification.flags,
             attemptRowId: attempt.id,
           },
@@ -249,12 +290,12 @@ export async function POST(req: Request) {
         {
           ok: false,
           error: txRes.error,
-          playCost: txRes.playCost,
-          freeBalance: txRes.freeBalance,
-          paidBalance: txRes.paidBalance,
-          totalBalance: txRes.totalBalance,
+          playCost: (txRes as any).playCost,
+          freeBalance: (txRes as any).freeBalance,
+          paidBalance: (txRes as any).paidBalance,
+          totalBalance: (txRes as any).totalBalance,
         },
-        { status: 402 },
+        { status: (txRes as any).status ?? 402 },
       );
     }
 
@@ -281,6 +322,7 @@ export async function POST(req: Request) {
     const rows = Array.from(bestByUser.values()).sort((a, b) => compareScores(item.gameKey, a, b));
     const totalPlayers = rows.length;
     const myRank = totalPlayers ? Math.max(1, rows.findIndex((r) => r.userId === user.id) + 1) : 0;
+
     let status: "LEADING" | "BONUS" | "CHASING" = "CHASING";
     if (myRank === 1) status = "LEADING";
     else if (myRank === 2 || myRank === 3) status = "BONUS";
