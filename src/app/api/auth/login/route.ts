@@ -1,7 +1,7 @@
-
 export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 
 import {
   buildSessionToken,
@@ -20,13 +20,14 @@ const loginSelect = {
   email: true,
   isGuest: true,
   passwordHash: true,
-};
+} satisfies Prisma.UserSelect;
 
 export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}));
   const email = normalizeEmail(body?.email);
   const passwordCheck = validatePassword(body?.password);
   const nextPath = safeNextPath(body?.next ?? "/");
+
   const turnstile = await validateTurnstileToken({
     token: body?.turnstileToken,
     remoteIp: getRequestIp(),
@@ -47,12 +48,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: passwordCheck.error }, { status: 400 });
   }
 
-  const user = await prisma.user.findUnique({ where: { email }, select: loginSelect as any });
+  const user = await prisma.user.findUnique({
+    where: { email },
+    select: loginSelect,
+  });
+
   if (!user || user.isGuest || !user.passwordHash || !verifyPassword(passwordCheck.password, user.passwordHash)) {
     return NextResponse.json({ ok: false, error: "Incorrect email or password." }, { status: 401 });
   }
 
   const response = NextResponse.json({ ok: true, nextPath });
+
   response.cookies.set(SESSION_COOKIE, buildSessionToken(user.id), {
     httpOnly: true,
     sameSite: "lax",
@@ -60,6 +66,7 @@ export async function POST(request: Request) {
     path: "/",
     maxAge: 60 * 60 * 24 * 30,
   });
+
   response.cookies.set(DEV_DEMO_COOKIE, "", {
     httpOnly: false,
     sameSite: "lax",
@@ -67,5 +74,6 @@ export async function POST(request: Request) {
     path: "/",
     expires: new Date(0),
   });
+
   return response;
 }
