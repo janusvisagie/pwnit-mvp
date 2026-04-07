@@ -1,8 +1,6 @@
-
 export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
-
 import { getCurrentActor, getRequestIp, hashForRateLimit } from "@/lib/auth";
 import { shouldRequireTurnstileForCompetitiveStart } from "@/lib/botRisk";
 import { prisma } from "@/lib/db";
@@ -24,6 +22,7 @@ export async function POST(req: Request) {
     const actor = await getCurrentActor();
     const user = actor.user;
     const subject = `${user.id}:${actor.bucketKey}:${hashForRateLimit(getRequestIp())}:${itemId}`;
+
     const rate = await consumeRateLimit({
       scope: "attempt_start",
       subject,
@@ -42,11 +41,13 @@ export async function POST(req: Request) {
       where: { id: itemId },
       select: { id: true, title: true, gameKey: true },
     });
+
     if (!item) {
       return NextResponse.json({ ok: false, error: "Item not found" }, { status: 404 });
     }
 
-    if (!isVerifiedGameKey(item.gameKey)) {
+    const gameKey = item.gameKey;
+    if (!gameKey || !isVerifiedGameKey(gameKey)) {
       return NextResponse.json(
         {
           ok: false,
@@ -63,6 +64,7 @@ export async function POST(req: Request) {
 
     if (turnstileRequirement.required) {
       const humanCheck = await validateTurnstileToken({ token: turnstileToken, remoteIp: getRequestIp() });
+
       if (!humanCheck.ok) {
         return NextResponse.json(
           {
@@ -86,11 +88,12 @@ export async function POST(req: Request) {
 
     const synced = await syncRoundLifecycle(itemId);
     const currentState = synced?.state ?? round.state;
+
     if (!["BUILDING", "ACTIVATED"].includes(currentState)) {
       return NextResponse.json({ ok: false, error: "This prize is not accepting plays right now." }, { status: 409 });
     }
 
-    const challenge = buildVerifiedChallenge(item.gameKey);
+    const challenge = buildVerifiedChallenge(gameKey);
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
     await (prisma as any).attemptSession.updateMany({
@@ -111,7 +114,7 @@ export async function POST(req: Request) {
         userId: user.id,
         itemId,
         roundId: round.id,
-        gameKey: item.gameKey,
+        gameKey,
         status: "ISSUED",
         challengeJson: challenge,
         expiresAt,
