@@ -1,22 +1,27 @@
 import { AuthStatus } from "@/components/AuthStatus";
-import { getCurrentUserSummary } from "@/lib/auth";
 
-export async function AuthStatusShell() {
-  const summary = await getCurrentUserSummary();
+type Summary = {
+  isGuest: boolean;
+  isDemoUser?: boolean;
+  isLocalDev?: boolean;
+  demoUserKey?: string | null;
+  actorLabel: string;
+  email: string | null;
+  emailVerified: boolean;
+};
 
-  return (
-    <AuthStatus
-      initial={{
-        isGuest: summary.isGuest,
-        isDemoUser: summary.isDemoUser,
-        isLocalDev: summary.isLocalDev,
-        demoUserKey: summary.demoUserKey,
-        actorLabel: summary.actorLabel,
-        email: summary.email,
-        emailVerified: summary.emailVerified,
-      }}
-    />
-  );
+const fallbackSummary: Summary = {
+  isGuest: true,
+  isDemoUser: false,
+  isLocalDev: false,
+  demoUserKey: null,
+  actorLabel: "Playing as Guest",
+  email: null,
+  emailVerified: false,
+};
+
+export function AuthStatusShell() {
+  return <AuthStatus initial={fallbackSummary} />;
 }
 
 export default AuthStatusShell;
