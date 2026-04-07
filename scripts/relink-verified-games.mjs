@@ -1,14 +1,15 @@
+
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
 const TITLE_MAP = {
   "Fuel Voucher": "hidden-pair-memory",
-  "Checkers Voucher": "transform-memory",
-  "Takealot Voucher": "pattern-match",
+  "Checkers Voucher": "clue-ladder",
+  "Takealot Voucher": "progressive-mosaic",
   "Sony WH-1000XM5 Headphones": "codebreaker",
-  "Nintendo Switch OLED": "rule-lock",
-  "GoPro HERO13 Black": "balance-grid",
+  "Nintendo Switch OLED": "signal-hunt",
+  "GoPro HERO13 Black": "safe-path-fog",
 };
 
 const LEGACY_KEY_MAP = {
@@ -28,7 +29,12 @@ const LEGACY_KEY_MAP = {
   "target-hold": "balance-grid",
   "sequence-restore": "hidden-pair-memory",
   "spot-the-missing": "hidden-pair-memory",
-  "route-builder": "pattern-match",
+  "route-builder": "safe-path-fog",
+  "transform-memory": "clue-ladder",
+  "pattern-match": "progressive-mosaic",
+  "rule-lock": "signal-hunt",
+  "balance-grid": "safe-path-fog",
+  "rapid-math-relay": "signal-hunt",
 };
 
 function pickVerifiedGameKey(item) {
@@ -46,12 +52,6 @@ async function clearCompetitiveState() {
     await prisma.attempt.deleteMany();
   } catch {}
   try {
-    await prisma.creditLedger.deleteMany();
-  } catch {}
-  try {
-    await prisma.itemPurchase.deleteMany();
-  } catch {}
-  try {
     await prisma.itemRound.deleteMany();
   } catch {}
 }
@@ -66,12 +66,10 @@ async function relinkItems() {
   for (const item of items) {
     const nextGameKey = pickVerifiedGameKey(item);
     if (!nextGameKey || nextGameKey === item.gameKey) continue;
-
     await prisma.item.update({
       where: { id: item.id },
       data: { gameKey: nextGameKey },
     });
-
     changed += 1;
     console.log(`Updated ${item.title}: ${item.gameKey} -> ${nextGameKey}`);
   }
@@ -80,21 +78,14 @@ async function relinkItems() {
 }
 
 async function main() {
-  const databaseUrl = process.env.DATABASE_URL || "";
-  if (!databaseUrl) {
-    throw new Error("DATABASE_URL is not set. Point this script at the database you want to relink first.");
-  }
-
-  console.log(`Using database host: ${new URL(databaseUrl).host}`);
-
   const { items, changed } = await relinkItems();
   await clearCompetitiveState();
 
   console.log("");
   console.log(`Items checked: ${items.length}`);
   console.log(`Items relinked: ${changed}`);
-  console.log("Competitive attempts, sessions, purchases, ledgers, rounds, and winners were cleared so old results do not mix with the current evaluation set.");
-  console.log("This script does not auto-refund credits.");
+  console.log("Competitive attempts, sessions, rounds, and winners were cleared so old results do not mix with the current evaluation set.");
+  console.log("This script no longer auto-refunds credits, so balances should not jump unexpectedly.");
 }
 
 main()

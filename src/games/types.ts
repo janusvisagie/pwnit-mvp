@@ -15,7 +15,11 @@ export type GameType =
   | "BALANCE_GRID"
   | "PATTERN_MATCH"
   | "SPOT_THE_MISSING"
-  | "RAPID_MATH_RELAY";
+  | "RAPID_MATH_RELAY"
+  | "PROGRESSIVE_MOSAIC"
+  | "CLUE_LADDER"
+  | "SAFE_PATH_FOG"
+  | "SIGNAL_HUNT";
 
 export type GameResult = {
   scoreMs: number;

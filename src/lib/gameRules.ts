@@ -19,7 +19,11 @@ export type SupportedGameKey =
   | "balance-grid"
   | "pattern-match"
   | "spot-the-missing"
-  | "rapid-math-relay";
+  | "rapid-math-relay"
+  | "progressive-mosaic"
+  | "clue-ladder"
+  | "safe-path-fog"
+  | "signal-hunt";
 
 type GameMeta = {
   label: string;

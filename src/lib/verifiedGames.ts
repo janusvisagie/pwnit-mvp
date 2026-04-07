@@ -1,3 +1,12 @@
+import {
+  NEXT_HIDDEN_STATE_GAME_KEYS,
+  type AdditionalPublicVerifiedChallenge,
+  type AdditionalVerifiedChallenge,
+  buildNextHiddenStateChallenge,
+  buildPublicNextHiddenStateChallenge,
+  verifyNextHiddenStateAttempt,
+} from "./nextHiddenStateGames";
+
 
 export const VERIFIED_GAME_KEYS = [
   "codebreaker",
@@ -9,6 +18,7 @@ export const VERIFIED_GAME_KEYS = [
   "pattern-match",
   "spot-the-missing",
   "rapid-math-relay",
+  ...NEXT_HIDDEN_STATE_GAME_KEYS,
 ] as const;
 
 export type VerifiedGameKey = (typeof VERIFIED_GAME_KEYS)[number];
@@ -95,7 +105,8 @@ export type VerifiedChallenge =
   | BalanceGridChallenge
   | PatternMatchChallenge
   | SpotTheMissingChallenge
-  | RapidMathRelayChallenge;
+  | RapidMathRelayChallenge
+  | AdditionalVerifiedChallenge;
 
 export type PublicVerifiedChallenge =
   | { game: "codebreaker"; digitPool: number[]; codeLength: number; maxGuesses: number }
@@ -106,7 +117,8 @@ export type PublicVerifiedChallenge =
   | { game: "balance-grid"; board: number[]; targetSum: number }
   | PatternMatchChallenge
   | { game: "spot-the-missing"; shown: string[]; remaining: string[]; options: string[] }
-  | { game: "rapid-math-relay"; rounds: Array<{ prompt: string }>; timeLimitMs: number };
+  | { game: "rapid-math-relay"; rounds: Array<{ prompt: string }>; timeLimitMs: number }
+  | AdditionalPublicVerifiedChallenge;
 
 type VerificationResult = {
   valid: boolean;
@@ -436,6 +448,11 @@ export function buildVerifiedChallenge(gameKey: VerifiedGameKey): VerifiedChalle
       return buildSpotTheMissingChallenge();
     case "rapid-math-relay":
       return buildRapidMathRelayChallenge();
+    case "progressive-mosaic":
+    case "clue-ladder":
+    case "safe-path-fog":
+    case "signal-hunt":
+      return buildNextHiddenStateChallenge(gameKey);
     default:
       throw new Error(`Unhandled verified game key: ${String(gameKey)}`);
   }
@@ -469,6 +486,11 @@ export function buildPublicVerifiedChallenge(gameKeyOrChallenge: VerifiedGameKey
       return { game: challenge.game, shown: challenge.shown, remaining: challenge.remaining, options: challenge.options };
     case "rapid-math-relay":
       return { game: challenge.game, rounds: challenge.rounds.map((round) => ({ prompt: round.prompt })), timeLimitMs: challenge.timeLimitMs };
+    case "progressive-mosaic":
+    case "clue-ladder":
+    case "safe-path-fog":
+    case "signal-hunt":
+      return buildPublicNextHiddenStateChallenge(challenge);
     default:
       throw new Error(`Unhandled public verified game key: ${String((challenge as { game?: unknown }).game)}`);
   }
@@ -862,6 +884,11 @@ export function verifyVerifiedAttempt(
     case "rapid-math-relay":
       if (challenge.game !== "rapid-math-relay") return { valid: false, scoreMs: 0, flags: { reason: "challenge_game_mismatch" } };
       return verifyRapidMathRelay(challenge, meta, serverElapsedMs);
+    case "progressive-mosaic":
+    case "clue-ladder":
+    case "safe-path-fog":
+    case "signal-hunt":
+      return verifyNextHiddenStateAttempt(gameKey, challenge as AdditionalVerifiedChallenge, meta, serverElapsedMs, progressState);
     default:
       return { valid: false, scoreMs: 0, flags: { reason: "unsupported_verified_game" } };
   }

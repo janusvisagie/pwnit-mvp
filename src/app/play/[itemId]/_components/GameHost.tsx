@@ -13,14 +13,18 @@ import HiddenPairMemoryGame from "@/games/hidden-pair-memory/HiddenPairMemoryGam
 import MovingZoneGame from "@/games/moving-zone/MovingZoneGame";
 import NumberMemoryGame from "@/games/number-memory/NumberMemoryGame";
 import PatternMatchGame from "@/games/pattern-match/PatternMatchGame";
+import ProgressiveMosaicGame from "@/games/progressive-mosaic/ProgressiveMosaicGame";
 import RapidMathRelayGame from "@/games/rapid-math-relay/RapidMathRelayGame";
 import QuickStopGame from "@/games/quick-stop/QuickStopGame";
 import RouteBuilderGame from "@/games/route-builder/RouteBuilderGame";
 import RuleLockGame from "@/games/rule-lock/RuleLockGame";
+import ClueLadderGame from "@/games/clue-ladder/ClueLadderGame";
 import SequenceRestoreGame from "@/games/sequence-restore/SequenceRestoreGame";
 import SpotTheMissingGame from "@/games/spot-the-missing/SpotTheMissingGame";
 import TargetGridGame from "@/games/target-grid/TargetGridGame";
 import TransformMemoryGame from "@/games/transform-memory/TransformMemoryGame";
+import SafePathFogGame from "@/games/safe-path-fog/SafePathFogGame";
+import SignalHuntGame from "@/games/signal-hunt/SignalHuntGame";
 
 const VERIFIED_GAME_KEYS = new Set([
   "codebreaker",
@@ -32,6 +36,10 @@ const VERIFIED_GAME_KEYS = new Set([
   "pattern-match",
   "spot-the-missing",
   "rapid-math-relay",
+  "progressive-mosaic",
+  "clue-ladder",
+  "safe-path-fog",
+  "signal-hunt",
 ]);
 
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "";
@@ -118,7 +126,11 @@ type GameKey =
   | "balance-grid"
   | "pattern-match"
   | "spot-the-missing"
-  | "rapid-math-relay";
+  | "rapid-math-relay"
+  | "progressive-mosaic"
+  | "clue-ladder"
+  | "safe-path-fog"
+  | "signal-hunt";
 
 const GAME_REGISTRY: Record<GameKey, { title: string; Component: any }> = {
   "memory-sprint": { title: "Memory Sprint", Component: NumberMemoryGame },
@@ -145,6 +157,10 @@ const GAME_REGISTRY: Record<GameKey, { title: string; Component: any }> = {
   "pattern-match": { title: "Pattern Match", Component: PatternMatchGame },
   "spot-the-missing": { title: "Spot the Missing", Component: SpotTheMissingGame },
   "rapid-math-relay": { title: "Rapid Math Relay", Component: RapidMathRelayGame },
+  "progressive-mosaic": { title: "Progressive Mosaic", Component: ProgressiveMosaicGame },
+  "clue-ladder": { title: "Clue Ladder", Component: ClueLadderGame },
+  "safe-path-fog": { title: "Safe Path Fog", Component: SafePathFogGame },
+  "signal-hunt": { title: "Signal Hunt", Component: SignalHuntGame },
 };
 
 type Props = {

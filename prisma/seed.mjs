@@ -1,36 +1,21 @@
+
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-async function clearItemState() {
+async function main() {
   await prisma.winner.deleteMany();
-  await prisma.attemptSession.deleteMany();
   await prisma.attempt.deleteMany();
 
   try {
-    await prisma.creditLedger.deleteMany();
+    await prisma.attemptSession.deleteMany();
   } catch {}
 
   try {
     await prisma.itemPurchase.deleteMany();
   } catch {}
 
-  try {
-    await prisma.itemRound.deleteMany();
-  } catch {}
-
   await prisma.item.deleteMany();
-}
-
-async function main() {
-  const databaseUrl = process.env.DATABASE_URL || "";
-  if (!databaseUrl) {
-    throw new Error("DATABASE_URL is not set. Point this seed script at the database you want to reseed first.");
-  }
-
-  console.log(`Using database host: ${new URL(databaseUrl).host}`);
-
-  await clearItemState();
 
   const now = new Date();
 
@@ -51,7 +36,7 @@ async function main() {
       imageUrl: "/products/checkers-voucher.svg",
       activationGoalEntries: 3,
       countdownMinutes: 1,
-      gameKey: "transform-memory",
+      gameKey: "clue-ladder",
     },
     {
       title: "Takealot Voucher",
@@ -60,7 +45,7 @@ async function main() {
       imageUrl: "/products/takealot-voucher.svg",
       activationGoalEntries: 3,
       countdownMinutes: 1,
-      gameKey: "pattern-match",
+      gameKey: "progressive-mosaic",
     },
     {
       title: "Sony WH-1000XM5 Headphones",
@@ -78,7 +63,7 @@ async function main() {
       imageUrl: "/products/nintendo-switch-oled.svg",
       activationGoalEntries: 3,
       countdownMinutes: 1,
-      gameKey: "rule-lock",
+      gameKey: "signal-hunt",
     },
     {
       title: "GoPro HERO13 Black",
@@ -87,7 +72,7 @@ async function main() {
       imageUrl: "/products/gopro-hero.svg",
       activationGoalEntries: 3,
       countdownMinutes: 1,
-      gameKey: "balance-grid",
+      gameKey: "safe-path-fog",
     },
   ];
 
@@ -111,7 +96,7 @@ async function main() {
     });
   }
 
-  console.log("Seeded 6 items with Hidden Pair Memory, Codebreaker, Rule Lock, Transform Memory, Pattern Match, and Balance Grid.");
+  console.log("Seeded 6 items with Hidden Pair Memory, Codebreaker, Progressive Mosaic, Clue Ladder, Safe Path Fog, and Signal Hunt.");
 }
 
 main()

@@ -6,6 +6,7 @@ import { NextResponse } from "next/server";
 import { getCurrentActor, getRequestIp, hashForRateLimit } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { consumeRateLimit } from "@/lib/rateLimit";
+import { handleNextHiddenStateProgress } from "@/lib/nextHiddenStateGames";
 import { ensureCurrentRound, syncRoundLifecycle } from "@/lib/rounds";
 
 const CODEBREAKER_CODE_LENGTH = 4;
@@ -220,6 +221,25 @@ export async function POST(req: Request) {
         exhausted,
         remainingTurns: Math.max(0, Number(challenge?.maxTurns || 10) - nextTurnCount),
       });
+    }
+
+    const extraProgress = handleNextHiddenStateProgress(
+      session.gameKey,
+      session.challengeJson as any,
+      session.verificationJson as any,
+      body as Record<string, any>,
+    );
+
+    if (extraProgress.ok) {
+      await (prisma as any).attemptSession.update({
+        where: { id: session.id },
+        data: { verificationJson: extraProgress.progressState },
+      });
+      return NextResponse.json(extraProgress.data);
+    }
+
+    if (extraProgress.status !== 409) {
+      return NextResponse.json({ ok: false, error: extraProgress.error }, { status: extraProgress.status });
     }
 
     return NextResponse.json({ ok: false, error: "This game does not use per-move server progress." }, { status: 409 });

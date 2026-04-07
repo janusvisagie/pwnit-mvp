@@ -1,40 +1,35 @@
+PwnIt hidden-state games patch (next 4 games)
 
-PwnIt hidden-state games patch
+This patch adds:
+- Progressive Mosaic
+- Clue Ladder
+- Safe Path Fog
+- Signal Hunt
 
-What this patch adds
-- upgrades Codebreaker onto a true hidden-state verified flow
-- adds Hidden Pair Memory as a new server-progressive verified game
-- adds /api/attempt/progress for per-move server feedback
-- makes /api/attempt/start return a redacted public challenge for hidden-state games
-- updates relink + seed so Fuel Voucher uses Hidden Pair Memory and Sony stays on Codebreaker
+It keeps the previously added hidden-state games:
+- Codebreaker
+- Hidden Pair Memory
 
-Files included
-- src/lib/verifiedGames.ts
-- src/lib/gameRules.ts
-- src/app/play/[itemId]/_components/GameHost.tsx
-- src/app/api/attempt/start/route.ts
-- src/app/api/attempt/progress/route.ts
-- src/app/api/attempt/finish/route.ts
-- src/games/codebreaker/CodebreakerGame.tsx
-- src/games/hidden-pair-memory/HiddenPairMemoryGame.tsx
-- src/games/types.ts
-- src/games/registry.ts
-- prisma/seed.mjs
-- scripts/relink-verified-games.mjs
+Files included:
+- src/lib/nextHiddenStateGames.ts
+- updated verified-game wiring / progress route / GameHost / gameRules / registry / types
+- new game components
+- updated seed + relink mapping so the 6 current prizes map to the 6 hidden-state games
 
-Apply
-1. Unzip into your repo root and overwrite existing files.
+Apply steps:
+1. Unzip into your repo root and overwrite the included files.
 2. Commit and push.
 3. Redeploy.
+4. After deploy, relink your current items:
+   node scripts/relink-verified-games.mjs
 
-To link current items without a full reseed
-node scripts/relink-verified-games.mjs
+If you want a full reset + reseed instead of relinking:
+   npm run db:seed
 
-To reseed from scratch
-npm run db:seed
-
-Notes
-- No Prisma schema change is required for this patch.
-- Codebreaker now checks each guess through the server.
-- Hidden Pair Memory reveals only the chosen pair after each committed turn.
-- Pattern Match / the other visible-puzzle games remain as they are for now.
+New 6-game seeded mix after this patch:
+- Fuel Voucher -> Hidden Pair Memory
+- Checkers Voucher -> Clue Ladder
+- Takealot Voucher -> Progressive Mosaic
+- Sony WH-1000XM5 Headphones -> Codebreaker
+- Nintendo Switch OLED -> Signal Hunt
+- GoPro HERO13 Black -> Safe Path Fog

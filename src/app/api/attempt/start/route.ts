@@ -10,7 +10,14 @@ import { ensureCurrentRound, syncRoundLifecycle } from "@/lib/rounds";
 import { buildPublicVerifiedChallenge, buildVerifiedChallenge, isVerifiedGameKey } from "@/lib/verifiedGames";
 import { validateTurnstileToken } from "@/lib/turnstile";
 
-const HIDDEN_STATE_GAME_KEYS = new Set(["codebreaker", "hidden-pair-memory"]);
+const HIDDEN_STATE_GAME_KEYS = new Set([
+  "codebreaker",
+  "hidden-pair-memory",
+  "progressive-mosaic",
+  "clue-ladder",
+  "safe-path-fog",
+  "signal-hunt",
+]);
 
 export async function POST(req: Request) {
   try {
