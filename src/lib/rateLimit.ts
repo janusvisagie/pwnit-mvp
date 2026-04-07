@@ -14,7 +14,21 @@ type ConsumeResult = {
   retryAfterSeconds: number;
 };
 
-export async function consumeRateLimit({ scope, subject, limit, windowMs }: ConsumeOptions): Promise<ConsumeResult> {
+function isUniqueConstraintError(error: unknown): boolean {
+  return Boolean(
+    error &&
+      typeof error === "object" &&
+      "code" in error &&
+      (error as { code?: string }).code === "P2002",
+  );
+}
+
+export async function consumeRateLimit({
+  scope,
+  subject,
+  limit,
+  windowMs,
+}: ConsumeOptions): Promise<ConsumeResult> {
   const now = Date.now();
   const bucketStart = now - (now % windowMs);
   const windowStart = new Date(bucketStart);
@@ -22,36 +36,52 @@ export async function consumeRateLimit({ scope, subject, limit, windowMs }: Cons
   const key = hashForRateLimit(`${scope}:${subject}:${bucketStart}`);
 
   const result = await prisma.$transaction(async (tx) => {
-    const existing = await (tx as any).apiRateLimit.findUnique({ where: { key } });
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      const existing = await (tx as any).apiRateLimit.findUnique({ where: { key } });
 
-    if (!existing) {
-      await (tx as any).apiRateLimit.create({
-        data: {
+      if (!existing) {
+        try {
+          await (tx as any).apiRateLimit.create({
+            data: {
+              key,
+              scope,
+              subjectKey: subject,
+              windowStart,
+              count: 1,
+              expiresAt,
+            },
+          });
+          return { count: 1 };
+        } catch (error) {
+          if (isUniqueConstraintError(error)) {
+            continue;
+          }
+          throw error;
+        }
+      }
+
+      const currentCount = Number(existing.count || 0);
+      if (currentCount >= limit) {
+        return { count: currentCount, blocked: true as const };
+      }
+
+      const updated = await (tx as any).apiRateLimit.updateMany({
+        where: {
           key,
-          scope,
-          subjectKey: subject,
-          windowStart,
-          count: 1,
+          count: currentCount,
+        },
+        data: {
+          count: { increment: 1 },
           expiresAt,
         },
       });
-      return { count: 1 };
+
+      if (Number(updated?.count || 0) === 1) {
+        return { count: currentCount + 1 };
+      }
     }
 
-    const nextCount = Number(existing.count || 0) + 1;
-    if (nextCount > limit) {
-      return { count: Number(existing.count || 0), blocked: true as const };
-    }
-
-    await (tx as any).apiRateLimit.update({
-      where: { key },
-      data: {
-        count: { increment: 1 },
-        expiresAt,
-      },
-    });
-
-    return { count: nextCount };
+    throw new Error("Rate limit contention. Please retry.");
   });
 
   const retryAfterSeconds = Math.max(1, Math.ceil((bucketStart + windowMs - now) / 1000));

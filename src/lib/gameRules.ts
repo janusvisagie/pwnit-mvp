@@ -1,4 +1,3 @@
-
 export type SupportedGameKey =
   | "tap-speed"
   | "target-hold"
@@ -158,6 +157,30 @@ export const GAME_META: Record<string, GameMeta> = {
     label: "Rapid Math Relay",
     higherIsBetter: true,
     description: "Solve the relay of quick sums and products before the time window closes.",
+    formatScore: (score) => `${Math.max(0, Math.floor(Number(score || 0))).toLocaleString("en-ZA")} pts`,
+  },
+  "progressive-mosaic": {
+    label: "Progressive Mosaic",
+    higherIsBetter: true,
+    description: "Watch the hidden image reveal tile by tile and identify it with as few reveals as possible.",
+    formatScore: (score) => `${Math.max(0, Math.floor(Number(score || 0))).toLocaleString("en-ZA")} pts`,
+  },
+  "clue-ladder": {
+    label: "Clue Ladder",
+    higherIsBetter: true,
+    description: "Solve the hidden answer by climbing through the clues. Earlier solves earn better scores.",
+    formatScore: (score) => `${Math.max(0, Math.floor(Number(score || 0))).toLocaleString("en-ZA")} pts`,
+  },
+  "safe-path-fog": {
+    label: "Safe Path Fog",
+    higherIsBetter: true,
+    description: "Find the safe route through the fog one step at a time without revealing the whole board up front.",
+    formatScore: (score) => `${Math.max(0, Math.floor(Number(score || 0))).toLocaleString("en-ZA")} pts`,
+  },
+  "signal-hunt": {
+    label: "Signal Hunt",
+    higherIsBetter: true,
+    description: "Track the unfolding signal and act at the right moment when the target pattern appears.",
     formatScore: (score) => `${Math.max(0, Math.floor(Number(score || 0))).toLocaleString("en-ZA")} pts`,
   },
 };

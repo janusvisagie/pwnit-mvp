@@ -76,7 +76,7 @@ export default async function HomePage() {
   return (
     <main className="px-0 py-0">
       <WelcomeModal />
-      <section className="grid grid-cols-1 gap-1 md:grid-cols-2 xl:h-[calc(100vh-4.75rem)] xl:grid-cols-3 xl:auto-rows-fr">
+      <section className="grid grid-cols-1 gap-1.5 md:grid-cols-2 lg:h-[calc(100vh-4.75rem)] lg:grid-cols-3 lg:auto-rows-fr">
         {synced.map((item) => {
           const paidSpent = paidMap.get(item.id) ?? 0;
           const progress = activationProgress(item.prizeValueZAR, paidSpent);

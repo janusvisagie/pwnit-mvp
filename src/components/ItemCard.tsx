@@ -49,7 +49,7 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
   return (
     <Link
       href={href}
-      className="group flex h-full min-h-[198px] flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md xl:h-[calc((100vh-4.75rem)/2)]"
+      className="group flex h-full min-h-[172px] flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md lg:h-[calc((100vh-4.75rem)/2)]"
     >
       <div className="relative">
         <ProductImage
@@ -57,7 +57,7 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
           fallbackSrc={fallbackImage}
           alt={item.title}
           className="bg-slate-50"
-          imgClassName="h-24 w-full object-contain bg-white p-2 sm:h-28 xl:h-[17.5vh]"
+          imgClassName="h-28 w-full object-contain bg-white p-1.5 sm:h-32 lg:h-[17.75vh]"
         />
         {isClosed ? (
           <div className="pointer-events-none absolute inset-x-0 top-2 flex justify-center">
@@ -70,7 +70,7 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
 
       <div className="flex flex-1 flex-col p-2">
         <div className="flex items-start justify-between gap-2">
-          <div className="text-[14px] font-black text-slate-950">{formatZAR(item.prizeValueZAR)}</div>
+          <div className="text-[13px] font-black text-slate-950">{formatZAR(item.prizeValueZAR)}</div>
           <div className={`rounded-full px-2 py-1 text-[10px] font-semibold ${badgeTone}`}>
             {isClosed ? "Closed" : isActivated ? "Activated" : "Open"}
           </div>
