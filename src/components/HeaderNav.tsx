@@ -19,9 +19,12 @@ type NavItem = {
 export function HeaderNav() {
   const pathname = usePathname() || "/";
   const [me, setMe] = useState<MeSummary>({ isLocalDev: false });
+  const [isLocalHost, setIsLocalHost] = useState(false);
 
   useEffect(() => {
     let alive = true;
+
+    setIsLocalHost(["localhost", "127.0.0.1"].includes(window.location.hostname));
 
     async function refresh() {
       try {
@@ -50,10 +53,6 @@ export function HeaderNav() {
     };
   }, []);
 
-  const isLocalHost =
-    typeof window !== "undefined" &&
-    ["localhost", "127.0.0.1"].includes(window.location.hostname);
-
   const showAdmin = Boolean(me.isLocalDev || isLocalHost);
   const isDetailPage = pathname.startsWith("/item/") || pathname.startsWith("/play/");
 
@@ -69,41 +68,11 @@ export function HeaderNav() {
           desktop: true,
           show: true,
         },
-        {
-          href: "/dashboard",
-          label: "Profile",
-          mobileMode: "hide-on-detail",
-          desktop: true,
-          show: true,
-        },
-        {
-          href: "/referrals",
-          label: "Referrals",
-          mobileMode: "hide-on-detail",
-          desktop: true,
-          show: true,
-        },
-        {
-          href: "/feedback",
-          label: "Feedback",
-          mobileMode: "hide-on-detail",
-          desktop: true,
-          show: true,
-        },
-        {
-          href: "/terms",
-          label: "Terms",
-          mobileMode: "hide-on-detail",
-          desktop: true,
-          show: true,
-        },
-        {
-          href: "/admin",
-          label: "Admin",
-          mobileMode: "never",
-          desktop: true,
-          show: showAdmin,
-        },
+        { href: "/dashboard", label: "Profile", mobileMode: "hide-on-detail", desktop: true, show: true },
+        { href: "/referrals", label: "Referrals", mobileMode: "hide-on-detail", desktop: true, show: true },
+        { href: "/feedback", label: "Feedback", mobileMode: "hide-on-detail", desktop: true, show: true },
+        { href: "/terms", label: "Terms", mobileMode: "hide-on-detail", desktop: true, show: true },
+        { href: "/admin", label: "Admin", mobileMode: "never", desktop: true, show: showAdmin },
       ] satisfies NavItem[]).filter((item) => item.show !== false),
     [showAdmin]
   );
@@ -127,42 +96,30 @@ export function HeaderNav() {
 
     return [
       "rounded-full px-3 py-1.5 text-sm font-medium transition",
-      active
-        ? "bg-slate-900 text-white"
-        : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
+      active ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
     ].join(" ");
   }
 
   return (
     <>
-      <nav className="flex flex-wrap items-center gap-2 md:hidden">
+      <nav className="mt-2 flex gap-2 overflow-x-auto pb-1 md:hidden" aria-label="Primary">
         {mobileItems.map((item) => {
           const active = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
-
           return (
-            <Link
-              key={`mobile-${item.href}`}
-              href={item.href}
-              className={linkClasses(active, "mobile")}
-            >
+            <Link key={`mobile-${item.href}`} href={item.href} className={linkClasses(active, "mobile")}>
               {item.label}
             </Link>
           );
         })}
       </nav>
 
-      <nav className="hidden items-center gap-1 md:flex lg:gap-2">
+      <nav className="mt-2 hidden flex-wrap items-center gap-1.5 md:flex" aria-label="Primary">
         {items
           .filter((item) => item.desktop)
           .map((item) => {
             const active = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
-
             return (
-              <Link
-                key={`desktop-${item.href}`}
-                href={item.href}
-                className={linkClasses(active, "desktop")}
-              >
+              <Link key={`desktop-${item.href}`} href={item.href} className={linkClasses(active, "desktop")}>
                 {item.label}
               </Link>
             );
