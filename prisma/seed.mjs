@@ -1,21 +1,36 @@
-
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-async function main() {
+async function clearItemState() {
   await prisma.winner.deleteMany();
+  await prisma.attemptSession.deleteMany();
   await prisma.attempt.deleteMany();
 
   try {
-    await prisma.attemptSession.deleteMany();
+    await prisma.creditLedger.deleteMany();
   } catch {}
 
   try {
     await prisma.itemPurchase.deleteMany();
   } catch {}
 
+  try {
+    await prisma.itemRound.deleteMany();
+  } catch {}
+
   await prisma.item.deleteMany();
+}
+
+async function main() {
+  const databaseUrl = process.env.DATABASE_URL || "";
+  if (!databaseUrl) {
+    throw new Error("DATABASE_URL is not set. Point this seed script at the database you want to reseed first.");
+  }
+
+  console.log(`Using database host: ${new URL(databaseUrl).host}`);
+
+  await clearItemState();
 
   const now = new Date();
 

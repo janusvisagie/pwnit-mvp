@@ -1,4 +1,3 @@
-
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
@@ -47,6 +46,12 @@ async function clearCompetitiveState() {
     await prisma.attempt.deleteMany();
   } catch {}
   try {
+    await prisma.creditLedger.deleteMany();
+  } catch {}
+  try {
+    await prisma.itemPurchase.deleteMany();
+  } catch {}
+  try {
     await prisma.itemRound.deleteMany();
   } catch {}
 }
@@ -61,10 +66,12 @@ async function relinkItems() {
   for (const item of items) {
     const nextGameKey = pickVerifiedGameKey(item);
     if (!nextGameKey || nextGameKey === item.gameKey) continue;
+
     await prisma.item.update({
       where: { id: item.id },
       data: { gameKey: nextGameKey },
     });
+
     changed += 1;
     console.log(`Updated ${item.title}: ${item.gameKey} -> ${nextGameKey}`);
   }
@@ -73,14 +80,21 @@ async function relinkItems() {
 }
 
 async function main() {
+  const databaseUrl = process.env.DATABASE_URL || "";
+  if (!databaseUrl) {
+    throw new Error("DATABASE_URL is not set. Point this script at the database you want to relink first.");
+  }
+
+  console.log(`Using database host: ${new URL(databaseUrl).host}`);
+
   const { items, changed } = await relinkItems();
   await clearCompetitiveState();
 
   console.log("");
   console.log(`Items checked: ${items.length}`);
   console.log(`Items relinked: ${changed}`);
-  console.log("Competitive attempts, sessions, rounds, and winners were cleared so old results do not mix with the current evaluation set.");
-  console.log("This script no longer auto-refunds credits, so balances should not jump unexpectedly.");
+  console.log("Competitive attempts, sessions, purchases, ledgers, rounds, and winners were cleared so old results do not mix with the current evaluation set.");
+  console.log("This script does not auto-refund credits.");
 }
 
 main()
