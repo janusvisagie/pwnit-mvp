@@ -1,7 +1,9 @@
+
 import type { GameType } from "./types";
 
 import CodebreakerGame from "./codebreaker/CodebreakerGame";
 import FlashCountGame from "./flash-count/FlashCountGame";
+import HiddenPairMemoryGame from "./hidden-pair-memory/HiddenPairMemoryGame";
 import NumberMemoryGame from "./number-memory/NumberMemoryGame";
 import QuickStopGame from "./quick-stop/QuickStopGame";
 import RouteBuilderGame from "./route-builder/RouteBuilderGame";
@@ -9,7 +11,6 @@ import RuleLockGame from "./rule-lock/RuleLockGame";
 import SequenceRestoreGame from "./sequence-restore/SequenceRestoreGame";
 import TargetGridGame from "./target-grid/TargetGridGame";
 import TransformMemoryGame from "./transform-memory/TransformMemoryGame";
-import RapidMathRelayGame from "./rapid-math-relay/RapidMathRelayGame";
 
 export function getGameComponent(t: GameType) {
   switch (t) {
@@ -25,14 +26,14 @@ export function getGameComponent(t: GameType) {
       return RouteBuilderGame;
     case "CODEBREAKER":
       return CodebreakerGame;
+    case "HIDDEN_PAIR_MEMORY":
+      return HiddenPairMemoryGame;
     case "RULE_LOCK":
       return RuleLockGame;
     case "TRANSFORM_MEMORY":
       return TransformMemoryGame;
     case "SEQUENCE_RESTORE":
       return SequenceRestoreGame;
-    case "RAPID_MATH_RELAY":
-      return RapidMathRelayGame;
     case "MOVING_ZONE":
     case "TRACE_RUN":
     default:

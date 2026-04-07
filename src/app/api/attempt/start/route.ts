@@ -1,3 +1,4 @@
+
 export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
@@ -6,8 +7,10 @@ import { shouldRequireTurnstileForCompetitiveStart } from "@/lib/botRisk";
 import { prisma } from "@/lib/db";
 import { consumeRateLimit } from "@/lib/rateLimit";
 import { ensureCurrentRound, syncRoundLifecycle } from "@/lib/rounds";
-import { buildVerifiedChallenge, isVerifiedGameKey } from "@/lib/verifiedGames";
+import { buildPublicVerifiedChallenge, buildVerifiedChallenge, isVerifiedGameKey } from "@/lib/verifiedGames";
 import { validateTurnstileToken } from "@/lib/turnstile";
+
+const HIDDEN_STATE_GAME_KEYS = new Set(["codebreaker", "hidden-pair-memory"]);
 
 export async function POST(req: Request) {
   try {
@@ -94,6 +97,10 @@ export async function POST(req: Request) {
     }
 
     const challenge = buildVerifiedChallenge(gameKey);
+    const challengeForClient = HIDDEN_STATE_GAME_KEYS.has(gameKey)
+      ? buildPublicVerifiedChallenge(challenge)
+      : challenge;
+
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
     await (prisma as any).attemptSession.updateMany({
@@ -117,6 +124,7 @@ export async function POST(req: Request) {
         gameKey,
         status: "ISSUED",
         challengeJson: challenge,
+        verificationJson: {},
         expiresAt,
       },
       select: { id: true, expiresAt: true },
@@ -125,7 +133,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       ok: true,
       attemptId: session.id,
-      challenge,
+      challenge: challengeForClient,
       expiresAt: session.expiresAt,
       antiBot: {
         turnstileRequired: turnstileRequirement.required,

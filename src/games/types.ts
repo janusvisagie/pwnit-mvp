@@ -1,3 +1,4 @@
+
 export type GameType =
   | "MEMORY_SPRINT"
   | "QUICK_STOP"
@@ -7,6 +8,7 @@ export type GameType =
   | "TARGET_GRID"
   | "ROUTE_BUILDER"
   | "CODEBREAKER"
+  | "HIDDEN_PAIR_MEMORY"
   | "RULE_LOCK"
   | "TRANSFORM_MEMORY"
   | "SEQUENCE_RESTORE"

@@ -57,6 +57,7 @@ export async function POST(req: Request) {
         gameKey: true,
         status: true,
         challengeJson: true,
+        verificationJson: true,
         issuedAt: true,
         expiresAt: true,
       },
@@ -102,7 +103,13 @@ export async function POST(req: Request) {
     }
 
     const serverElapsedMs = Math.max(0, Date.now() - new Date(session.issuedAt).getTime());
-    const verification = verifyVerifiedAttempt(session.gameKey, session.challengeJson as any, meta, serverElapsedMs);
+    const verification = verifyVerifiedAttempt(
+      session.gameKey,
+      session.challengeJson as any,
+      meta,
+      serverElapsedMs,
+      session.verificationJson as any,
+    );
 
     if (!verification.valid) {
       await (prisma as any).attemptSession.update({
@@ -224,6 +231,7 @@ export async function POST(req: Request) {
           status: "SUBMITTED",
           submittedAt: new Date(),
           verificationJson: {
+            ...(session.verificationJson as any),
             scoreMs: verification.scoreMs,
             ...verification.flags,
             risk,

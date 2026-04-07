@@ -9,6 +9,7 @@ import AlphabetSprintGame from "@/games/alphabet-sprint/AlphabetSprintGame";
 import BalanceGridGame from "@/games/balance-grid/BalanceGridGame";
 import CodebreakerGame from "@/games/codebreaker/CodebreakerGame";
 import FlashCountGame from "@/games/flash-count/FlashCountGame";
+import HiddenPairMemoryGame from "@/games/hidden-pair-memory/HiddenPairMemoryGame";
 import MovingZoneGame from "@/games/moving-zone/MovingZoneGame";
 import NumberMemoryGame from "@/games/number-memory/NumberMemoryGame";
 import PatternMatchGame from "@/games/pattern-match/PatternMatchGame";
@@ -22,6 +23,8 @@ import TargetGridGame from "@/games/target-grid/TargetGridGame";
 import TransformMemoryGame from "@/games/transform-memory/TransformMemoryGame";
 
 const VERIFIED_GAME_KEYS = new Set([
+  "codebreaker",
+  "hidden-pair-memory",
   "rule-lock",
   "transform-memory",
   "sequence-restore",
@@ -108,6 +111,7 @@ type GameKey =
   | "tap-pattern"
   | "route-builder"
   | "codebreaker"
+  | "hidden-pair-memory"
   | "rule-lock"
   | "transform-memory"
   | "sequence-restore"
@@ -133,6 +137,7 @@ const GAME_REGISTRY: Record<GameKey, { title: string; Component: any }> = {
   "tap-pattern": { title: "Flash Count", Component: FlashCountGame },
   "route-builder": { title: "Route Builder", Component: RouteBuilderGame },
   "codebreaker": { title: "Codebreaker", Component: CodebreakerGame },
+  "hidden-pair-memory": { title: "Hidden Pair Memory", Component: HiddenPairMemoryGame },
   "rule-lock": { title: "Rule Lock", Component: RuleLockGame },
   "transform-memory": { title: "Transform Memory", Component: TransformMemoryGame },
   "sequence-restore": { title: "Sequence Restore", Component: SequenceRestoreGame },
@@ -331,6 +336,10 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
     (!practiceMode && !supportsVerifiedMode) ||
     (!practiceMode && supportsVerifiedMode && !session);
 
+  const mergedChallenge = !practiceMode && session
+    ? { ...(session.challenge ?? {}), attemptId: session.attemptId, expiresAt: session.expiresAt }
+    : undefined;
+
   return (
     <div className="relative rounded-3xl border border-slate-200 bg-slate-50 p-4">
       <ConfettiOverlay show={status?.state === "LEADING"} />
@@ -381,7 +390,7 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
             {loadingSession
               ? "Requesting a server-issued challenge..."
               : session
-                ? "Challenge locked to this run. The server will recompute your score from the submitted move log. Suspicious podium attempts are routed to review instead of auto-confirmation."
+                ? "Challenge locked to this run. Hidden-state games only reveal clues as you play, and the server recomputes the official result before it is accepted."
                 : "No active verified run yet."}
           </div>
         </div>
@@ -449,7 +458,7 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
       <div className="mt-4">
         <Game
           disabled={verifiedGameDisabled}
-          challenge={!practiceMode ? session?.challenge : undefined}
+          challenge={mergedChallenge}
           onFinish={(r: { scoreMs: number; meta?: any }) => submitAttempt({ scoreMs: r.scoreMs, meta: r.meta })}
         />
       </div>

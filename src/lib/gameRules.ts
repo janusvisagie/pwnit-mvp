@@ -1,3 +1,4 @@
+
 export type SupportedGameKey =
   | "tap-speed"
   | "target-hold"
@@ -11,12 +12,14 @@ export type SupportedGameKey =
   | "target-grid"
   | "route-builder"
   | "codebreaker"
+  | "hidden-pair-memory"
   | "rule-lock"
   | "transform-memory"
   | "sequence-restore"
   | "balance-grid"
   | "pattern-match"
-  | "spot-the-missing" | "rapid-math-relay";
+  | "spot-the-missing"
+  | "rapid-math-relay";
 
 type GameMeta = {
   label: string;
@@ -102,7 +105,13 @@ export const GAME_META: Record<string, GameMeta> = {
   codebreaker: {
     label: "Codebreaker",
     higherIsBetter: true,
-    description: "Crack the hidden code in as few guesses and as little time as possible.",
+    description: "Crack the hidden code through progressive feedback. The server reveals only exact and misplaced hints after each guess.",
+    formatScore: (score) => `${Math.max(0, Math.floor(Number(score || 0))).toLocaleString("en-ZA")} pts`,
+  },
+  "hidden-pair-memory": {
+    label: "Hidden Pair Memory",
+    higherIsBetter: true,
+    description: "Flip hidden pairs, learn the board step by step, and clear all matches before you run out of turns.",
     formatScore: (score) => `${Math.max(0, Math.floor(Number(score || 0))).toLocaleString("en-ZA")} pts`,
   },
   "rule-lock": {
@@ -139,6 +148,12 @@ export const GAME_META: Record<string, GameMeta> = {
     label: "Spot the Missing",
     higherIsBetter: true,
     description: "Memorise the PwnIt words, then pick the one that disappears.",
+    formatScore: (score) => `${Math.max(0, Math.floor(Number(score || 0))).toLocaleString("en-ZA")} pts`,
+  },
+  "rapid-math-relay": {
+    label: "Rapid Math Relay",
+    higherIsBetter: true,
+    description: "Solve the relay of quick sums and products before the time window closes.",
     formatScore: (score) => `${Math.max(0, Math.floor(Number(score || 0))).toLocaleString("en-ZA")} pts`,
   },
 };

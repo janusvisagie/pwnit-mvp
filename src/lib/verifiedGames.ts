@@ -1,4 +1,7 @@
+
 export const VERIFIED_GAME_KEYS = [
+  "codebreaker",
+  "hidden-pair-memory",
   "rule-lock",
   "transform-memory",
   "sequence-restore",
@@ -12,16 +15,19 @@ export type VerifiedGameKey = (typeof VERIFIED_GAME_KEYS)[number];
 
 type SymbolDef = { id: string; label: string };
 
-type RouteBuilderChallenge = {
-  game: "route-builder";
-  path: number[];
-  checkpoints: number[];
-  blockers: number[];
-};
-
 type CodebreakerChallenge = {
   game: "codebreaker";
   solution: number[];
+  digitPool: number[];
+  codeLength: number;
+  maxGuesses: number;
+};
+
+type HiddenPairMemoryChallenge = {
+  game: "hidden-pair-memory";
+  deck: string[];
+  pairCount: number;
+  maxTurns: number;
 };
 
 type RuleLockChallenge = {
@@ -81,8 +87,8 @@ type RapidMathRelayChallenge = {
 };
 
 export type VerifiedChallenge =
-  | RouteBuilderChallenge
   | CodebreakerChallenge
+  | HiddenPairMemoryChallenge
   | RuleLockChallenge
   | TransformMemoryChallenge
   | SequenceRestoreChallenge
@@ -92,11 +98,13 @@ export type VerifiedChallenge =
   | RapidMathRelayChallenge;
 
 export type PublicVerifiedChallenge =
+  | { game: "codebreaker"; digitPool: number[]; codeLength: number; maxGuesses: number }
+  | { game: "hidden-pair-memory"; boardSize: number; pairCount: number; maxTurns: number }
   | RuleLockChallenge
   | TransformMemoryChallenge
   | SequenceRestoreChallenge
   | { game: "balance-grid"; board: number[]; targetSum: number }
-  | { game: "pattern-match"; ordered: string[]; options: string[][] }
+  | PatternMatchChallenge
   | { game: "spot-the-missing"; shown: string[]; remaining: string[]; options: string[] }
   | { game: "rapid-math-relay"; rounds: Array<{ prompt: string }>; timeLimitMs: number };
 
@@ -106,13 +114,26 @@ type VerificationResult = {
   flags: Record<string, any>;
 };
 
+const CODEBREAKER_DIGIT_POOL = [1, 2, 3, 4, 5, 6] as const;
+const CODEBREAKER_CODE_LENGTH = 4;
+const CODEBREAKER_MAX_GUESSES = 6;
+const CODEBREAKER_MAX_SCORE = 28000;
+
+const MEMORY_SYMBOLS = ["trophy", "ticket", "bolt", "camera", "controller", "headphones"] as const;
+const HIDDEN_PAIR_PAIR_COUNT = 6;
+const HIDDEN_PAIR_MAX_TURNS = 10;
+const HIDDEN_PAIR_MAX_SCORE = 25000;
+
 const RULE_LOCK_MAX_SCORE = 23000;
 const RULE_LOCK_MAX_CHECKS = 3;
+
 const TRANSFORM_GRID_SIZE = 4;
 const TRANSFORM_ACTIVE_COUNT = 5;
 const TRANSFORM_MAX_SCORE = 24000;
+
 const SEQUENCE_TOKENS = ["Pick", "Play", "PwnIt", "Prize", "Bonus", "Boost", "Credit", "Target", "Podium", "Voucher", "Unlock", "Winner"];
 const SEQUENCE_MAX_SCORE = 23000;
+
 const BALANCE_GRID_SIZE = 3;
 const BALANCE_MAX_SCORE = 22000;
 const PATTERN_MAX_SCORE = 22000;
@@ -120,8 +141,10 @@ const SPOT_MISSING_MAX_SCORE = 21000;
 const RAPID_MATH_ROUNDS = 6;
 const RAPID_MATH_TIME_LIMIT_MS = 45000;
 const RAPID_MATH_MAX_SCORE = 24000;
+
 const PWNIT_WORD_BANK = ["Pick", "Play", "PwnIt", "Prize", "Bonus", "Credit", "Boost", "Target", "Podium", "Voucher", "Unlock", "Winner"] as const;
 const PATTERN_TILE_BANK = [...PWNIT_WORD_BANK] as const;
+
 const SYMBOLS: SymbolDef[] = [
   { id: "pick", label: "Pick" },
   { id: "play", label: "Play" },
@@ -195,7 +218,7 @@ function sameNumberSet(a: number[], b: number[]) {
 }
 
 function isVerifiedChallenge(value: unknown): value is VerifiedChallenge {
-  return !!value && typeof value === "object" && typeof (value as any).game === "string";
+  return !!value && typeof value === "object" && typeof (value as { game?: unknown }).game === "string";
 }
 
 function sanitizedElapsed(_metaElapsed: unknown, serverElapsedMs: number, minMs: number) {
@@ -220,7 +243,6 @@ function hasUniqueRowsAndCols(cells: number[]) {
   return rows.size === cells.length && cols.size === cells.length;
 }
 
-
 function buildRapidMathQuestion() {
   const op = randomChoice(["+", "-", "×"] as const);
   if (op === "+") {
@@ -243,6 +265,26 @@ function buildRapidMathRelayChallenge(): RapidMathRelayChallenge {
     game: "rapid-math-relay",
     rounds: Array.from({ length: RAPID_MATH_ROUNDS }, () => buildRapidMathQuestion()),
     timeLimitMs: RAPID_MATH_TIME_LIMIT_MS,
+  };
+}
+
+function buildCodebreakerChallenge(): CodebreakerChallenge {
+  return {
+    game: "codebreaker",
+    solution: shuffle(CODEBREAKER_DIGIT_POOL).slice(0, CODEBREAKER_CODE_LENGTH),
+    digitPool: [...CODEBREAKER_DIGIT_POOL],
+    codeLength: CODEBREAKER_CODE_LENGTH,
+    maxGuesses: CODEBREAKER_MAX_GUESSES,
+  };
+}
+
+function buildHiddenPairMemoryChallenge(): HiddenPairMemoryChallenge {
+  const deck = shuffle([...MEMORY_SYMBOLS, ...MEMORY_SYMBOLS]);
+  return {
+    game: "hidden-pair-memory",
+    deck,
+    pairCount: HIDDEN_PAIR_PAIR_COUNT,
+    maxTurns: HIDDEN_PAIR_MAX_TURNS,
   };
 }
 
@@ -376,6 +418,10 @@ function buildSpotTheMissingChallenge(): SpotTheMissingChallenge {
 
 export function buildVerifiedChallenge(gameKey: VerifiedGameKey): VerifiedChallenge {
   switch (gameKey) {
+    case "codebreaker":
+      return buildCodebreakerChallenge();
+    case "hidden-pair-memory":
+      return buildHiddenPairMemoryChallenge();
     case "rule-lock":
       return buildRuleLockChallenge();
     case "transform-memory":
@@ -398,20 +444,33 @@ export function buildVerifiedChallenge(gameKey: VerifiedGameKey): VerifiedChalle
 export function buildPublicVerifiedChallenge(gameKeyOrChallenge: VerifiedGameKey | VerifiedChallenge): PublicVerifiedChallenge {
   const challenge = typeof gameKeyOrChallenge === "string" ? buildVerifiedChallenge(gameKeyOrChallenge) : gameKeyOrChallenge;
   switch (challenge.game) {
+    case "codebreaker":
+      return {
+        game: "codebreaker",
+        digitPool: challenge.digitPool,
+        codeLength: challenge.codeLength,
+        maxGuesses: challenge.maxGuesses,
+      };
+    case "hidden-pair-memory":
+      return {
+        game: "hidden-pair-memory",
+        boardSize: challenge.deck.length,
+        pairCount: challenge.pairCount,
+        maxTurns: challenge.maxTurns,
+      };
     case "rule-lock":
     case "transform-memory":
     case "sequence-restore":
+    case "pattern-match":
       return challenge;
     case "balance-grid":
       return { game: challenge.game, board: challenge.board, targetSum: challenge.targetSum };
-    case "pattern-match":
-      return { game: challenge.game, ordered: challenge.ordered, options: challenge.options };
     case "spot-the-missing":
       return { game: challenge.game, shown: challenge.shown, remaining: challenge.remaining, options: challenge.options };
     case "rapid-math-relay":
       return { game: challenge.game, rounds: challenge.rounds.map((round) => ({ prompt: round.prompt })), timeLimitMs: challenge.timeLimitMs };
     default:
-      throw new Error(`Unhandled public verified game key: ${String((challenge as any).game)}`);
+      throw new Error(`Unhandled public verified game key: ${String((challenge as { game?: unknown }).game)}`);
   }
 }
 
@@ -553,7 +612,6 @@ function verifySpotTheMissing(challenge: SpotTheMissingChallenge, meta: Record<s
   };
 }
 
-
 function verifyRapidMathRelay(challenge: RapidMathRelayChallenge, meta: Record<string, any>, serverElapsedMs: number): VerificationResult {
   const answers = Array.isArray(meta?.answers)
     ? meta.answers.map((value: unknown) => String(value ?? "").trim())
@@ -589,6 +647,177 @@ function verifyRapidMathRelay(challenge: RapidMathRelayChallenge, meta: Record<s
   };
 }
 
+function gradeCodebreakerGuess(guess: number[], solution: number[]) {
+  let exact = 0;
+  let misplaced = 0;
+  for (let i = 0; i < solution.length; i += 1) {
+    if (guess[i] === solution[i]) exact += 1;
+    else if (solution.includes(guess[i]!)) misplaced += 1;
+  }
+  return { exact, misplaced };
+}
+
+function normalizeCodebreakerRows(progressState: unknown) {
+  if (!progressState || typeof progressState !== "object") return [];
+  const rows = (progressState as { rows?: unknown }).rows;
+  if (!Array.isArray(rows)) return [];
+  return rows
+    .map((row) => {
+      const source = row as { value?: unknown; exact?: unknown; misplaced?: unknown };
+      const value = Array.isArray(source.value) ? source.value.map((n: unknown) => clampInt(n, 0, 9)) : [];
+      const exact = clampInt(source.exact, 0, CODEBREAKER_CODE_LENGTH);
+      const misplaced = clampInt(source.misplaced, 0, CODEBREAKER_CODE_LENGTH);
+      return { value, exact, misplaced };
+    })
+    .filter((row) => row.value.length === CODEBREAKER_CODE_LENGTH);
+}
+
+function verifyCodebreaker(
+  challenge: CodebreakerChallenge,
+  _meta: Record<string, any>,
+  serverElapsedMs: number,
+  progressState: unknown,
+): VerificationResult {
+  const rows = normalizeCodebreakerRows(progressState);
+  if (!rows.length) {
+    return { valid: false, scoreMs: 0, flags: { reason: "no_server_guess_log" } };
+  }
+
+  for (const row of rows) {
+    if (new Set(row.value).size !== challenge.codeLength || row.value.some((n) => !challenge.digitPool.includes(n))) {
+      return { valid: false, scoreMs: 0, flags: { reason: "invalid_server_guess_shape" } };
+    }
+    const graded = gradeCodebreakerGuess(row.value, challenge.solution);
+    if (graded.exact !== row.exact || graded.misplaced !== row.misplaced) {
+      return { valid: false, scoreMs: 0, flags: { reason: "guess_log_tampered" } };
+    }
+  }
+
+  const last = rows[rows.length - 1]!;
+  const solved = last.exact === challenge.codeLength;
+  const exhausted = rows.length >= challenge.maxGuesses;
+
+  if (!solved && !exhausted) {
+    return { valid: false, scoreMs: 0, flags: { reason: "attempt_not_complete" } };
+  }
+
+  if (!solved) {
+    return {
+      valid: true,
+      scoreMs: 0,
+      flags: { solved: false, exhausted: true, guessCount: rows.length },
+    };
+  }
+
+  const elapsed = sanitizedElapsed(undefined, serverElapsedMs, Math.max(1600, rows.length * 650));
+  const scoreMs = Math.max(1200, CODEBREAKER_MAX_SCORE - elapsed.elapsedMs - (rows.length - 1) * 2500);
+  return {
+    valid: true,
+    scoreMs,
+    flags: {
+      solved: true,
+      exhausted: false,
+      guessCount: rows.length,
+      elapsedMs: elapsed.elapsedMs,
+      timingNote: elapsed.reason,
+    },
+  };
+}
+
+function normalizeHiddenPairProgress(progressState: unknown) {
+  const source = progressState && typeof progressState === "object" ? (progressState as Record<string, any>) : {};
+  const matched = Array.isArray(source.matchedIndices)
+    ? source.matchedIndices.map((value: unknown) => clampInt(value, -1, HIDDEN_PAIR_PAIR_COUNT * 2)).filter((value: number) => value >= 0)
+    : [];
+  const history = Array.isArray(source.history)
+    ? source.history.map((entry) => {
+        const row = entry as Record<string, any>;
+        const picks = Array.isArray(row.picks)
+          ? row.picks.map((value: unknown) => clampInt(value, -1, HIDDEN_PAIR_PAIR_COUNT * 2)).filter((value: number) => value >= 0)
+          : [];
+        return {
+          picks,
+          match: Boolean(row.match),
+        };
+      })
+    : [];
+  return {
+    matched,
+    history,
+    turnCount: clampInt(source.turnCount, 0, HIDDEN_PAIR_MAX_TURNS),
+  };
+}
+
+function verifyHiddenPairMemory(
+  challenge: HiddenPairMemoryChallenge,
+  _meta: Record<string, any>,
+  serverElapsedMs: number,
+  progressState: unknown,
+): VerificationResult {
+  const progress = normalizeHiddenPairProgress(progressState);
+  const boardSize = challenge.deck.length;
+  const expectedMatched = new Set<number>();
+
+  for (const step of progress.history) {
+    if (step.picks.length !== 2 || step.picks[0] === step.picks[1]) {
+      return { valid: false, scoreMs: 0, flags: { reason: "invalid_flip_history" } };
+    }
+    const [a, b] = step.picks;
+    if (a < 0 || a >= boardSize || b < 0 || b >= boardSize) {
+      return { valid: false, scoreMs: 0, flags: { reason: "flip_out_of_range" } };
+    }
+    const match = challenge.deck[a] === challenge.deck[b];
+    if (match !== step.match) {
+      return { valid: false, scoreMs: 0, flags: { reason: "flip_history_tampered" } };
+    }
+    if (match) {
+      expectedMatched.add(a);
+      expectedMatched.add(b);
+    }
+  }
+
+  const matchedSorted = [...expectedMatched].sort((a, b) => a - b);
+  const progressSorted = [...new Set(progress.matched)].sort((a, b) => a - b);
+  if (!sameArray(matchedSorted, progressSorted)) {
+    return { valid: false, scoreMs: 0, flags: { reason: "matched_state_tampered" } };
+  }
+
+  const completed = progress.matched.length === boardSize;
+  const exhausted = progress.turnCount >= challenge.maxTurns;
+
+  if (!completed && !exhausted) {
+    return { valid: false, scoreMs: 0, flags: { reason: "attempt_not_complete" } };
+  }
+
+  if (!completed) {
+    return {
+      valid: true,
+      scoreMs: 0,
+      flags: {
+        solved: false,
+        completed: false,
+        turnCount: progress.turnCount,
+        pairsFound: progress.matched.length / 2,
+      },
+    };
+  }
+
+  const elapsed = sanitizedElapsed(undefined, serverElapsedMs, Math.max(1800, progress.turnCount * 500));
+  const extraTurns = Math.max(0, progress.turnCount - challenge.pairCount);
+  const scoreMs = Math.max(1200, HIDDEN_PAIR_MAX_SCORE - elapsed.elapsedMs - extraTurns * 1800);
+  return {
+    valid: true,
+    scoreMs,
+    flags: {
+      solved: true,
+      completed: true,
+      turnCount: progress.turnCount,
+      pairsFound: progress.matched.length / 2,
+      elapsedMs: elapsed.elapsedMs,
+      timingNote: elapsed.reason,
+    },
+  };
+}
 
 export function isVerifiedGameKey(gameKey: string): gameKey is VerifiedGameKey {
   return (VERIFIED_GAME_KEYS as readonly string[]).includes(gameKey);
@@ -599,12 +828,19 @@ export function verifyVerifiedAttempt(
   challenge: unknown,
   meta: Record<string, any>,
   serverElapsedMs: number,
+  progressState?: unknown,
 ): VerificationResult {
   if (!isVerifiedChallenge(challenge)) {
     return { valid: false, scoreMs: 0, flags: { reason: "invalid_server_challenge" } };
   }
 
   switch (gameKey) {
+    case "codebreaker":
+      if (challenge.game !== "codebreaker") return { valid: false, scoreMs: 0, flags: { reason: "challenge_game_mismatch" } };
+      return verifyCodebreaker(challenge, meta, serverElapsedMs, progressState);
+    case "hidden-pair-memory":
+      if (challenge.game !== "hidden-pair-memory") return { valid: false, scoreMs: 0, flags: { reason: "challenge_game_mismatch" } };
+      return verifyHiddenPairMemory(challenge, meta, serverElapsedMs, progressState);
     case "rule-lock":
       if (challenge.game !== "rule-lock") return { valid: false, scoreMs: 0, flags: { reason: "challenge_game_mismatch" } };
       return verifyRuleLock(challenge, meta, serverElapsedMs);

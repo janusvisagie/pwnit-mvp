@@ -1,9 +1,10 @@
+
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
 const TITLE_MAP = {
-  "Fuel Voucher": "spot-the-missing",
+  "Fuel Voucher": "hidden-pair-memory",
   "Checkers Voucher": "transform-memory",
   "Takealot Voucher": "pattern-match",
   "Sony WH-1000XM5 Headphones": "codebreaker",
@@ -12,8 +13,8 @@ const TITLE_MAP = {
 };
 
 const LEGACY_KEY_MAP = {
-  "memory-sprint": "spot-the-missing",
-  "number-memory": "spot-the-missing",
+  "memory-sprint": "hidden-pair-memory",
+  "number-memory": "hidden-pair-memory",
   "quick-stop": "pattern-match",
   "precision-timer": "pattern-match",
   "stop-zero": "pattern-match",
@@ -26,7 +27,8 @@ const LEGACY_KEY_MAP = {
   "tap-pattern": "codebreaker",
   "target-grid": "balance-grid",
   "target-hold": "balance-grid",
-  "sequence-restore": "spot-the-missing",
+  "sequence-restore": "hidden-pair-memory",
+  "spot-the-missing": "hidden-pair-memory",
   "route-builder": "pattern-match",
 };
 
@@ -38,15 +40,12 @@ async function clearCompetitiveState() {
   try {
     await prisma.winner.deleteMany();
   } catch {}
-
   try {
     await prisma.attemptSession.deleteMany();
   } catch {}
-
   try {
     await prisma.attempt.deleteMany();
   } catch {}
-
   try {
     await prisma.itemRound.deleteMany();
   } catch {}
@@ -54,27 +53,18 @@ async function clearCompetitiveState() {
 
 async function relinkItems() {
   const items = await prisma.item.findMany({
-    select: {
-      id: true,
-      title: true,
-      gameKey: true,
-    },
+    select: { id: true, title: true, gameKey: true },
     orderBy: { createdAt: "asc" },
   });
 
   let changed = 0;
-
   for (const item of items) {
     const nextGameKey = pickVerifiedGameKey(item);
     if (!nextGameKey || nextGameKey === item.gameKey) continue;
-
     await prisma.item.update({
       where: { id: item.id },
-      data: {
-        gameKey: nextGameKey,
-      },
+      data: { gameKey: nextGameKey },
     });
-
     changed += 1;
     console.log(`Updated ${item.title}: ${item.gameKey} -> ${nextGameKey}`);
   }

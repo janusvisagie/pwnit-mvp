@@ -1,3 +1,4 @@
+
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
@@ -5,6 +6,10 @@ const prisma = new PrismaClient();
 async function main() {
   await prisma.winner.deleteMany();
   await prisma.attempt.deleteMany();
+
+  try {
+    await prisma.attemptSession.deleteMany();
+  } catch {}
 
   try {
     await prisma.itemPurchase.deleteMany();
@@ -22,7 +27,7 @@ async function main() {
       imageUrl: "/products/petrol-voucher.svg",
       activationGoalEntries: 3,
       countdownMinutes: 1,
-      gameKey: "spot-the-missing",
+      gameKey: "hidden-pair-memory",
     },
     {
       title: "Checkers Voucher",
@@ -91,7 +96,7 @@ async function main() {
     });
   }
 
-  console.log("Seeded 6 items with Balance Grid, Codebreaker, Rule Lock, Transform Memory, Spot the Missing, and Pattern Match.");
+  console.log("Seeded 6 items with Hidden Pair Memory, Codebreaker, Rule Lock, Transform Memory, Pattern Match, and Balance Grid.");
 }
 
 main()
