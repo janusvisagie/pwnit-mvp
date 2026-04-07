@@ -1,26 +1,60 @@
-PwnIt patch: compact layouts + visual Pattern Match
 
-Changed files
-- src/app/page.tsx
-- src/components/ItemCard.tsx
-- src/app/item/[id]/page.tsx
-- src/app/play/[itemId]/page.tsx
-- src/app/play/[itemId]/_components/GameHost.tsx
-- src/games/pattern-match/PatternMatchGame.tsx
-- src/lib/verifiedGames.ts
+# PwnIt security hardening patch
 
-What this patch does
-- Makes the home page grid more compact so 6 cards fit more comfortably on desktop.
-- Keeps larger item images but reduces card height and spacing.
-- Makes item and play pages more compact.
-- Changes Pattern Match from word strips to visual prize/platform tiles.
-- Updates server-issued Pattern Match challenges to use the same visual tile IDs.
+This patch does four things:
 
-Apply
-1. Unzip into your repo root and overwrite the existing files.
-2. Commit and push.
-3. Redeploy.
+1. Adds a concrete 6-game replacement design spec under `docs/PWNIT_REPLACEMENT_GAME_SET_V2.md`.
+2. Adds Cloudflare Turnstile to login/register and to first or bursty competitive play starts.
+3. Adds optional score-based risk review support from either reCAPTCHA v3 or forwarded Cloudflare bot scores.
+4. Places suspicious podium rounds into `REVIEW` instead of auto-publishing winners.
 
-Notes
-- No database migration is needed for this patch.
-- Pattern Match remains server-verified; only the displayed assets changed from words to visual tiles.
+## New environment variables
+
+Set whichever of these you want to use:
+
+```env
+NEXT_PUBLIC_TURNSTILE_SITE_KEY=
+TURNSTILE_SECRET_KEY=
+
+NEXT_PUBLIC_RECAPTCHA_SITE_KEY=
+RECAPTCHA_SECRET_KEY=
+
+# Optional thresholds
+PWNIT_RECAPTCHA_REVIEW_THRESHOLD=0.35
+PWNIT_CF_BOT_REVIEW_THRESHOLD=30
+PWNIT_INTERACTION_REVIEW_THRESHOLD=0.35
+```
+
+## Deployment notes
+
+- Turnstile is enforced only when both `NEXT_PUBLIC_TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` are set.
+- reCAPTCHA scoring is used only when both `NEXT_PUBLIC_RECAPTCHA_SITE_KEY` and `RECAPTCHA_SECRET_KEY` are set.
+- Cloudflare bot score review works only if you forward the score to origin, for example as `x-pwnit-cf-bot-score`.
+
+## Recommended Cloudflare forwarding
+
+If you have Cloudflare Bot Management, forward `cf.bot_management.score` to origin as a request header such as `x-pwnit-cf-bot-score` via a Worker or equivalent edge logic.
+
+## Files changed
+
+- `docs/PWNIT_REPLACEMENT_GAME_SET_V2.md`
+- `src/components/TurnstileWidget.tsx`
+- `src/lib/turnstile.ts`
+- `src/lib/botRisk.ts`
+- `src/app/login/LoginClient.tsx`
+- `src/app/api/auth/login/route.ts`
+- `src/app/api/auth/register/route.ts`
+- `src/app/api/attempt/start/route.ts`
+- `src/app/api/attempt/finish/route.ts`
+- `src/app/play/[itemId]/_components/GameHost.tsx`
+- `src/lib/rounds.ts`
+- `src/lib/settle.ts`
+- `src/app/admin/page.tsx`
+
+## Apply
+
+1. Unzip into the repo root and overwrite the existing files.
+2. Set the environment variables you want to use.
+3. Commit and redeploy.
+
+No Prisma migration is required for this patch.

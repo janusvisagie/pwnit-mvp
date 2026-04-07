@@ -1,8 +1,10 @@
+
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import TurnstileWidget from "@/components/TurnstileWidget";
 import AlphabetSprintGame from "@/games/alphabet-sprint/AlphabetSprintGame";
 import BalanceGridGame from "@/games/balance-grid/BalanceGridGame";
 import CodebreakerGame from "@/games/codebreaker/CodebreakerGame";
@@ -28,6 +30,66 @@ const VERIFIED_GAME_KEYS = new Set([
   "spot-the-missing",
   "rapid-math-relay",
 ]);
+
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "";
+const RECAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || "";
+
+declare global {
+  interface Window {
+    grecaptcha?: {
+      ready: (cb: () => void) => void;
+      execute: (siteKey: string, options: { action: string }) => Promise<string>;
+    };
+  }
+}
+
+let recaptchaScriptPromise: Promise<void> | null = null;
+
+function ensureRecaptchaScript(siteKey: string) {
+  if (typeof window === "undefined") return Promise.resolve();
+  if (!siteKey) return Promise.resolve();
+  if (window.grecaptcha) return Promise.resolve();
+  if (recaptchaScriptPromise) return recaptchaScriptPromise;
+
+  recaptchaScriptPromise = new Promise<void>((resolve, reject) => {
+    const existing = document.querySelector<HTMLScriptElement>('script[data-pwnit-recaptcha="true"]');
+    if (existing) {
+      existing.addEventListener("load", () => resolve(), { once: true });
+      existing.addEventListener("error", () => reject(new Error("Could not load reCAPTCHA.")), { once: true });
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = `https://www.google.com/recaptcha/api.js?render=${encodeURIComponent(siteKey)}`;
+    script.async = true;
+    script.defer = true;
+    script.dataset.pwnitRecaptcha = "true";
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error("Could not load reCAPTCHA."));
+    document.head.appendChild(script);
+  });
+
+  return recaptchaScriptPromise;
+}
+
+async function executeRecaptcha(siteKey: string, action: string) {
+  if (!siteKey) return null;
+  await ensureRecaptchaScript(siteKey);
+  return await new Promise<string | null>((resolve) => {
+    if (!window.grecaptcha) {
+      resolve(null);
+      return;
+    }
+    window.grecaptcha.ready(async () => {
+      try {
+        const token = await window.grecaptcha!.execute(siteKey, { action });
+        resolve(token || null);
+      } catch {
+        resolve(null);
+      }
+    });
+  });
+}
 
 type GameKey =
   | "memory-sprint"
@@ -130,42 +192,55 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
   const [session, setSession] = useState<AttemptSession | null>(null);
   const [result, setResult] = useState<{ scoreMs: number } | null>(null);
   const [errMsg, setErrMsg] = useState<string | null>(null);
+  const [reviewMsg, setReviewMsg] = useState<string | null>(null);
   const [status, setStatus] = useState<{ myRank: number; totalPlayers: number; state: "LEADING" | "BONUS" | "CHASING" } | null>(null);
+  const [turnstileNeeded, setTurnstileNeeded] = useState(false);
+  const [turnstileReason, setTurnstileReason] = useState<string | null>(null);
 
   const entry = GAME_REGISTRY[gameKey] ?? GAME_REGISTRY["quick-stop"];
   const Game = useMemo(() => entry.Component, [entry.Component]);
 
-  const issueSession = useCallback(async () => {
-    if (!canPay || practiceMode || !supportsVerifiedMode) {
-      setSession(null);
-      return;
-    }
-
-    setLoadingSession(true);
-    try {
-      const res = await fetch("/api/attempt/start", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ itemId }),
-      });
-      const data = await res.json().catch(() => null);
-      if (!res.ok || !data?.ok) {
+  const issueSession = useCallback(
+    async (overrideTurnstileToken?: string | null) => {
+      if (!canPay || practiceMode || !supportsVerifiedMode) {
         setSession(null);
-        setErrMsg(data?.error || `Could not start a verified run (${res.status})`);
         return;
       }
-      setSession({
-        attemptId: String(data.attemptId),
-        challenge: data.challenge,
-        expiresAt: String(data.expiresAt),
-      });
-    } catch (e: any) {
-      setSession(null);
-      setErrMsg(e?.message || "Could not start a verified run");
-    } finally {
-      setLoadingSession(false);
-    }
-  }, [canPay, itemId, practiceMode, supportsVerifiedMode]);
+
+      setLoadingSession(true);
+      try {
+        const res = await fetch("/api/attempt/start", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ itemId, turnstileToken: overrideTurnstileToken || undefined }),
+        });
+        const data = await res.json().catch(() => null);
+        if (!res.ok || !data?.ok) {
+          setSession(null);
+          if (data?.turnstileRequired) {
+            setTurnstileNeeded(true);
+            setTurnstileReason(String(data?.reason || "human_check"));
+          }
+          setErrMsg(data?.error || `Could not start a verified run (${res.status})`);
+          return;
+        }
+
+        setTurnstileNeeded(false);
+        setTurnstileReason(null);
+        setSession({
+          attemptId: String(data.attemptId),
+          challenge: data.challenge,
+          expiresAt: String(data.expiresAt),
+        });
+      } catch (e: any) {
+        setSession(null);
+        setErrMsg(e?.message || "Could not start a verified run");
+      } finally {
+        setLoadingSession(false);
+      }
+    },
+    [canPay, itemId, practiceMode, supportsVerifiedMode],
+  );
 
   useEffect(() => {
     if (!canPay) {
@@ -183,6 +258,7 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
       setResult({ scoreMs: payload.scoreMs });
       setStatus(null);
       setErrMsg(null);
+      setReviewMsg(null);
       return;
     }
 
@@ -206,12 +282,16 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
     setErrMsg(null);
 
     try {
+      const recaptchaToken = RECAPTCHA_SITE_KEY ? await executeRecaptcha(RECAPTCHA_SITE_KEY, "competitive_finish") : null;
       const res = await fetch("/api/attempt/finish", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           attemptId: session.attemptId,
-          meta: payload.meta ?? null,
+          meta: {
+            ...(payload.meta ?? {}),
+            recaptchaToken,
+          },
         }),
       });
 
@@ -233,6 +313,7 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
         state: (data.status || "CHASING") as any,
       });
       setSession(null);
+      setReviewMsg(data?.reviewRequired ? "Your result was recorded, but winner confirmation may pause for review if the round reaches the podium with suspicious signals." : null);
 
       window.dispatchEvent(new Event("pwnit:credits"));
       router.refresh();
@@ -251,16 +332,16 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
     (!practiceMode && supportsVerifiedMode && !session);
 
   return (
-    <div className="relative rounded-3xl border border-slate-200 bg-slate-50 p-3 sm:p-4">
+    <div className="relative rounded-3xl border border-slate-200 bg-slate-50 p-4">
       <ConfettiOverlay show={status?.state === "LEADING"} />
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <div className="text-sm font-semibold uppercase tracking-wide text-slate-500">Game</div>
-          <h2 className="mt-1 text-lg font-black text-slate-950 sm:text-xl">{entry.title}</h2>
+          <h2 className="mt-1 text-xl font-black text-slate-950">{entry.title}</h2>
         </div>
 
-        <label className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700">
+        <label className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700">
           <input
             type="checkbox"
             checked={practiceMode}
@@ -269,6 +350,7 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
               setPracticeMode(nextPractice);
               setErrMsg(null);
               setResult(null);
+              setReviewMsg(null);
               if (nextPractice) setSession(null);
             }}
             className="h-4 w-4 rounded border-slate-300"
@@ -280,8 +362,8 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
 
       {!supportsVerifiedMode ? (
         <div className="mt-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
-          <div className="font-semibold">Legacy client-scored game detected.</div>
-          <div className="mt-1">This usually means the code patch is present, but the current item records in the database still point at an older game key. Run the relink script or reseed to attach one of the verified games.</div>
+          <div className="font-semibold">Legacy competitive game detected.</div>
+          <div className="mt-1">Competitive submissions are blocked for legacy client-scored games. Use a server-verified game key first.</div>
         </div>
       ) : null}
 
@@ -294,13 +376,37 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
 
       {!practiceMode && supportsVerifiedMode ? (
         <div className="mt-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700">
-          <div className="font-semibold text-slate-900">Verified run</div>
+          <div className="font-semibold text-slate-900">Verified competitive run</div>
           <div className="mt-1">
             {loadingSession
               ? "Requesting a server-issued challenge..."
               : session
-                ? "Challenge locked to this run. The server will recompute your score from your submitted move log."
+                ? "Challenge locked to this run. The server will recompute your score from the submitted move log. Suspicious podium attempts are routed to review instead of auto-confirmation."
                 : "No active verified run yet."}
+          </div>
+        </div>
+      ) : null}
+
+      {turnstileNeeded && TURNSTILE_SITE_KEY ? (
+        <div className="mt-3 rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-4 text-sm text-indigo-900">
+          <div className="font-semibold">Human check required</div>
+          <div className="mt-1">
+            {turnstileReason === "first_competitive_play"
+              ? "Complete the human check before your first competitive attempt."
+              : "Complete the human check to continue. We noticed unusually rapid competitive start behaviour."}
+          </div>
+          <div className="mt-3">
+            <TurnstileWidget
+              siteKey={TURNSTILE_SITE_KEY}
+              action="competitive_start"
+              className="min-h-[65px]"
+              onVerify={(token) => {
+                setErrMsg(null);
+                void issueSession(token);
+              }}
+              onExpire={() => undefined}
+              onError={(message) => setErrMsg(message)}
+            />
           </div>
         </div>
       ) : null}
@@ -326,9 +432,16 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
         </div>
       ) : null}
 
+      {reviewMsg ? (
+        <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <div className="font-semibold">Review safeguard active</div>
+          <div className="mt-1">{reviewMsg}</div>
+        </div>
+      ) : null}
+
       {errMsg ? (
         <div className="mt-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
-          <div className="font-semibold">Couldn’t submit your score</div>
+          <div className="font-semibold">Couldn’t continue</div>
           <div className="mt-1">{errMsg}</div>
         </div>
       ) : null}
@@ -341,10 +454,10 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
         />
       </div>
 
-      <div className="mt-3 flex flex-wrap gap-2.5">
+      <div className="mt-4 flex flex-wrap gap-3">
         <button
           type="button"
-          className="rounded-2xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-bold text-slate-900"
+          className="rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-bold text-slate-900"
           onClick={() => router.push(`/item/${itemId}/leaderboard`)}
           disabled={submitting}
         >
@@ -353,7 +466,7 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
 
         <button
           type="button"
-          className="rounded-2xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-bold text-slate-900"
+          className="rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-bold text-slate-900"
           onClick={() => router.push(`/item/${itemId}`)}
           disabled={submitting}
         >

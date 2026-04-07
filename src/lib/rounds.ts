@@ -1,3 +1,4 @@
+
 import { prisma } from "@/lib/db";
 import { settleRound } from "@/lib/settle";
 import { compareScores, publicProgressPct, publicStageLabel } from "@/lib/gameRules";
@@ -6,6 +7,7 @@ export const ROUND_STATES = {
   BUILDING: "BUILDING",
   ACTIVATED: "ACTIVATED",
   CLOSED: "CLOSED",
+  REVIEW: "REVIEW",
   PUBLISHED: "PUBLISHED",
   FAILED: "FAILED",
   REFUNDED: "REFUNDED",
@@ -29,16 +31,6 @@ function addMinutes(date: Date, minutes: number) {
   return new Date(date.getTime() + Math.max(0, minutes) * 60 * 1000);
 }
 
-function isTerminalRoundState(state?: string | null) {
-  const normalized = String(state || "").toUpperCase();
-  return (
-    normalized === ROUND_STATES.CLOSED ||
-    normalized === ROUND_STATES.PUBLISHED ||
-    normalized === ROUND_STATES.FAILED ||
-    normalized === ROUND_STATES.REFUNDED
-  );
-}
-
 export async function getCurrentRound(itemId: string) {
   return prisma.itemRound.findFirst({
     where: { itemId },
@@ -48,7 +40,6 @@ export async function getCurrentRound(itemId: string) {
 
 async function createFreshRound(item: any, sequence: number) {
   const now = new Date();
-
   const round = await prisma.itemRound.create({
     data: {
       itemId: item.id,
@@ -60,12 +51,10 @@ async function createFreshRound(item: any, sequence: number) {
       purchaseGraceEndsAt: addHours(now, item.purchaseGraceHours),
     },
   });
-
   await prisma.item.update({
     where: { id: item.id },
     data: { state: "OPEN", opensAt: now, closesAt: null },
   });
-
   return round;
 }
 
@@ -86,14 +75,8 @@ export async function ensureCurrentRound(itemId: string) {
     }
   }
 
-  // Deliberate relaunch path:
-  // if an item was manually reopened to OPEN while its latest round is terminal,
-  // create a brand-new BUILDING round so the item becomes playable again.
-  if (isTerminalRoundState(round.state) && String(item.state || "").toUpperCase() === "OPEN") {
-    return createFreshRound(item, Number((round as any).sequence ?? 0) + 1);
-  }
-
-  // Otherwise, keep the latest round as-is.
+  // REVIEW is terminal until a deliberate admin action resolves it.
+  // Do not auto-create a new round after publish/fail/refund/review.
   return round;
 }
 
@@ -107,18 +90,15 @@ async function applyFailedRefunds(roundId: string) {
   const rewardCount = await prisma.creditLedger.count({
     where: { roundId, kind: "FAILED_ROUND_REFUND" },
   });
-
   if (rewardCount > 0) {
     await prisma.itemRound.update({
       where: { id: roundId },
       data: { state: ROUND_STATES.REFUNDED },
     });
-
     await prisma.item.update({
       where: { id: round.itemId },
       data: { state: "FAILED", closesAt: round.fundingEndsAt },
     });
-
     return;
   }
 
@@ -129,21 +109,16 @@ async function applyFailedRefunds(roundId: string) {
 
   const refundByUser = new Map<string, number>();
   for (const attempt of attempts) {
-    refundByUser.set(
-      attempt.userId,
-      (refundByUser.get(attempt.userId) ?? 0) + Number(attempt.paidUsed || 0),
-    );
+    refundByUser.set(attempt.userId, (refundByUser.get(attempt.userId) ?? 0) + Number(attempt.paidUsed || 0));
   }
 
   await prisma.$transaction(async (tx) => {
     for (const [userId, credits] of refundByUser.entries()) {
       if (credits <= 0) continue;
-
       await tx.user.update({
         where: { id: userId },
         data: { paidCreditsBalance: { increment: credits } },
       });
-
       await tx.creditLedger.create({
         data: {
           userId,
@@ -165,41 +140,36 @@ async function applyFailedRefunds(roundId: string) {
       select: { userId: true, scoreMs: true, createdAt: true },
     });
 
-    const bestByUser = new Map<string, { userId: string; scoreMs: number; createdAt: Date }>();
+    const bestByUser = new Map();
     for (const row of leaderboardAttempts) {
       const current = bestByUser.get(row.userId);
-      if (!current || compareScores(round.item.gameKey, row as any, current as any) < 0) {
-        bestByUser.set(row.userId, row as any);
+      if (!current || compareScores(round.item.gameKey, row, current) < 0) {
+        bestByUser.set(row.userId, row);
       }
     }
 
     const ranked = Array.from(bestByUser.values())
-      .sort((a, b) => compareScores(round.item.gameKey, a as any, b as any))
+      .sort((a, b) => compareScores(round.item.gameKey, a, b))
       .slice(0, 3);
 
     const failedBonuses = [10, 5, 5];
-    const userIds = ranked.map((r) => r.userId);
+    const userIds = ranked.map((r: any) => r.userId);
     const users = userIds.length
       ? await tx.user.findMany({
           where: { id: { in: userIds } },
           select: { id: true, alias: true, email: true },
         })
       : [];
-
-    const aliasMap = new Map(
-      users.map((u) => [u.id, (u.alias && u.alias.trim()) || u.email.split("@")[0]]),
-    );
+    const aliasMap = new Map(users.map((u) => [u.id, (u.alias && u.alias.trim()) || u.email.split("@")[0]]));
 
     for (let idx = 0; idx < ranked.length; idx += 1) {
-      const winner = ranked[idx];
+      const winner: any = ranked[idx];
       const bonus = failedBonuses[idx] ?? 0;
-
       if (bonus > 0) {
         await tx.user.update({
           where: { id: winner.userId },
           data: { paidCreditsBalance: { increment: bonus } },
         });
-
         await tx.creditLedger.create({
           data: {
             userId: winner.userId,
@@ -211,7 +181,6 @@ async function applyFailedRefunds(roundId: string) {
           },
         });
       }
-
       await tx.winner.create({
         data: {
           itemId: round.itemId,
@@ -227,15 +196,8 @@ async function applyFailedRefunds(roundId: string) {
       });
     }
 
-    await tx.itemRound.update({
-      where: { id: roundId },
-      data: { state: ROUND_STATES.REFUNDED },
-    });
-
-    await tx.item.update({
-      where: { id: round.itemId },
-      data: { state: "FAILED", closesAt: round.fundingEndsAt },
-    });
+    await tx.itemRound.update({ where: { id: roundId }, data: { state: ROUND_STATES.REFUNDED } });
+    await tx.item.update({ where: { id: round.itemId }, data: { state: "FAILED", closesAt: round.fundingEndsAt } });
   });
 }
 
@@ -247,13 +209,8 @@ export async function syncRoundLifecycle(itemId: string) {
   if (!round) return null;
 
   const now = new Date();
-
-  if (
-    round.state === ROUND_STATES.BUILDING &&
-    Number((round as any).paidCreditsCollected ?? 0) >= Number((round as any).activationTargetCredits ?? 0)
-  ) {
+  if (round.state === ROUND_STATES.BUILDING && round.paidCreditsCollected >= round.activationTargetCredits) {
     const closesAt = addMinutes(now, item.countdownMinutes);
-
     round = await prisma.itemRound.update({
       where: { id: round.id },
       data: {
@@ -263,27 +220,12 @@ export async function syncRoundLifecycle(itemId: string) {
         purchaseGraceEndsAt: addHours(closesAt, item.purchaseGraceHours),
       },
     });
-
-    await prisma.item.update({
-      where: { id: item.id },
-      data: { state: "ACTIVATED", closesAt },
-    });
+    await prisma.item.update({ where: { id: item.id }, data: { state: "ACTIVATED", closesAt } });
   }
 
-  // Expiry disabled for now:
-  // BUILDING rounds no longer fail just because the funding window ended.
-  // They remain BUILDING until they activate or are deliberately reset later.
-
   if (round.state === ROUND_STATES.ACTIVATED && round.closesAt && now >= round.closesAt) {
-    round = await prisma.itemRound.update({
-      where: { id: round.id },
-      data: { state: ROUND_STATES.CLOSED },
-    });
-
-    await prisma.item.update({
-      where: { id: item.id },
-      data: { state: "CLOSED", closesAt: round.closesAt },
-    });
+    round = await prisma.itemRound.update({ where: { id: round.id }, data: { state: ROUND_STATES.CLOSED } });
+    await prisma.item.update({ where: { id: item.id }, data: { state: "CLOSED", closesAt: round.closesAt } });
   }
 
   if (round.state === ROUND_STATES.CLOSED) {
@@ -295,14 +237,15 @@ export async function syncRoundLifecycle(itemId: string) {
 }
 
 export async function syncHomeItems(itemIds?: string[]) {
-  const ids = itemIds && itemIds.length
-    ? itemIds
-    : (
-        await prisma.item.findMany({
-          orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-          select: { id: true },
-        })
-      ).map((i) => i.id);
+  const ids =
+    itemIds && itemIds.length
+      ? itemIds
+      : (
+          await prisma.item.findMany({
+            orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+            select: { id: true },
+          })
+        ).map((i) => i.id);
 
   for (const id of ids) {
     await syncRoundLifecycle(id);
@@ -315,20 +258,20 @@ export function publicProgress(round: {
   state: string;
 }) {
   const pct =
-    round.state === ROUND_STATES.ACTIVATED ||
-    round.state === ROUND_STATES.CLOSED ||
-    round.state === ROUND_STATES.PUBLISHED
+    round.state === ROUND_STATES.ACTIVATED || round.state === ROUND_STATES.CLOSED || round.state === ROUND_STATES.PUBLISHED
       ? 100
       : publicProgressPct(round.paidCreditsCollected, round.activationTargetCredits);
 
+  const label =
+    round.state === ROUND_STATES.REVIEW
+      ? "Under review"
+      : round.state === ROUND_STATES.ACTIVATED || round.state === ROUND_STATES.CLOSED || round.state === ROUND_STATES.PUBLISHED
+        ? "Activated"
+        : publicStageLabel(pct);
+
   return {
     pct,
-    label:
-      round.state === ROUND_STATES.ACTIVATED ||
-      round.state === ROUND_STATES.CLOSED ||
-      round.state === ROUND_STATES.PUBLISHED
-        ? "Activated"
-        : publicStageLabel(pct),
+    label,
     hot: pct >= 80 && round.state === ROUND_STATES.BUILDING,
   };
 }

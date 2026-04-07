@@ -1,4 +1,7 @@
+
 import { Prisma } from "@prisma/client";
+
+import { parseAttemptFlags } from "@/lib/botRisk";
 import { prisma } from "@/lib/db";
 import { compareScores } from "@/lib/gameRules";
 import { dayKeyZA } from "@/lib/time";
@@ -33,12 +36,16 @@ function validAttemptWhere(): Prisma.AttemptWhereInput {
   };
 }
 
+function finalistNeedsReview(attempt: { flags: string | null; scoreMs: number }) {
+  const parsed = parseAttemptFlags(attempt.flags);
+  return Boolean(parsed?.risk?.reviewRequired);
+}
+
 export async function settleRound(roundId: string): Promise<RoundSettleResult> {
   const round = await prisma.itemRound.findUnique({
     where: { id: roundId },
     include: { item: true },
   });
-
   if (!round) {
     return { ok: false, roundId, itemId: "", winnersPublished: false, uniquePlayers: 0, winnersCount: 0 };
   }
@@ -55,13 +62,25 @@ export async function settleRound(roundId: string): Promise<RoundSettleResult> {
     };
   }
 
+  if (round.state === "REVIEW") {
+    const attemptsInReview = await prisma.attempt.count({ where: { roundId, ...validAttemptWhere() } });
+    return {
+      ok: true,
+      roundId,
+      itemId: round.itemId,
+      winnersPublished: false,
+      uniquePlayers: attemptsInReview,
+      winnersCount: 0,
+    };
+  }
+
   const attempts = await prisma.attempt.findMany({
     where: { roundId, ...validAttemptWhere() },
-    select: { userId: true, scoreMs: true, createdAt: true },
+    select: { id: true, userId: true, scoreMs: true, createdAt: true, flags: true },
     orderBy: [{ createdAt: "asc" }],
   });
 
-  const bestByUser = new Map<string, { userId: string; scoreMs: number; createdAt: Date }>();
+  const bestByUser = new Map<string, (typeof attempts)[number]>();
   for (const attempt of attempts) {
     const current = bestByUser.get(attempt.userId);
     if (!current || compareScores(round.item.gameKey, attempt, current) < 0) {
@@ -73,20 +92,46 @@ export async function settleRound(roundId: string): Promise<RoundSettleResult> {
     .sort((a, b) => compareScores(round.item.gameKey, a, b))
     .slice(0, 3);
 
+  if (ranked.some(finalistNeedsReview)) {
+    await prisma.itemRound.update({
+      where: { id: roundId },
+      data: {
+        state: "REVIEW",
+        winnerUserId: null,
+      },
+    });
+
+    // Keep item closed until manual review resolves the finalists.
+    await prisma.item.update({
+      where: { id: round.itemId },
+      data: { state: "CLOSED", closesAt: round.closesAt ?? round.fundingEndsAt },
+    });
+
+    return {
+      ok: true,
+      roundId,
+      itemId: round.itemId,
+      winnersPublished: false,
+      uniquePlayers: bestByUser.size,
+      winnersCount: 0,
+    };
+  }
+
   const users = ranked.length
     ? await prisma.user.findMany({
         where: { id: { in: ranked.map((r) => r.userId) } },
         select: { id: true, alias: true, email: true },
       })
     : [];
-  const aliasById = new Map(users.map((u) => [u.id, (u.alias && u.alias.trim()) || (u.email?.split("@")[0] ?? "player")]));
+  const aliasById = new Map(
+    users.map((u) => [u.id, (u.alias && u.alias.trim()) || (u.email?.split("@")[0] ?? "player")]),
+  );
 
   await prisma.$transaction(async (tx) => {
-    for (let idx = 0; idx < ranked.length; idx++) {
-      const row = ranked[idx];
+    for (let idx = 0; idx < ranked.length; idx += 1) {
+      const row = ranked[idx]!;
       const bonus = COMPLETED_ROUND_BONUSES[idx] ?? 0;
       const rewardType = idx === 0 ? "ITEM" : "CREDIT_BONUS";
-
       await tx.winner.create({
         data: {
           itemId: round.itemId,
@@ -100,7 +145,6 @@ export async function settleRound(roundId: string): Promise<RoundSettleResult> {
           rewardCredits: bonus,
         },
       });
-
       if (bonus > 0) {
         await tx.user.update({
           where: { id: row.userId },
@@ -123,13 +167,10 @@ export async function settleRound(roundId: string): Promise<RoundSettleResult> {
       where: { id: roundId },
       data: {
         state: "PUBLISHED",
-        purchaseGraceEndsAt:
-          round.purchaseGraceEndsAt ??
-          new Date(Date.now() + round.item.purchaseGraceHours * 60 * 60 * 1000),
+        purchaseGraceEndsAt: round.purchaseGraceEndsAt ?? new Date(Date.now() + round.item.purchaseGraceHours * 60 * 60 * 1000),
         winnerUserId: ranked[0]?.userId ?? null,
       },
     });
-
     await tx.item.update({
       where: { id: round.itemId },
       data: { state: "PUBLISHED", closesAt: round.closesAt ?? round.fundingEndsAt },
@@ -147,11 +188,7 @@ export async function settleRound(roundId: string): Promise<RoundSettleResult> {
 }
 
 export async function settleItemWinners(itemId: string): Promise<LegacySettleResult> {
-  const latestRound = await prisma.itemRound.findFirst({
-    where: { itemId },
-    orderBy: [{ sequence: "desc" }],
-  });
-
+  const latestRound = await prisma.itemRound.findFirst({ where: { itemId }, orderBy: [{ sequence: "desc" }] });
   if (latestRound) {
     const res = await settleRound(latestRound.id);
     return {

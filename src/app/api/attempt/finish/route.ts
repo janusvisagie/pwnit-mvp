@@ -1,8 +1,10 @@
+
 export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
 
 import { getCurrentActor, getRequestIp, hashForRateLimit } from "@/lib/auth";
+import { evaluateCompetitiveAttemptRisk } from "@/lib/botRisk";
 import { prisma } from "@/lib/db";
 import { compareScores } from "@/lib/gameRules";
 import { playCostForPrize } from "@/lib/playCost";
@@ -56,7 +58,6 @@ export async function POST(req: Request) {
         status: true,
         challengeJson: true,
         issuedAt: true,
-        submittedAt: true,
         expiresAt: true,
       },
     });
@@ -65,13 +66,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Attempt session not found" }, { status: 404 });
     }
 
-    if (session.status !== "ISSUED" || session.submittedAt) {
+    if (session.status !== "ISSUED") {
       return NextResponse.json({ ok: false, error: "This attempt session is no longer active." }, { status: 409 });
     }
 
     if (new Date(session.expiresAt).getTime() < Date.now()) {
-      await (prisma as any).attemptSession.updateMany({
-        where: { id: session.id, status: "ISSUED" },
+      await (prisma as any).attemptSession.update({
+        where: { id: session.id },
         data: { status: "EXPIRED", verificationJson: { reason: "expired_before_finish" } },
       });
       return NextResponse.json({ ok: false, error: "This attempt session expired. Start a new run." }, { status: 409 });
@@ -97,30 +98,7 @@ export async function POST(req: Request) {
     const synced = await syncRoundLifecycle(session.itemId);
     const currentState = synced?.state ?? round.state;
     if (!["BUILDING", "ACTIVATED"].includes(currentState)) {
-      return NextResponse.json(
-        { ok: false, error: "This prize is not accepting plays right now." },
-        { status: 409 },
-      );
-    }
-
-    const claim = await (prisma as any).attemptSession.updateMany({
-      where: {
-        id: session.id,
-        userId: user.id,
-        status: "ISSUED",
-        submittedAt: null,
-      },
-      data: {
-        submittedAt: new Date(),
-        verificationJson: { phase: "claiming_finish" },
-      },
-    });
-
-    if (Number(claim?.count ?? 0) !== 1) {
-      return NextResponse.json(
-        { ok: false, error: "This attempt session has already been finished or is no longer active." },
-        { status: 409 },
-      );
+      return NextResponse.json({ ok: false, error: "This prize is not accepting plays right now." }, { status: 409 });
     }
 
     const serverElapsedMs = Math.max(0, Date.now() - new Date(session.issuedAt).getTime());
@@ -129,20 +107,23 @@ export async function POST(req: Request) {
     if (!verification.valid) {
       await (prisma as any).attemptSession.update({
         where: { id: session.id },
-        data: {
-          status: "REJECTED",
-          verificationJson: {
-            scoreMs: 0,
-            ...verification.flags,
-            serverElapsedMs,
-          },
-        },
+        data: { status: "REJECTED", submittedAt: new Date(), verificationJson: verification.flags },
       });
       return NextResponse.json(
         { ok: false, error: "Attempt rejected by server verification.", flags: verification.flags },
         { status: 422 },
       );
     }
+
+    const risk = await evaluateCompetitiveAttemptRisk({
+      request: req,
+      gameKey: session.gameKey,
+      userId: user.id,
+      itemId: session.itemId,
+      meta,
+      verificationFlags: verification.flags,
+      serverElapsedMs,
+    });
 
     const dayKey = dayKeyZA();
     const playCost = playCostForPrize(item.prizeValueZAR);
@@ -156,20 +137,7 @@ export async function POST(req: Request) {
       const freeBal = Number(freshUser?.freeCreditsBalance ?? 0);
       const paidBal = Number(freshUser?.paidCreditsBalance ?? 0);
       const totalBal = freeBal + paidBal;
-
       if (totalBal < playCost) {
-        await (tx as any).attemptSession.update({
-          where: { id: session.id },
-          data: {
-            status: "REJECTED",
-            verificationJson: {
-              scoreMs: 0,
-              ...verification.flags,
-              serverElapsedMs,
-              reason: "insufficient_credits",
-            },
-          },
-        });
         return {
           ok: false as const,
           error: "Not enough credits",
@@ -196,7 +164,7 @@ export async function POST(req: Request) {
         verification: verification.flags,
         challengeType: session.gameKey,
         sessionId: session.id,
-        serverElapsedMs,
+        risk,
       };
       const flags = JSON.stringify(flagsPayload).slice(0, 2000);
 
@@ -237,7 +205,6 @@ export async function POST(req: Request) {
           },
         });
       }
-
       if (freeUsed > 0) {
         await tx.creditLedger.create({
           data: {
@@ -255,11 +222,12 @@ export async function POST(req: Request) {
         where: { id: session.id },
         data: {
           status: "SUBMITTED",
+          submittedAt: new Date(),
           verificationJson: {
             scoreMs: verification.scoreMs,
             ...verification.flags,
+            risk,
             attemptRowId: attempt.id,
-            serverElapsedMs,
           },
         },
       });
@@ -274,6 +242,8 @@ export async function POST(req: Request) {
         totalBalance: newFree + newPaid,
         flags,
         officialScore: verification.scoreMs,
+        reviewRequired: risk.reviewRequired,
+        risk,
       };
     });
 
@@ -314,7 +284,6 @@ export async function POST(req: Request) {
     const rows = Array.from(bestByUser.values()).sort((a, b) => compareScores(item.gameKey, a, b));
     const totalPlayers = rows.length;
     const myRank = totalPlayers ? Math.max(1, rows.findIndex((r) => r.userId === user.id) + 1) : 0;
-
     let status: "LEADING" | "BONUS" | "CHASING" = "CHASING";
     if (myRank === 1) status = "LEADING";
     else if (myRank === 2 || myRank === 3) status = "BONUS";
@@ -336,6 +305,8 @@ export async function POST(req: Request) {
       totalPlayers,
       status,
       roundState: refreshedRound?.state ?? currentState,
+      reviewRequired: txRes.reviewRequired,
+      risk: txRes.risk,
     });
   } catch (e: any) {
     return NextResponse.json({ ok: false, error: e?.message || String(e) || "Server error" }, { status: 500 });
