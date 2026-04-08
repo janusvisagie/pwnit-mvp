@@ -3,491 +3,275 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { GameProps } from "../types";
+import {
+  buildProgressiveRunChallenge,
+  buildPublicProgressiveRunChallenge,
+  computeProgressiveRunScore,
+} from "@/lib/competitiveRuns";
 
 type Option = { id: string; label: string; emoji: string };
-
-type LocalTarget = {
-  id: string;
-  label: string;
-  emoji: string;
-  theme: string;
-  clues: string[];
-};
-
-type Challenge = {
+type PublicChallenge = {
   game?: "progressive-mosaic";
-  answerId?: string;
+  level?: number;
   options?: Option[];
-  reveals?: string[];
+  shownReveals?: string[];
   maxReveals?: number;
+  timeLimitMs?: number;
   attemptId?: string;
 };
 
-const LOCAL_TARGETS: LocalTarget[] = [
-  {
-    id: "fuel-voucher",
-    label: "Fuel Voucher",
-    emoji: "⛽",
-    theme: "from-amber-100 via-orange-50 to-rose-100",
-    clues: [
-      "Travel support",
-      "Useful on a road trip",
-      "Redeemed before the tank runs low",
-      "Used at a filling station",
-      "Helps with petrol or diesel costs",
-      "Fuel Voucher",
-    ],
-  },
-  {
-    id: "checkers-voucher",
-    label: "Checkers Voucher",
-    emoji: "🛒",
-    theme: "from-lime-100 via-emerald-50 to-green-100",
-    clues: [
-      "Household spending",
-      "Everyday essentials",
-      "Better with a trolley than a toolbox",
-      "Used during a weekly shop",
-      "Redeemed in a grocery store",
-      "Checkers Voucher",
-    ],
-  },
-  {
-    id: "takealot-voucher",
-    label: "Takealot Voucher",
-    emoji: "📦",
-    theme: "from-sky-100 via-blue-50 to-indigo-100",
-    clues: [
-      "Shopping from home",
-      "Convenience first",
-      "Clicks before collection",
-      "Delivered to your door",
-      "Redeemed on an online store",
-      "Takealot Voucher",
-    ],
-  },
-  {
-    id: "headphones",
-    label: "Headphones",
-    emoji: "🎧",
-    theme: "from-fuchsia-100 via-pink-50 to-rose-100",
-    clues: [
-      "Personal audio",
-      "Private listening",
-      "Worn rather than carried",
-      "Over-ear comfort",
-      "Built for focused sound",
-      "Headphones",
-    ],
-  },
-  {
-    id: "switch",
-    label: "Nintendo Switch",
-    emoji: "🎮",
-    theme: "from-red-100 via-orange-50 to-yellow-100",
-    clues: [
-      "Portable play",
-      "Detachable controls",
-      "Docked or handheld",
-      "A gaming prize",
-      "Nintendo hybrid console",
-      "Nintendo Switch",
-    ],
-  },
-  {
-    id: "camera",
-    label: "GoPro Camera",
-    emoji: "📷",
-    theme: "from-cyan-100 via-sky-50 to-blue-100",
-    clues: [
-      "Outdoor footage",
-      "Built for motion",
-      "Compact adventure gear",
-      "Mounted on the move",
-      "Action camera format",
-      "GoPro Camera",
-    ],
-  },
-  {
-    id: "bonus-credits",
-    label: "Bonus Credits",
-    emoji: "⭐",
-    theme: "from-violet-100 via-purple-50 to-fuchsia-100",
-    clues: [
-      "Platform reward",
-      "Keeps you in the game",
-      "Not a physical product",
-      "More room for extra runs",
-      "Redeemed inside PwnIt",
-      "Bonus Credits",
-    ],
-  },
-  {
-    id: "podium-place",
-    label: "Podium Place",
-    emoji: "🏆",
-    theme: "from-yellow-100 via-amber-50 to-orange-100",
-    clues: [
-      "Competitive finish",
-      "Rank-related reward",
-      "Top-position chasing",
-      "Bragging-rights result",
-      "Near the very top",
-      "Podium Place",
-    ],
-  },
-];
+type RunStats = {
+  levelsCleared: number;
+  mistakes: number;
+  totalElapsedMs: number;
+  totalRevealCount: number;
+  status: "RUNNING" | "FAILED" | "TIMED_OUT";
+};
 
-const BASE_ROUND_SCORE = 18000;
-const BASE_ROUND_TIME_MS = 14500;
-const MIN_ROUND_TIME_MS = 7000;
-
-function shuffle<T>(values: readonly T[]) {
-  const copy = [...values];
-  for (let i = copy.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [copy[i], copy[j]] = [copy[j]!, copy[i]!];
-  }
-  return copy;
-}
-
-function buildLocalChallenge(): Challenge {
-  const correct = LOCAL_TARGETS[Math.floor(Math.random() * LOCAL_TARGETS.length)]!;
-  const options = shuffle([
-    correct,
-    ...shuffle(LOCAL_TARGETS.filter((entry) => entry.id !== correct.id)).slice(0, 5),
-  ]).map(({ id, label, emoji }) => ({ id, label, emoji }));
-
+function buildLocalChallenge(level: number) {
+  const server = buildProgressiveRunChallenge("progressive-mosaic", level);
   return {
-    game: "progressive-mosaic",
-    answerId: correct.id,
-    options,
-    reveals: correct.clues,
-    maxReveals: correct.clues.length,
+    server,
+    public: buildPublicProgressiveRunChallenge(server, 1) as PublicChallenge,
   };
 }
 
-function getLocalTarget(id?: string | null) {
-  return LOCAL_TARGETS.find((entry) => entry.id === id) ?? null;
-}
-
-function buildExtendedOptions(options: Option[]) {
-  if (options.length >= 6) return options;
-  const existingIds = new Set(options.map((option) => option.id));
-  const extras = shuffle(LOCAL_TARGETS.filter((entry) => !existingIds.has(entry.id)))
-    .slice(0, Math.max(0, 6 - options.length))
-    .map(({ id, label, emoji }) => ({ id, label, emoji }));
-  return shuffle([...options, ...extras]);
-}
-
-export default function ProgressiveMosaicGame({ onFinish, disabled, challenge: injectedChallenge }: GameProps<Challenge>) {
+export default function ProgressiveMosaicGame({ onFinish, disabled, challenge: injectedChallenge }: GameProps<PublicChallenge>) {
   const verifiedMode = Boolean(injectedChallenge?.attemptId);
-  const [localChallenge, setLocalChallenge] = useState<Challenge>(() => buildLocalChallenge());
-  const challenge = injectedChallenge ?? localChallenge;
-  const answerVisual = getLocalTarget(challenge.answerId);
-  const options = useMemo(() => buildExtendedOptions(challenge.options ?? []), [challenge.options]);
-  const maxReveals = challenge.maxReveals ?? challenge.reveals?.length ?? 6;
-
+  const initialLocal = useMemo(() => buildLocalChallenge(1), []);
+  const [publicChallenge, setPublicChallenge] = useState<PublicChallenge>(
+    injectedChallenge ?? initialLocal.public,
+  );
+  const [localServerChallenge, setLocalServerChallenge] = useState<any>(initialLocal.server);
   const [phase, setPhase] = useState<"READY" | "RUNNING" | "DONE">("READY");
-  const [reveals, setReveals] = useState<string[]>([]);
   const [message, setMessage] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
-  const [level, setLevel] = useState(1);
-  const [runScore, setRunScore] = useState(0);
-  const [finalScore, setFinalScore] = useState<number | null>(null);
-  const [remainingMs, setRemainingMs] = useState<number | null>(null);
+  const [score, setScore] = useState<number | null>(null);
+  const [runStats, setRunStats] = useState<RunStats>({
+    levelsCleared: 0,
+    mistakes: 0,
+    totalElapsedMs: 0,
+    totalRevealCount: publicChallenge.shownReveals?.length ?? 1,
+    status: "RUNNING",
+  });
   const startedAtRef = useRef<number | null>(null);
-  const roundEndsAtRef = useRef<number | null>(null);
-
-  const roundTimeMs = verifiedMode
-    ? null
-    : Math.max(MIN_ROUND_TIME_MS, BASE_ROUND_TIME_MS - (Math.max(1, level) - 1) * 850);
 
   useEffect(() => {
-    if (!verifiedMode) return;
-    setPhase("READY");
-    setReveals([]);
-    setMessage(null);
-    setPending(false);
-    setLevel(1);
-    setRunScore(0);
-    setFinalScore(null);
-    setRemainingMs(null);
-    startedAtRef.current = null;
-    roundEndsAtRef.current = null;
-  }, [challenge.attemptId, verifiedMode]);
+    if (injectedChallenge) {
+      setPublicChallenge(injectedChallenge);
+      setRunStats({ levelsCleared: 0, mistakes: 0, totalElapsedMs: 0, totalRevealCount: injectedChallenge.shownReveals?.length ?? 1, status: "RUNNING" });
+      setPhase("READY");
+      setMessage(null);
+      setScore(null);
+      setPending(false);
+      startedAtRef.current = null;
+    }
+  }, [injectedChallenge]);
 
-  useEffect(() => {
-    if (phase !== "RUNNING" || roundEndsAtRef.current == null) return undefined;
-    const timer = window.setInterval(() => {
-      const remaining = Math.max(0, roundEndsAtRef.current! - Date.now());
-      setRemainingMs(remaining);
-      if (remaining <= 0 && !verifiedMode) {
-        window.clearInterval(timer);
-        finishRun(false, "Time up.");
+  const shownReveals = publicChallenge.shownReveals ?? [];
+  const maxReveals = publicChallenge.maxReveals ?? shownReveals.length;
+  const timeLimitMs = publicChallenge.timeLimitMs ?? 12000;
+  const level = publicChallenge.level ?? 1;
+  const options = publicChallenge.options ?? [];
+
+  const elapsedMs = phase === "RUNNING" && startedAtRef.current ? Math.max(0, Date.now() - startedAtRef.current) : 0;
+  const remainingMs = Math.max(0, timeLimitMs - elapsedMs);
+
+  async function resolveLevel(selectedId: string | null, timedOut = false) {
+    const levelElapsedMs = Math.max(0, Date.now() - (startedAtRef.current ?? Date.now()));
+    if (verifiedMode) {
+      setPending(true);
+      try {
+        const res = await fetch("/api/attempt/progress", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            attemptId: injectedChallenge?.attemptId,
+            action: "resolve_level",
+            selectedId,
+            elapsedMs: levelElapsedMs,
+            timedOut,
+          }),
+        });
+        const data = await res.json().catch(() => null);
+        if (!res.ok || !data?.ok) {
+          setMessage(data?.error || `Could not continue (${res.status})`);
+          return;
+        }
+        if (data.finished) {
+          const nextStats: RunStats = {
+            levelsCleared: Number(data.run?.levelsCleared || 0),
+            mistakes: Number(data.run?.mistakes || 0),
+            totalElapsedMs: Number(data.run?.totalElapsedMs || levelElapsedMs),
+            totalRevealCount: Number(data.run?.totalRevealCount || 0),
+            status: data.run?.status === "TIMED_OUT" ? "TIMED_OUT" : "FAILED",
+          };
+          setRunStats(nextStats);
+          setPhase("DONE");
+          setMessage(nextStats.status === "TIMED_OUT" ? "Time ran out. This competitive run is over." : "Wrong answer. This competitive run is over.");
+          const preview = computeProgressiveRunScore({ ...nextStats, game: "progressive-mosaic" }, nextStats.totalElapsedMs);
+          setScore(preview);
+          onFinish({ scoreMs: preview, meta: { competitiveRun: true, game: "progressive-mosaic" } });
+          return;
+        }
+        setPublicChallenge({ ...(data.nextChallenge || publicChallenge), attemptId: injectedChallenge?.attemptId });
+        setRunStats({
+          levelsCleared: Number(data.run?.levelsCleared || 0),
+          mistakes: Number(data.run?.mistakes || 0),
+          totalElapsedMs: Number(data.run?.totalElapsedMs || 0),
+          totalRevealCount: Number(data.run?.totalRevealCount || 0),
+          status: "RUNNING",
+        });
+        setMessage(`Level ${Number(data.nextChallenge?.level || level + 1)} ready. Pick early if you can.`);
+        startedAtRef.current = Date.now();
+      } catch (error: any) {
+        setMessage(error?.message || "Could not continue.");
+      } finally {
+        setPending(false);
       }
-    }, 120);
-    return () => window.clearInterval(timer);
-  }, [phase, verifiedMode, level]);
-
-  function startRound(nextLocalChallenge?: Challenge, nextLevel?: number, nextRunScore?: number) {
-    if (!verifiedMode && nextLocalChallenge) {
-      setLocalChallenge(nextLocalChallenge);
+      return;
     }
-    if (typeof nextLevel === "number") setLevel(nextLevel);
-    if (typeof nextRunScore === "number") setRunScore(nextRunScore);
 
-    setPhase("RUNNING");
-    setReveals([]);
-    setPending(false);
-    setFinalScore(null);
+    const success = !timedOut && selectedId === localServerChallenge.answerId;
+    const nextElapsed = runStats.totalElapsedMs + levelElapsedMs;
+    if (!success) {
+      const finalStats: RunStats = {
+        levelsCleared: runStats.levelsCleared,
+        mistakes: runStats.mistakes + 1,
+        totalElapsedMs: nextElapsed,
+        totalRevealCount: runStats.totalRevealCount,
+        status: timedOut ? "TIMED_OUT" : "FAILED",
+      };
+      setRunStats(finalStats);
+      setPhase("DONE");
+      setMessage(timedOut ? "Time ran out. Practice run over." : "Wrong answer. Practice run over.");
+      const preview = computeProgressiveRunScore({ ...finalStats, game: "progressive-mosaic" }, nextElapsed);
+      setScore(preview);
+      onFinish({ scoreMs: preview, meta: { game: "progressive-mosaic", levelsCleared: finalStats.levelsCleared } });
+      return;
+    }
+
+    const next = buildLocalChallenge(level + 1);
+    setLocalServerChallenge(next.server as any);
+    setPublicChallenge(next.public);
+    setRunStats({
+      levelsCleared: runStats.levelsCleared + 1,
+      mistakes: runStats.mistakes,
+      totalElapsedMs: nextElapsed,
+      totalRevealCount: runStats.totalRevealCount + (next.public.shownReveals?.length ?? 1),
+      status: "RUNNING",
+    });
+    setMessage(`Correct. Level ${level + 1} begins with the first reveal already shown.`);
     startedAtRef.current = Date.now();
-    if (!verifiedMode && roundTimeMs != null) {
-      roundEndsAtRef.current = Date.now() + roundTimeMs;
-      setRemainingMs(roundTimeMs);
-    } else {
-      roundEndsAtRef.current = null;
-      setRemainingMs(null);
-    }
-    setMessage("Study the clearing target, then choose the matching prize option below.");
-    void revealNext(true);
   }
+
+  useEffect(() => {
+    if (phase !== "RUNNING" || pending || remainingMs > 0) return;
+    void resolveLevel(null, true);
+  }, [phase, pending, remainingMs]);
 
   function start() {
     if (disabled) return;
-    if (verifiedMode) {
-      startRound(undefined, 1, 0);
-      return;
+    const local = !verifiedMode ? buildLocalChallenge(1) : null;
+    if (local) {
+      setLocalServerChallenge(local.server as any);
+      setPublicChallenge(local.public);
+      setRunStats({ levelsCleared: 0, mistakes: 0, totalElapsedMs: 0, totalRevealCount: local.public.shownReveals?.length ?? 1, status: "RUNNING" });
     }
-    const fresh = buildLocalChallenge();
-    startRound(fresh, 1, 0);
+    setPhase("RUNNING");
+    setMessage("The first reveal is already shown. Guess whenever you’re ready, or reveal more detail at a scoring cost.");
+    setScore(null);
+    startedAtRef.current = Date.now();
   }
 
-  async function revealNext(silent = false) {
-    if (disabled || pending || phase !== "RUNNING" || reveals.length >= maxReveals) return;
+  async function revealNext() {
+    if (disabled || pending || phase !== "RUNNING" || shownReveals.length >= maxReveals) return;
     if (!verifiedMode) {
-      const next = (challenge.reveals ?? []).slice(0, reveals.length + 1);
-      setReveals(next);
-      if (!silent) {
-        setMessage(next.length >= maxReveals ? "That is the final reveal. Choose your answer." : "The image cleared a little more.");
-      }
+      const nextShown = localServerChallenge.reveals.slice(0, shownReveals.length + 1);
+      setPublicChallenge({ ...publicChallenge, shownReveals: nextShown });
+      setRunStats((prev) => ({ ...prev, totalRevealCount: prev.totalRevealCount + 1 }));
+      setMessage(nextShown.length >= maxReveals ? "All reveals shown. Make your choice." : "More of the target is now visible.");
       return;
     }
-
     setPending(true);
     try {
       const res = await fetch("/api/attempt/progress", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ attemptId: challenge.attemptId, action: "reveal" }),
+        body: JSON.stringify({ attemptId: injectedChallenge?.attemptId, action: "reveal" }),
       });
       const data = await res.json().catch(() => null);
       if (!res.ok || !data?.ok) {
-        setMessage(data?.error || `Could not reveal the next clue (${res.status})`);
+        setMessage(data?.error || `Could not reveal (${res.status})`);
         return;
       }
-      const nextReveals = Array.isArray(data.reveals) ? data.reveals.map((value: unknown) => String(value || "")) : [];
-      setReveals(nextReveals);
-      if (!silent) {
-        setMessage(data.exhausted ? "That is the final reveal. Choose the best match." : "The target image is getting clearer.");
-      }
-    } catch (e: any) {
-      setMessage(e?.message || "Could not reveal the next clue.");
+      setPublicChallenge((prev) => ({ ...prev, shownReveals: data.shownReveals }));
+      setRunStats((prev) => ({ ...prev, totalRevealCount: prev.totalRevealCount + 1 }));
+      setMessage(data.exhausted ? "All reveals shown. Make your choice." : "More of the target is now visible.");
+    } catch (error: any) {
+      setMessage(error?.message || "Could not reveal another step.");
     } finally {
       setPending(false);
     }
   }
 
-  function finishRun(correct: boolean, customMessage?: string, selectedId?: string) {
-    const elapsedMs = Math.max(0, Date.now() - (startedAtRef.current ?? Date.now()));
-
-    if (verifiedMode) {
-      const scoreMs = correct ? Math.max(1200, BASE_ROUND_SCORE - elapsedMs - Math.max(0, reveals.length - 1) * 2200) : 0;
-      setPhase("DONE");
-      setFinalScore(scoreMs);
-      setMessage(
-        customMessage ??
-          (correct
-            ? "Answer locked in. The server will score your run using reveal depth and elapsed time."
-            : "Wrong answer."),
-      );
-      onFinish({
-        scoreMs,
-        meta: {
-          game: "progressive-mosaic",
-          selectedId,
-          elapsedMs,
-          serverProgress: true,
-        },
-      });
-      return;
-    }
-
-    if (!correct) {
-      setPhase("DONE");
-      setFinalScore(runScore);
-      setRemainingMs(0);
-      setMessage(customMessage ?? `Run over. You cleared ${Math.max(0, level - 1)} round${level - 1 === 1 ? "" : "s"}.`);
-      onFinish({
-        scoreMs: runScore,
-        meta: {
-          game: "progressive-mosaic",
-          roundsCleared: Math.max(0, level - 1),
-          levelReached: level,
-          elapsedMs,
-        },
-      });
-      return;
-    }
-
-    const roundScore = Math.max(900, BASE_ROUND_SCORE - elapsedMs - Math.max(0, reveals.length - 1) * 1800 - (level - 1) * 250);
-    const nextRunScore = runScore + roundScore;
-    const nextLevel = level + 1;
-    const nextLocal = buildLocalChallenge();
-    startRound(nextLocal, nextLevel, nextRunScore);
-    setMessage(`Correct. Level ${nextLevel} begins now.`);
-  }
-
-  function choose(id: string) {
-    if (disabled || pending || phase !== "RUNNING") return;
-    const correct = id === challenge.answerId;
-    finishRun(correct, correct ? undefined : "Wrong answer. The run ends here.", id);
-  }
-
-  const heroRevealCount = Math.max(1, reveals.length);
-  const blurClass = answerVisual
-    ? heroRevealCount >= maxReveals
-      ? "blur-0 scale-100"
-      : heroRevealCount >= Math.ceil(maxReveals * 0.8)
-        ? "blur-[1px] scale-[1.01]"
-        : heroRevealCount >= Math.ceil(maxReveals * 0.55)
-          ? "blur-[3px] scale-[1.03]"
-          : heroRevealCount >= 2
-            ? "blur-[6px] scale-[1.06]"
-            : "blur-[10px] scale-[1.08]"
-    : "blur-[10px] scale-[1.06]";
-
-  const roundsCleared = Math.max(0, level - 1);
-
   return (
-    <div className="mx-auto max-w-3xl rounded-3xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
+    <div className="mx-auto max-w-2xl rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Objective</div>
           <h3 className="mt-1 text-base font-black text-slate-950 sm:text-lg">Progressive Mosaic</h3>
-          <p className="mt-2 max-w-2xl text-sm text-slate-600">
-            Press start and the target image begins to clear immediately. Guess at any time from the answer options below — fewer reveals and quicker correct guesses produce better scores.
-          </p>
+          <p className="mt-2 text-sm text-slate-600">Each level begins with the first reveal already visible. Reveal more only when needed, then choose the best answer option.</p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {!verifiedMode ? (
-            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">Level {level}</span>
-          ) : null}
-          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">
-            Reveals {reveals.length} / {maxReveals}
-          </span>
-          {!verifiedMode && remainingMs != null ? (
-            <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-bold text-amber-800 ring-1 ring-amber-200">
-              {Math.max(0, Math.ceil(remainingMs / 1000))}s
-            </span>
-          ) : null}
+        <div className="rounded-2xl bg-slate-900 px-3 py-2 text-right text-white">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-300">Run</div>
+          <div className="text-lg font-black">L{level}</div>
+          <div className="text-xs text-slate-300">Cleared {runStats.levelsCleared}</div>
         </div>
       </div>
 
-      <div className="mt-4 rounded-[28px] border border-slate-200 bg-slate-50 p-3 sm:p-4">
-        <div className="grid gap-3 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
-          <div className={`relative overflow-hidden rounded-[28px] bg-gradient-to-br ${answerVisual?.theme ?? "from-slate-200 via-slate-100 to-slate-50"} p-5`}>
-            <div className="absolute inset-0 bg-white/55 backdrop-blur-[1px]" />
-            <div className="relative flex min-h-[220px] flex-col items-center justify-center rounded-[24px] border border-white/60 bg-white/45 px-4 py-6 text-center shadow-sm">
-              <div className={`text-6xl transition duration-300 ${blurClass}`}>{answerVisual?.emoji ?? "❖"}</div>
-              <div className={`mt-3 text-xl font-black text-slate-950 transition duration-300 ${blurClass}`}>
-                {answerVisual?.label ?? "Hidden prize"}
-              </div>
-              <div className="mt-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                The target sharpens as you reveal more
-              </div>
-            </div>
-          </div>
+      <div className="mt-3 grid gap-3 sm:grid-cols-3">
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3"><div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Shown</div><div className="mt-1 text-lg font-black text-slate-900">{shownReveals.length}/{maxReveals}</div></div>
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3"><div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Time left</div><div className="mt-1 text-lg font-black text-slate-900">{Math.ceil(remainingMs / 1000)}s</div></div>
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3"><div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Scoring</div><div className="mt-1 text-sm font-bold text-slate-900">Higher level, fewer reveals, faster finish</div></div>
+      </div>
 
-          <div className="rounded-[28px] border border-slate-200 bg-white p-3 shadow-sm">
-            <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Revealed so far</div>
-            <div className="mt-3 grid grid-cols-2 gap-2">
-              {Array.from({ length: maxReveals }, (_, index) => {
-                const clue = reveals[index];
-                return (
-                  <div
-                    key={index}
-                    className={`min-h-[64px] rounded-2xl border px-3 py-3 text-center text-sm font-semibold ${
-                      clue
-                        ? "border-indigo-200 bg-indigo-50 text-indigo-900"
-                        : "border-slate-200 bg-slate-50 text-slate-400"
-                    }`}
-                  >
-                    {clue || "Hidden"}
-                  </div>
-                );
-              })}
+      <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
+        {Array.from({ length: maxReveals }, (_, index) => {
+          const tile = shownReveals[index];
+          return (
+            <div key={index} className="flex min-h-[82px] items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 px-3 py-4 text-center text-sm font-bold text-slate-800">
+              {tile ? tile : <span className="text-xl text-slate-300">◼</span>}
             </div>
-          </div>
-        </div>
+          );
+        })}
       </div>
 
       <div className="mt-4 flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={start}
-          disabled={disabled || pending || phase === "RUNNING"}
-          className="rounded-2xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-bold text-slate-900 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
-        >
-          {phase === "READY" ? "Start progressive mosaic" : verifiedMode ? "Play again" : "Replay with a fresh run"}
+        <button type="button" onClick={start} disabled={disabled || pending || phase === "RUNNING"} className="rounded-2xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-bold text-slate-900 disabled:opacity-50">
+          {phase === "READY" ? "Start run" : "Restart run"}
         </button>
-        <button
-          type="button"
-          onClick={() => void revealNext(false)}
-          disabled={disabled || pending || phase !== "RUNNING" || reveals.length >= maxReveals}
-          className="rounded-2xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
-        >
-          {pending ? "Revealing..." : reveals.length >= maxReveals ? "All reveals shown" : "Reveal more"}
+        <button type="button" onClick={() => void revealNext()} disabled={disabled || pending || phase !== "RUNNING" || shownReveals.length >= maxReveals} className="rounded-2xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50">
+          {pending ? "Working..." : shownReveals.length >= maxReveals ? "All reveals shown" : "Reveal more"}
         </button>
-        {!verifiedMode ? (
-          <span className="rounded-2xl bg-emerald-50 px-4 py-2.5 text-sm font-bold text-emerald-800 ring-1 ring-emerald-200">
-            Run score {runScore.toLocaleString("en-ZA")}
-          </span>
-        ) : null}
       </div>
 
       <div className="mt-5">
-        <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Choose the best-matching prize option</div>
-        <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-          {options.map((option) => {
-            const visual = getLocalTarget(option.id);
-            return (
-              <button
-                key={option.id}
-                type="button"
-                onClick={() => choose(option.id)}
-                disabled={disabled || pending || phase !== "RUNNING"}
-                className="rounded-[24px] border border-slate-200 bg-white px-4 py-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 disabled:cursor-not-allowed disabled:bg-slate-100"
-              >
-                <div className={`rounded-[20px] bg-gradient-to-br ${visual?.theme ?? "from-slate-100 via-white to-slate-50"} p-4`}>
-                  <div className="text-3xl">{option.emoji || visual?.emoji || "❖"}</div>
-                  <div className="mt-3 text-base font-black text-slate-950">{option.label}</div>
-                </div>
-              </button>
-            );
-          })}
+        <div className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Answer choices</div>
+        <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
+          {options.map((option) => (
+            <button key={option.id} type="button" onClick={() => void resolveLevel(option.id, false)} disabled={disabled || pending || phase !== "RUNNING"} className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left transition hover:-translate-y-0.5 hover:border-slate-300 disabled:opacity-50">
+              <div className="flex items-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-2xl">{option.emoji}</div>
+                <div className="text-sm font-black text-slate-950">{option.label}</div>
+              </div>
+            </button>
+          ))}
         </div>
       </div>
 
-      {message ? (
-        <div className="mt-4 rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-900">{message}</div>
-      ) : null}
-
-      {finalScore != null ? (
-        <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-black text-emerald-800">
-          Final score {finalScore.toLocaleString("en-ZA")} · Rounds cleared {roundsCleared}
-        </div>
-      ) : null}
+      {message ? <div className="mt-4 rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-900">{message}</div> : null}
+      {score != null ? <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-black text-emerald-700">Run score {score.toLocaleString("en-ZA")}</div> : null}
     </div>
   );
 }

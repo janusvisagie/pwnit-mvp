@@ -8,6 +8,7 @@ import { prisma } from "@/lib/db";
 import { consumeRateLimit } from "@/lib/rateLimit";
 import { ensureCurrentRound, syncRoundLifecycle } from "@/lib/rounds";
 import { buildPublicVerifiedChallenge, buildVerifiedChallenge, isVerifiedGameKey } from "@/lib/verifiedGames";
+import { createProgressiveRunSession, isProgressiveRunGameKey } from "@/lib/competitiveRuns";
 import { validateTurnstileToken } from "@/lib/turnstile";
 
 const HIDDEN_STATE_GAME_KEYS = new Set([
@@ -17,6 +18,8 @@ const HIDDEN_STATE_GAME_KEYS = new Set([
   "clue-ladder",
   "safe-path-fog",
   "signal-hunt",
+  "spot-the-missing",
+  "rapid-math-relay",
 ]);
 
 export async function POST(req: Request) {
@@ -103,10 +106,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "This prize is not accepting plays right now." }, { status: 409 });
     }
 
-    const challenge = buildVerifiedChallenge(gameKey);
-    const challengeForClient = HIDDEN_STATE_GAME_KEYS.has(gameKey)
+    const runSession = isProgressiveRunGameKey(gameKey) ? createProgressiveRunSession(gameKey) : null;
+    const challenge = runSession?.serverChallenge ?? buildVerifiedChallenge(gameKey);
+    const challengeForClient = runSession?.publicChallenge ?? (HIDDEN_STATE_GAME_KEYS.has(gameKey)
       ? buildPublicVerifiedChallenge(challenge)
-      : challenge;
+      : challenge);
 
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
@@ -131,7 +135,7 @@ export async function POST(req: Request) {
         gameKey,
         status: "ISSUED",
         challengeJson: challenge,
-        verificationJson: {},
+        verificationJson: runSession?.progressState ?? {},
         expiresAt,
       },
       select: { id: true, expiresAt: true },
@@ -140,7 +144,11 @@ export async function POST(req: Request) {
     return NextResponse.json({
       ok: true,
       attemptId: session.id,
-      challenge: challengeForClient,
+      challenge: {
+        ...challengeForClient,
+        attemptId: session.id,
+        expiresAt: session.expiresAt,
+      },
       expiresAt: session.expiresAt,
       antiBot: {
         turnstileRequired: turnstileRequirement.required,

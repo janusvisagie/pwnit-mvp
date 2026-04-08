@@ -7,6 +7,7 @@ import { getCurrentActor, getRequestIp, hashForRateLimit } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { consumeRateLimit } from "@/lib/rateLimit";
 import { handleNextHiddenStateProgress } from "@/lib/nextHiddenStateGames";
+import { handleProgressiveRunProgress, isProgressiveRunGameKey } from "@/lib/competitiveRuns";
 import { ensureCurrentRound, syncRoundLifecycle } from "@/lib/rounds";
 
 const CODEBREAKER_CODE_LENGTH = 4;
@@ -246,4 +247,24 @@ export async function POST(req: Request) {
   } catch (e: any) {
     return NextResponse.json({ ok: false, error: e?.message || String(e) || "Server error" }, { status: 500 });
   }
-}
+}    if (isProgressiveRunGameKey(session.gameKey)) {
+      const progressed = handleProgressiveRunProgress(
+        session.gameKey,
+        session.challengeJson as any,
+        session.verificationJson as any,
+        body as Record<string, any>,
+      );
+
+      if (!progressed.ok) {
+        return NextResponse.json({ ok: false, error: progressed.error }, { status: progressed.status });
+      }
+
+      await (prisma as any).attemptSession.update({
+        where: { id: session.id },
+        data: { verificationJson: progressed.progressState },
+      });
+
+      return NextResponse.json(progressed.data);
+    }
+
+

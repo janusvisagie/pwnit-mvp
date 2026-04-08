@@ -11,6 +11,7 @@ import { playCostForPrize } from "@/lib/playCost";
 import { consumeRateLimit } from "@/lib/rateLimit";
 import { ensureCurrentRound, syncRoundLifecycle } from "@/lib/rounds";
 import { isVerifiedGameKey, verifyVerifiedAttempt } from "@/lib/verifiedGames";
+import { isProgressiveRunGameKey, verifyProgressiveRunAttempt } from "@/lib/competitiveRuns";
 import { dayKeyZA } from "@/lib/time";
 
 const INVALID_FLAG_FRAGMENT = '"valid":false';
@@ -103,13 +104,21 @@ export async function POST(req: Request) {
     }
 
     const serverElapsedMs = Math.max(0, Date.now() - new Date(session.issuedAt).getTime());
-    const verification = verifyVerifiedAttempt(
-      session.gameKey,
-      session.challengeJson as any,
-      meta,
-      serverElapsedMs,
-      session.verificationJson as any,
-    );
+    const verification = isProgressiveRunGameKey(session.gameKey)
+      ? verifyProgressiveRunAttempt(
+          session.gameKey,
+          session.challengeJson as any,
+          meta,
+          serverElapsedMs,
+          session.verificationJson as any,
+        )
+      : verifyVerifiedAttempt(
+          session.gameKey,
+          session.challengeJson as any,
+          meta,
+          serverElapsedMs,
+          session.verificationJson as any,
+        );
 
     if (!verification.valid) {
       await (prisma as any).attemptSession.update({
