@@ -57,7 +57,7 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
           fallbackSrc={fallbackImage}
           alt={item.title}
           className="bg-slate-50"
-          imgClassName="h-36 w-full object-contain bg-white p-1 sm:h-40 lg:h-[21.5vh]"
+          imgClassName="h-36 w-full object-cover bg-white p-0.5 sm:h-40 lg:h-[21.5vh]"
         />
         {isClosed ? (
           <div className="pointer-events-none absolute inset-x-0 top-2 flex justify-center">

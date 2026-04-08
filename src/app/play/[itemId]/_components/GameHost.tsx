@@ -364,6 +364,7 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
         <div>
           <div className="text-sm font-semibold uppercase tracking-wide text-slate-500">Game</div>
           <h2 className="mt-1 text-xl font-black text-slate-950">{entry.title}</h2>
+          <div className="text-xs text-red-600">debug gameKey: {gameKey}</div>
         </div>
 
         <label className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700">
