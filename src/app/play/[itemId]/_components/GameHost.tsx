@@ -218,7 +218,15 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
   const [turnstileNeeded, setTurnstileNeeded] = useState(false);
   const [turnstileReason, setTurnstileReason] = useState<string | null>(null);
 
-  const entry = GAME_REGISTRY[gameKey] ?? GAME_REGISTRY["quick-stop"];
+  const resolvedGameKey = useMemo<GameKey>(() => {
+    const sessionGame = session?.challenge?.game;
+    if (typeof sessionGame === "string" && sessionGame in GAME_REGISTRY) {
+      return sessionGame as GameKey;
+    }
+    return gameKey;
+  }, [gameKey, session]);
+
+  const entry = GAME_REGISTRY[resolvedGameKey] ?? GAME_REGISTRY["quick-stop"];
   const Game = useMemo(() => entry.Component, [entry.Component]);
 
   const issueSession = useCallback(
@@ -364,7 +372,6 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
         <div>
           <div className="text-sm font-semibold uppercase tracking-wide text-slate-500">Game</div>
           <h2 className="mt-1 text-xl font-black text-slate-950">{entry.title}</h2>
-          <div className="text-xs text-red-600">debug gameKey: {gameKey}</div>
         </div>
 
         <label className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700">
