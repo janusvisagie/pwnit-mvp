@@ -49,7 +49,7 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
   return (
     <Link
       href={href}
-      className="group flex h-full min-h-[172px] flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md lg:h-[calc((100vh-4.75rem)/2)]"
+      className="group flex h-full min-h-[158px] flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md lg:h-[calc((100vh-4.35rem)/2)]"
     >
       <div className="relative">
         <ProductImage
@@ -57,7 +57,7 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
           fallbackSrc={fallbackImage}
           alt={item.title}
           className="bg-slate-50"
-          imgClassName="h-28 w-full object-contain bg-white p-1.5 sm:h-32 lg:h-[17.75vh]"
+          imgClassName="h-36 w-full object-contain bg-white p-1 sm:h-40 lg:h-[21.5vh]"
         />
         {isClosed ? (
           <div className="pointer-events-none absolute inset-x-0 top-2 flex justify-center">
@@ -68,7 +68,7 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
         ) : null}
       </div>
 
-      <div className="flex flex-1 flex-col p-2">
+      <div className="flex flex-1 flex-col p-1.5">
         <div className="flex items-start justify-between gap-2">
           <div className="text-[13px] font-black text-slate-950">{formatZAR(item.prizeValueZAR)}</div>
           <div className={`rounded-full px-2 py-1 text-[10px] font-semibold ${badgeTone}`}>
@@ -76,33 +76,33 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
           </div>
         </div>
 
-        <h3 className="mt-1 line-clamp-2 text-[12px] font-black leading-tight text-slate-950">
+        <h3 className="mt-1 line-clamp-2 text-[11px] font-black leading-tight text-slate-950">
           {item.title}
         </h3>
 
-        <div className="mt-1 flex flex-wrap items-center gap-1">
+        <div className="mt-1 flex flex-wrap items-center gap-0.5">
           {game ? (
-            <span className="rounded-full bg-blue-50 px-2 py-1 text-[9px] font-bold text-blue-700 ring-1 ring-blue-200">
+            <span className="rounded-full bg-blue-50 px-2 py-1 text-[8px] font-bold text-blue-700 ring-1 ring-blue-200">
               {game}
             </span>
           ) : null}
 
           {typeof item.playCostCredits === "number" ? (
-            <span className="rounded-full bg-slate-100 px-2 py-1 text-[9px] font-semibold text-slate-700 ring-1 ring-slate-200">
+            <span className="rounded-full bg-slate-100 px-2 py-1 text-[8px] font-semibold text-slate-700 ring-1 ring-slate-200">
               {item.playCostCredits} credits/play
             </span>
           ) : null}
 
           {hot ? (
-            <span className="rounded-full bg-orange-100 px-2 py-1 text-[9px] font-semibold text-orange-800 ring-1 ring-orange-200">
+            <span className="rounded-full bg-orange-100 px-2 py-1 text-[8px] font-semibold text-orange-800 ring-1 ring-orange-200">
               Hot
             </span>
           ) : null}
         </div>
 
         <div className="mt-auto pt-1">
-          <div className="mb-1 flex items-center justify-between gap-2">
-            <span className="text-[9px] font-semibold uppercase tracking-wide text-slate-500">
+          <div className="mb-0.5 flex items-center justify-between gap-1.5">
+            <span className="text-[8px] font-semibold uppercase tracking-wide text-slate-500">
               Activation
             </span>
             {isActivated && item.closesAt ? <CountdownChip closesAt={item.closesAt} state="ACTIVATED" /> : null}
@@ -115,7 +115,7 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
             />
           </div>
 
-          <div className="mt-1 text-[10px] text-slate-600">{progressText}</div>
+          <div className="mt-0.5 text-[9px] text-slate-600">{progressText}</div>
         </div>
       </div>
     </Link>
