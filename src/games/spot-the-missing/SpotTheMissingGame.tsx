@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type { GameProps } from "../types";
 
@@ -14,6 +14,7 @@ type Challenge = {
   remaining: string[];
   missing?: string;
   options: string[];
+  attemptId?: string;
 };
 
 function shuffle<T>(values: readonly T[]) {
@@ -46,27 +47,40 @@ function deriveMissingWord(challenge: Challenge) {
 }
 
 export default function SpotTheMissingGame({ onFinish, disabled, challenge: injectedChallenge }: GameProps<Challenge>) {
-  const challenge = useMemo(() => injectedChallenge ?? buildChallenge(), [injectedChallenge]);
+  const verifiedMode = Boolean(injectedChallenge?.attemptId);
+  const [localChallenge, setLocalChallenge] = useState<Challenge>(() => buildChallenge());
+  const challenge = injectedChallenge ?? localChallenge;
   const [phase, setPhase] = useState<"READY" | "SHOW" | "INPUT" | "DONE">("READY");
   const [message, setMessage] = useState<string | null>(null);
   const [score, setScore] = useState<number | null>(null);
   const startedAtRef = useRef<number | null>(null);
-  const missingWord = useMemo(() => deriveMissingWord(challenge), [challenge]);
+  const missingWord = deriveMissingWord(challenge);
 
   useEffect(() => {
     if (phase !== "SHOW") return undefined;
     const timer = window.setTimeout(() => {
       setPhase("INPUT");
       startedAtRef.current = Date.now();
-      setMessage("One word disappeared. Pick the missing one.");
+      setMessage("One word disappeared. Pick the missing one from the options below.");
     }, SHOW_MS);
     return () => window.clearTimeout(timer);
   }, [phase]);
 
+  useEffect(() => {
+    if (!verifiedMode) return;
+    setPhase("READY");
+    setMessage(null);
+    setScore(null);
+    startedAtRef.current = null;
+  }, [challenge.attemptId, verifiedMode]);
+
   function start() {
     if (disabled) return;
+    if (!verifiedMode && phase === "DONE") {
+      setLocalChallenge(buildChallenge());
+    }
     setPhase("SHOW");
-    setMessage("Memorise all six words.");
+    setMessage("Memorise the six words, then pick the one that disappears.");
     setScore(null);
     startedAtRef.current = null;
   }
@@ -104,7 +118,7 @@ export default function SpotTheMissingGame({ onFinish, disabled, challenge: inje
         <div className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">6 words</div>
       </div>
 
-      <p className="mt-2 text-sm text-slate-600">Watch the set of PwnIt words, then choose the one that disappears.</p>
+      <p className="mt-2 text-sm text-slate-600">Start the run, memorise the visible set, then choose the one word that disappears.</p>
 
       <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
         <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Visible words</div>
@@ -136,13 +150,9 @@ export default function SpotTheMissingGame({ onFinish, disabled, challenge: inje
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
-        {phase === "READY" ? (
+        {(phase === "READY" || phase === "DONE") ? (
           <button type="button" onClick={start} disabled={disabled} className="rounded-full bg-slate-900 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">
-            Start
-          </button>
-        ) : phase === "DONE" ? (
-          <button type="button" onClick={start} disabled={disabled} className="rounded-full bg-slate-900 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">
-            Replay
+            {phase === "READY" ? "Start" : "Replay"}
           </button>
         ) : null}
       </div>

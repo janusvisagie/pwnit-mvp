@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type { GameProps } from "../types";
 
@@ -111,9 +111,9 @@ function buildChallenge(): Challenge {
 }
 
 export default function ClueLadderGame({ onFinish, disabled, challenge: injectedChallenge }: GameProps<Challenge>) {
-  const [localChallenge, setLocalChallenge] = useState<Challenge>(() => buildChallenge());
   const verifiedMode = Boolean(injectedChallenge?.attemptId);
-  const challenge = useMemo(() => (verifiedMode ? (injectedChallenge as Challenge) : localChallenge), [verifiedMode, injectedChallenge, localChallenge]);
+  const [localChallenge, setLocalChallenge] = useState<Challenge>(() => buildChallenge());
+  const challenge = injectedChallenge ?? localChallenge;
   const options = challenge.options ?? [];
   const totalClues = challenge.totalClues ?? challenge.clues?.length ?? 4;
 
@@ -125,22 +125,26 @@ export default function ClueLadderGame({ onFinish, disabled, challenge: injected
   const startedAtRef = useRef<number | null>(null);
 
   useEffect(() => {
+    if (!verifiedMode) return;
     setPhase("READY");
     setClues([]);
     setMessage(null);
     setScore(null);
     setPending(false);
     startedAtRef.current = null;
-  }, [challenge]);
+  }, [challenge.attemptId, verifiedMode]);
 
-  function start(nextChallenge?: Challenge) {
+  function start() {
     if (disabled) return;
+    if (!verifiedMode && phase !== "READY") {
+      setLocalChallenge(buildChallenge());
+    }
     setPhase("RUNNING");
     setClues([]);
     setMessage(
       verifiedMode
-        ? "The answer is hidden until you start. Reveal clues one at a time and solve before you need the lower rungs of the ladder."
-        : "Reveal clues one at a time and solve before you need too many rungs of the ladder.",
+        ? "Start the run, unlock clues one at a time, then select the correct answer tile below."
+        : "Unlock clues one at a time, then select the correct answer tile below.",
     );
     setScore(null);
     setPending(false);
@@ -152,7 +156,7 @@ export default function ClueLadderGame({ onFinish, disabled, challenge: injected
     if (!verifiedMode) {
       const next = (challenge.clues ?? []).slice(0, clues.length + 1);
       setClues(next);
-      setMessage(next.length >= totalClues ? "That is the final clue. Lock in your answer." : "One more clue unlocked.");
+      setMessage(next.length >= totalClues ? "That is the final clue. Now choose the correct answer tile." : "One more clue unlocked.");
       return;
     }
 
@@ -170,7 +174,7 @@ export default function ClueLadderGame({ onFinish, disabled, challenge: injected
       }
       const nextClues = Array.isArray(data.clues) ? data.clues.map((value: unknown) => String(value || "")) : [];
       setClues(nextClues);
-      setMessage(data.exhausted ? "That is the final clue. Lock in your answer." : "One more clue unlocked.");
+      setMessage(data.exhausted ? "That is the final clue. Now choose the correct answer tile." : "One more clue unlocked.");
     } catch (e: any) {
       setMessage(e?.message || "Could not unlock a clue.");
     } finally {
@@ -187,7 +191,7 @@ export default function ClueLadderGame({ onFinish, disabled, challenge: injected
     setScore(provisionalScore);
     setMessage(
       verifiedMode
-        ? "Answer locked in. The server will score your run using the clue depth and elapsed time."
+        ? "Answer locked in. The server will score your run using clue depth and elapsed time."
         : solved
           ? "Correct answer."
           : "Wrong answer.",
@@ -216,10 +220,10 @@ export default function ClueLadderGame({ onFinish, disabled, challenge: injected
       </div>
 
       <p className="mt-2 text-sm text-slate-600">
-        Unlock clues one by one, then choose the correct prize tile from the options below. Every extra clue makes the answer easier, but it trims your score.
+        Start the run, unlock clues one by one, then choose the correct answer tile below.
       </p>
       <p className="mt-1 text-xs text-slate-500">
-        The hidden answer is not shown before the run starts. Replay should start a fresh challenge, not repeat the last one.
+        Earlier correct solves score better. Replay should begin a fresh challenge in practice mode.
       </p>
 
       <div className="mt-3 grid gap-2">
@@ -239,15 +243,7 @@ export default function ClueLadderGame({ onFinish, disabled, challenge: injected
       <div className="mt-3 flex flex-wrap gap-2">
         <button
           type="button"
-          onClick={() => {
-            if (!verifiedMode && phase !== "READY") {
-              const nextChallenge = buildChallenge();
-              setLocalChallenge(nextChallenge);
-              start(nextChallenge);
-              return;
-            }
-            start();
-          }}
+          onClick={start}
           disabled={disabled || pending || phase === "RUNNING"}
           className="rounded-2xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-bold text-slate-900 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
         >

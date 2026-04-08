@@ -35,62 +35,63 @@ export async function consumeRateLimit({
   const expiresAt = new Date(bucketStart + windowMs * 2);
   const key = hashForRateLimit(`${scope}:${subject}:${bucketStart}`);
 
-  const result = await prisma.$transaction(async (tx) => {
-    for (let attempt = 0; attempt < 5; attempt += 1) {
-      const existing = await (tx as any).apiRateLimit.findUnique({ where: { key } });
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const existing = await (prisma as any).apiRateLimit.findUnique({ where: { key } });
 
-      if (!existing) {
-        try {
-          await (tx as any).apiRateLimit.create({
-            data: {
-              key,
-              scope,
-              subjectKey: subject,
-              windowStart,
-              count: 1,
-              expiresAt,
-            },
-          });
-          return { count: 1 };
-        } catch (error) {
-          if (isUniqueConstraintError(error)) {
-            continue;
-          }
-          throw error;
+    if (!existing) {
+      try {
+        await (prisma as any).apiRateLimit.create({
+          data: {
+            key,
+            scope,
+            subjectKey: subject,
+            windowStart,
+            count: 1,
+            expiresAt,
+          },
+        });
+
+        return {
+          ok: true,
+          remaining: Math.max(0, limit - 1),
+          retryAfterSeconds: Math.max(1, Math.ceil((bucketStart + windowMs - now) / 1000)),
+        };
+      } catch (error) {
+        if (isUniqueConstraintError(error)) {
+          continue;
         }
-      }
-
-      const currentCount = Number(existing.count || 0);
-      if (currentCount >= limit) {
-        return { count: currentCount, blocked: true as const };
-      }
-
-      const updated = await (tx as any).apiRateLimit.updateMany({
-        where: {
-          key,
-          count: currentCount,
-        },
-        data: {
-          count: { increment: 1 },
-          expiresAt,
-        },
-      });
-
-      if (Number(updated?.count || 0) === 1) {
-        return { count: currentCount + 1 };
+        throw error;
       }
     }
 
-    throw new Error("Rate limit contention. Please retry.");
-  });
+    const currentCount = Number(existing.count || 0);
+    if (currentCount >= limit) {
+      return {
+        ok: false,
+        remaining: 0,
+        retryAfterSeconds: Math.max(1, Math.ceil((bucketStart + windowMs - now) / 1000)),
+      };
+    }
 
-  const retryAfterSeconds = Math.max(1, Math.ceil((bucketStart + windowMs - now) / 1000));
-  const currentCount = Number((result as any).count || 0);
-  const blocked = Boolean((result as any).blocked);
+    const updated = await (prisma as any).apiRateLimit.updateMany({
+      where: {
+        key,
+        count: currentCount,
+      },
+      data: {
+        count: { increment: 1 },
+        expiresAt,
+      },
+    });
 
-  return {
-    ok: !blocked,
-    remaining: Math.max(0, limit - currentCount),
-    retryAfterSeconds,
-  };
+    if (Number(updated?.count || 0) === 1) {
+      return {
+        ok: true,
+        remaining: Math.max(0, limit - (currentCount + 1)),
+        retryAfterSeconds: Math.max(1, Math.ceil((bucketStart + windowMs - now) / 1000)),
+      };
+    }
+  }
+
+  throw new Error("Rate limit contention. Please retry.");
 }

@@ -1,4 +1,3 @@
-
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
@@ -8,8 +7,8 @@ const TITLE_MAP = {
   "Checkers Voucher": "clue-ladder",
   "Takealot Voucher": "progressive-mosaic",
   "Sony WH-1000XM5 Headphones": "codebreaker",
-  "Nintendo Switch OLED": "signal-hunt",
-  "GoPro HERO13 Black": "safe-path-fog",
+  "Nintendo Switch OLED": "spot-the-missing",
+  "GoPro HERO13 Black": "rapid-math-relay",
 };
 
 const LEGACY_KEY_MAP = {
@@ -28,13 +27,13 @@ const LEGACY_KEY_MAP = {
   "target-grid": "balance-grid",
   "target-hold": "balance-grid",
   "sequence-restore": "hidden-pair-memory",
-  "spot-the-missing": "hidden-pair-memory",
-  "route-builder": "safe-path-fog",
+  "route-builder": "rapid-math-relay",
   "transform-memory": "clue-ladder",
   "pattern-match": "progressive-mosaic",
-  "rule-lock": "signal-hunt",
-  "balance-grid": "safe-path-fog",
-  "rapid-math-relay": "signal-hunt",
+  "rule-lock": "spot-the-missing",
+  "signal-hunt": "spot-the-missing",
+  "balance-grid": "rapid-math-relay",
+  "safe-path-fog": "rapid-math-relay",
 };
 
 function pickVerifiedGameKey(item) {

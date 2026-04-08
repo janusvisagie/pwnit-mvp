@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 
 import type { GameProps } from "../types";
 
@@ -13,6 +13,7 @@ type Challenge = {
   game?: "rapid-math-relay";
   rounds: ChallengeRound[];
   timeLimitMs: number;
+  attemptId?: string;
 };
 
 const MAX_SCORE = 24000;
@@ -45,7 +46,9 @@ function buildChallenge(): Challenge {
 }
 
 export default function RapidMathRelayGame({ onFinish, disabled, challenge: injectedChallenge }: GameProps<Challenge>) {
-  const challenge = useMemo(() => injectedChallenge ?? buildChallenge(), [injectedChallenge]);
+  const verifiedMode = Boolean(injectedChallenge?.attemptId);
+  const [localChallenge, setLocalChallenge] = useState<Challenge>(() => buildChallenge());
+  const challenge = injectedChallenge ?? localChallenge;
   const [phase, setPhase] = useState<"READY" | "RUNNING" | "DONE">("READY");
   const [index, setIndex] = useState(0);
   const [answers, setAnswers] = useState<string[]>([]);
@@ -59,12 +62,15 @@ export default function RapidMathRelayGame({ onFinish, disabled, challenge: inje
 
   function start() {
     if (disabled) return;
+    if (!verifiedMode && phase === "DONE") {
+      setLocalChallenge(buildChallenge());
+    }
     setPhase("RUNNING");
     setIndex(0);
     setAnswers([]);
     setDraft("");
     setScore(null);
-    setMessage("Answer each sum as fast as you can. Accuracy matters most.");
+    setMessage("Answer each question in order. Accuracy matters first, then speed.");
     startedAtRef.current = Date.now();
   }
 
@@ -80,11 +86,7 @@ export default function RapidMathRelayGame({ onFinish, disabled, challenge: inje
 
     setPhase("DONE");
     setScore(localScore);
-    setMessage(
-      correctCount === totalRounds
-        ? "Relay complete."
-        : `Relay complete. ${correctCount}/${totalRounds} correct.`,
-    );
+    setMessage(correctCount === totalRounds ? "Relay complete." : `Relay complete. ${correctCount}/${totalRounds} correct.`);
 
     onFinish({
       scoreMs: localScore,
@@ -122,7 +124,7 @@ export default function RapidMathRelayGame({ onFinish, disabled, challenge: inje
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Objective</p>
             <h3 className="mt-1 text-2xl font-black text-slate-900">Rapid Math Relay</h3>
             <p className="mt-2 text-sm text-slate-600">
-              Solve each mini equation in sequence. The server checks your submitted answers and your score rewards both speed and accuracy.
+              Start the run, solve each mini equation in order, then finish the relay with the strongest mix of accuracy and speed.
             </p>
           </div>
           <div className="rounded-2xl bg-slate-900 px-3 py-2 text-right text-white">

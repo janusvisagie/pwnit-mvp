@@ -162,25 +162,25 @@ export const GAME_META: Record<string, GameMeta> = {
   "progressive-mosaic": {
     label: "Progressive Mosaic",
     higherIsBetter: true,
-    description: "Watch the hidden image reveal tile by tile and identify it with as few reveals as possible.",
+    description: "Reveal the hidden clue-card one step at a time, then choose the correct answer tile as early as you can.",
     formatScore: (score) => `${Math.max(0, Math.floor(Number(score || 0))).toLocaleString("en-ZA")} pts`,
   },
   "clue-ladder": {
     label: "Clue Ladder",
     higherIsBetter: true,
-    description: "Solve the hidden answer by climbing through the clues. Earlier solves earn better scores.",
+    description: "Unlock clue rungs one by one, then choose the correct answer tile. Fewer clues and faster solves score better.",
     formatScore: (score) => `${Math.max(0, Math.floor(Number(score || 0))).toLocaleString("en-ZA")} pts`,
   },
   "safe-path-fog": {
     label: "Safe Path Fog",
     higherIsBetter: true,
-    description: "Find the safe route through the fog one step at a time without revealing the whole board up front.",
+    description: "Try to reach the goal through the fog using only local hints. This one remains more experimental than the other hidden-state games.",
     formatScore: (score) => `${Math.max(0, Math.floor(Number(score || 0))).toLocaleString("en-ZA")} pts`,
   },
   "signal-hunt": {
     label: "Signal Hunt",
     higherIsBetter: true,
-    description: "Track the unfolding signal and act at the right moment when the target pattern appears.",
+    description: "Watch the words, then choose the one that disappears. Attention and recall beat speed alone.",
     formatScore: (score) => `${Math.max(0, Math.floor(Number(score || 0))).toLocaleString("en-ZA")} pts`,
   },
 };

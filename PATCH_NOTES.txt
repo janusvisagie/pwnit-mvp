@@ -1,0 +1,21 @@
+Apply by copying these files over the matching paths in your repo.
+
+Then run locally:
+1. npm run db:seed
+2. node scripts/relink-verified-games.mjs
+3. stop npm run dev
+4. delete .next
+5. npm run dev
+
+What changed:
+- Replaced the current seeded mix:
+  - Nintendo Switch OLED -> Spot the Missing
+  - GoPro HERO13 Black -> Rapid Math Relay
+- Fixed local replay so these games start a fresh challenge in practice mode:
+  - Clue Ladder
+  - Progressive Mosaic
+  - Spot the Missing
+  - Rapid Math Relay
+- Progressive Mosaic no longer reveals the answer tile directly in its first clue.
+- Clue Ladder wording now explicitly tells the player to choose the correct answer tile.
+- Removed the Prisma transaction-based rate-limit path that was causing 25P02 aborted-transaction errors.

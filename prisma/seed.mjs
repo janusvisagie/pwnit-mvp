@@ -63,7 +63,7 @@ async function main() {
       imageUrl: "/products/nintendo-switch-oled.svg",
       activationGoalEntries: 3,
       countdownMinutes: 1,
-      gameKey: "signal-hunt",
+      gameKey: "spot-the-missing",
     },
     {
       title: "GoPro HERO13 Black",
@@ -72,7 +72,7 @@ async function main() {
       imageUrl: "/products/gopro-hero.svg",
       activationGoalEntries: 3,
       countdownMinutes: 1,
-      gameKey: "safe-path-fog",
+      gameKey: "rapid-math-relay",
     },
   ];
 
@@ -96,7 +96,7 @@ async function main() {
     });
   }
 
-  console.log("Seeded 6 items with Hidden Pair Memory, Codebreaker, Progressive Mosaic, Clue Ladder, Safe Path Fog, and Signal Hunt.");
+  console.log("Seeded 6 items with Hidden Pair Memory, Codebreaker, Progressive Mosaic, Clue Ladder, Spot the Missing, and Rapid Math Relay.");
 }
 
 main()

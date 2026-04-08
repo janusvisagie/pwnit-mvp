@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type { GameProps } from "../types";
 
@@ -16,12 +16,42 @@ type Challenge = {
 };
 
 const MOSAIC_BANK: Array<{ id: string; label: string; emoji: string; reveals: string[] }> = [
-  { id: "fuel-voucher", label: "Fuel Voucher", emoji: "⛽", reveals: ["⛽", "🛣️ + ⛽", "Helps on the road", "Used when you refuel"] },
-  { id: "checkers-voucher", label: "Checkers Voucher", emoji: "🛒", reveals: ["🛒", "🛒 + 🥛", "Groceries and essentials", "Used in a supermarket"] },
-  { id: "takealot-voucher", label: "Takealot Voucher", emoji: "📦", reveals: ["📦", "📦 + 🚚", "Shopping from home", "Redeemed online"] },
-  { id: "headphones", label: "Headphones", emoji: "🎧", reveals: ["🎧", "🎧 + 🎵", "Private listening", "Worn over your ears"] },
-  { id: "switch", label: "Nintendo Switch", emoji: "🎮", reveals: ["🎮", "🎮 + 🕹️", "Portable play", "Hybrid console"] },
-  { id: "camera", label: "GoPro Camera", emoji: "📷", reveals: ["📷", "📷 + 🌊", "Action footage", "Adventure camera"] },
+  {
+    id: "fuel-voucher",
+    label: "Fuel Voucher",
+    emoji: "⛽",
+    reveals: ["Road expense", "Pump handle", "Trip essential", "Used when refuelling"],
+  },
+  {
+    id: "checkers-voucher",
+    label: "Checkers Voucher",
+    emoji: "🛒",
+    reveals: ["Household essentials", "Trolley aisle", "Weekly shop", "Groceries and basics"],
+  },
+  {
+    id: "takealot-voucher",
+    label: "Takealot Voucher",
+    emoji: "📦",
+    reveals: ["Checkout at home", "Delivery box", "Online order", "Redeemed on a shopping site"],
+  },
+  {
+    id: "headphones",
+    label: "Headphones",
+    emoji: "🎧",
+    reveals: ["Private listening", "Over the ears", "Sound focus", "Music without speakers"],
+  },
+  {
+    id: "switch",
+    label: "Nintendo Switch",
+    emoji: "🎮",
+    reveals: ["Portable play", "Detachable controls", "Dock or handheld", "Nintendo hybrid console"],
+  },
+  {
+    id: "camera",
+    label: "GoPro Camera",
+    emoji: "📷",
+    reveals: ["Adventure footage", "Mounted outdoors", "Compact action camera", "Built for motion clips"],
+  },
 ];
 const MAX_SCORE = 26000;
 
@@ -51,9 +81,9 @@ function buildChallenge(): Challenge {
 }
 
 export default function ProgressiveMosaicGame({ onFinish, disabled, challenge: injectedChallenge }: GameProps<Challenge>) {
-  const [localChallenge, setLocalChallenge] = useState<Challenge>(() => buildChallenge());
   const verifiedMode = Boolean(injectedChallenge?.attemptId);
-  const challenge = useMemo(() => (verifiedMode ? (injectedChallenge as Challenge) : localChallenge), [verifiedMode, injectedChallenge, localChallenge]);
+  const [localChallenge, setLocalChallenge] = useState<Challenge>(() => buildChallenge());
+  const challenge = injectedChallenge ?? localChallenge;
   const options = challenge.options ?? [];
   const maxReveals = challenge.maxReveals ?? challenge.reveals?.length ?? 4;
 
@@ -65,26 +95,35 @@ export default function ProgressiveMosaicGame({ onFinish, disabled, challenge: i
   const startedAtRef = useRef<number | null>(null);
 
   useEffect(() => {
+    if (!verifiedMode) return;
     setPhase("READY");
     setReveals([]);
     setMessage(null);
     setScore(null);
     setPending(false);
     startedAtRef.current = null;
-  }, [challenge]);
+  }, [challenge.attemptId, verifiedMode]);
 
-  function start(nextChallenge?: Challenge) {
-    if (disabled) return;
+  function resetForRun(nextLocalChallenge?: Challenge) {
+    if (!verifiedMode && nextLocalChallenge) {
+      setLocalChallenge(nextLocalChallenge);
+    }
     setPhase("RUNNING");
     setReveals([]);
     setMessage(
       verifiedMode
-        ? "No part of the answer is shown before the run starts. Reveal the mosaic one tile at a time, then pick the best match."
-        : "Reveal the mosaic one tile at a time, then choose the correct option.",
+        ? "Start the run, reveal the hidden mosaic one step at a time, then choose the correct answer tile below."
+        : "Reveal the hidden mosaic one step at a time, then choose the correct answer tile below.",
     );
     setScore(null);
     setPending(false);
     startedAtRef.current = Date.now();
+  }
+
+  function start() {
+    if (disabled) return;
+    const nextLocal = !verifiedMode && phase !== "READY" ? buildChallenge() : undefined;
+    resetForRun(nextLocal);
   }
 
   async function revealNext() {
@@ -92,7 +131,7 @@ export default function ProgressiveMosaicGame({ onFinish, disabled, challenge: i
     if (!verifiedMode) {
       const next = (challenge.reveals ?? []).slice(0, reveals.length + 1);
       setReveals(next);
-      setMessage(next.length >= maxReveals ? "That is the final tile. Choose your answer." : "More of the mosaic is now visible.");
+      setMessage(next.length >= maxReveals ? "That is the final reveal. Choose the matching answer tile." : "One more part of the hidden mosaic is now visible.");
       return;
     }
 
@@ -105,14 +144,14 @@ export default function ProgressiveMosaicGame({ onFinish, disabled, challenge: i
       });
       const data = await res.json().catch(() => null);
       if (!res.ok || !data?.ok) {
-        setMessage(data?.error || `Could not reveal a tile (${res.status})`);
+        setMessage(data?.error || `Could not reveal the next part (${res.status})`);
         return;
       }
       const nextReveals = Array.isArray(data.reveals) ? data.reveals.map((value: unknown) => String(value || "")) : [];
       setReveals(nextReveals);
-      setMessage(data.exhausted ? "That is the final tile. Choose your answer." : "More of the mosaic is now visible.");
+      setMessage(data.exhausted ? "That is the final reveal. Choose the matching answer tile." : "One more part of the hidden mosaic is now visible.");
     } catch (e: any) {
-      setMessage(e?.message || "Could not reveal a tile.");
+      setMessage(e?.message || "Could not reveal the next part.");
     } finally {
       setPending(false);
     }
@@ -127,7 +166,7 @@ export default function ProgressiveMosaicGame({ onFinish, disabled, challenge: i
     setScore(provisionalScore);
     setMessage(
       verifiedMode
-        ? "Answer locked in. The server will now compute the official result from your reveal count and elapsed time."
+        ? "Answer locked in. The server will score your run using the reveal depth and elapsed time."
         : solved
           ? "Correct answer."
           : "Wrong answer.",
@@ -151,15 +190,15 @@ export default function ProgressiveMosaicGame({ onFinish, disabled, challenge: i
           <h3 className="mt-1 text-base font-black text-slate-950 sm:text-lg">Progressive Mosaic</h3>
         </div>
         <div className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">
-          Tiles {reveals.length} / {maxReveals}
+          Reveals {reveals.length} / {maxReveals}
         </div>
       </div>
 
       <p className="mt-2 text-sm text-slate-600">
-        Reveal the hidden mosaic one tile at a time, then choose the correct prize tile from the options below. The fewer tiles you need before answering, the better your final score.
+        Start the run, reveal the hidden prize clue-card one step at a time, then select the correct answer tile below.
       </p>
       <p className="mt-1 text-xs text-slate-500">
-        Nothing meaningful is shown before you start. Replay should begin a fresh hidden-state round.
+        The answer tile is never shown directly inside the reveals. Fewer reveals and a faster correct answer give a better score.
       </p>
 
       <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -179,15 +218,7 @@ export default function ProgressiveMosaicGame({ onFinish, disabled, challenge: i
       <div className="mt-3 flex flex-wrap gap-2">
         <button
           type="button"
-          onClick={() => {
-            if (!verifiedMode && phase !== "READY") {
-              const nextChallenge = buildChallenge();
-              setLocalChallenge(nextChallenge);
-              start(nextChallenge);
-              return;
-            }
-            start();
-          }}
+          onClick={start}
           disabled={disabled || pending || phase === "RUNNING"}
           className="rounded-2xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-bold text-slate-900 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
         >
@@ -199,7 +230,7 @@ export default function ProgressiveMosaicGame({ onFinish, disabled, challenge: i
           disabled={disabled || pending || phase !== "RUNNING" || reveals.length >= maxReveals}
           className="rounded-2xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
         >
-          {pending ? "Revealing..." : reveals.length >= maxReveals ? "All tiles shown" : "Reveal next tile"}
+          {pending ? "Revealing..." : reveals.length >= maxReveals ? "All reveals shown" : "Reveal next clue"}
         </button>
       </div>
 
