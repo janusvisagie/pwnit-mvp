@@ -1,14 +1,18 @@
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 import Link from "next/link";
+import { unstable_noStore as noStore } from "next/cache";
 
 import { FeedbackSurveyForm } from "@/components/FeedbackSurveyForm";
 import { getCurrentSurveyStatus } from "@/lib/survey";
 
 export default async function FeedbackPage() {
-  const status = await getCurrentSurveyStatus();
+  noStore();
+  try {
+    const status = await getCurrentSurveyStatus();
 
-  return (
+    return (
     <main className="mx-auto w-full max-w-3xl px-4 py-8 text-slate-900">
       <div className="space-y-6">
         <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm md:p-8">
@@ -47,4 +51,22 @@ export default async function FeedbackPage() {
       </div>
     </main>
   );
+  } catch {
+    return (
+      <main className="mx-auto w-full max-w-3xl px-4 py-8 text-slate-900">
+        <section className="rounded-3xl border border-amber-200 bg-amber-50 p-6 shadow-sm md:p-8">
+          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-fuchsia-600">Help shape PwnIt</p>
+          <h1 className="mt-2 text-3xl font-extrabold tracking-tight">Suggestions for free credits</h1>
+          <p className="mt-3 text-sm leading-6 text-slate-600 md:text-base">
+            Feedback is temporarily unavailable because the database could not be reached.
+          </p>
+          <div className="mt-6">
+            <Link href="/" className="inline-flex items-center rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800">
+              ← Back to home
+            </Link>
+          </div>
+        </section>
+      </main>
+    );
+  }
 }

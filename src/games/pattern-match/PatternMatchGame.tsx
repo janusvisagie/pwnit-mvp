@@ -48,8 +48,25 @@ function stripLabel(tokens: string[]) {
   return tokens.join(" • ");
 }
 
+function buildInitialChallenge(): Challenge {
+  const ordered = WORD_BANK.slice(0, 4) as unknown as string[];
+  const options = [
+    ordered,
+    [ordered[1], ordered[0], ordered[2], ordered[3]],
+    [ordered[0], ordered[2], ordered[1], ordered[3]],
+    [ordered[3], ordered[2], ordered[1], ordered[0]],
+  ];
+  return {
+    game: "pattern-match",
+    ordered,
+    options,
+    correctIndex: 0,
+  };
+}
+
+
 export default function PatternMatchGame({ onFinish, disabled, challenge: injectedChallenge }: GameProps<Challenge>) {
-  const [localChallenge, setLocalChallenge] = useState<Challenge>(() => buildChallenge());
+  const [localChallenge, setLocalChallenge] = useState<Challenge>(() => injectedChallenge ?? buildInitialChallenge());
   const challenge = useMemo(() => injectedChallenge ?? localChallenge, [injectedChallenge, localChallenge]);
   const [phase, setPhase] = useState<"READY" | "SHOW" | "INPUT" | "DONE">("READY");
   const [message, setMessage] = useState<string | null>(null);

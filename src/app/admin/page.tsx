@@ -1,14 +1,18 @@
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 import Link from "next/link";
+import { unstable_noStore as noStore } from "next/cache";
 
 import { parseAttemptFlags } from "@/lib/botRisk";
 import { prisma } from "@/lib/db";
 
 export default async function Admin() {
-  const [items, reviewRounds] = await Promise.all([
-    prisma.item.findMany({ orderBy: [{ tier: "asc" }, { createdAt: "asc" }] }),
-    prisma.itemRound.findMany({
+  noStore();
+  try {
+    const [items, reviewRounds] = await Promise.all([
+      prisma.item.findMany({ orderBy: [{ tier: "asc" }, { createdAt: "asc" }] }),
+      prisma.itemRound.findMany({
       where: { state: "REVIEW" },
       include: {
         item: true,
@@ -25,7 +29,7 @@ export default async function Admin() {
     }),
   ]);
 
-  return (
+    return (
     <div className="mx-auto max-w-5xl space-y-6 px-4 py-6">
       <div>
         <h1 className="text-2xl font-black text-slate-950">Admin (pilot)</h1>
@@ -107,4 +111,14 @@ export default async function Admin() {
       </section>
     </div>
   );
+  } catch {
+    return (
+      <div className="mx-auto max-w-5xl space-y-6 px-4 py-6">
+        <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5 text-amber-950">
+          <h1 className="text-2xl font-black">Admin (pilot)</h1>
+          <p className="mt-2 text-sm">The admin view could not load right now because the database is unavailable.</p>
+        </div>
+      </div>
+    );
+  }
 }

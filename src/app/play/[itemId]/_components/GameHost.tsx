@@ -176,6 +176,10 @@ type AttemptSession = {
   expiresAt: string;
 };
 
+function isRegisteredGameKey(value: unknown): value is GameKey {
+  return typeof value === "string" && value in GAME_REGISTRY;
+}
+
 function ConfettiOverlay({ show }: { show: boolean }) {
   if (!show) return null;
 
@@ -218,16 +222,22 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
   const [turnstileNeeded, setTurnstileNeeded] = useState(false);
   const [turnstileReason, setTurnstileReason] = useState<string | null>(null);
 
-  const resolvedGameKey = useMemo<GameKey>(() => {
+  const resolvedGameKey = useMemo<GameKey | null>(() => {
     const sessionGame = session?.challenge?.game;
-    if (typeof sessionGame === "string" && sessionGame in GAME_REGISTRY) {
-      return sessionGame as GameKey;
+    if (isRegisteredGameKey(sessionGame)) {
+      return sessionGame;
     }
-    return gameKey;
-  }, [gameKey, session]);
+    if (practiceMode && isRegisteredGameKey(gameKey)) {
+      return gameKey;
+    }
+    if (!practiceMode && supportsVerifiedMode) {
+      return null;
+    }
+    return isRegisteredGameKey(gameKey) ? gameKey : "quick-stop";
+  }, [gameKey, practiceMode, session, supportsVerifiedMode]);
 
-  const entry = GAME_REGISTRY[resolvedGameKey] ?? GAME_REGISTRY["quick-stop"];
-  const Game = useMemo(() => entry.Component, [entry.Component]);
+  const entry = resolvedGameKey ? GAME_REGISTRY[resolvedGameKey] : null;
+  const Game = useMemo(() => entry?.Component ?? null, [entry]);
 
   const issueSession = useCallback(
     async (overrideTurnstileToken?: string | null) => {
@@ -371,7 +381,7 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <div className="text-sm font-semibold uppercase tracking-wide text-slate-500">Game</div>
-          <h2 className="mt-1 text-xl font-black text-slate-950">{entry.title}</h2>
+          <h2 className="mt-1 text-xl font-black text-slate-950">{entry?.title ?? "Preparing game..."}</h2>
         </div>
 
         <label className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700">
@@ -480,11 +490,21 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
       ) : null}
 
       <div className="mt-4">
-        <Game
-          disabled={verifiedGameDisabled}
-          challenge={mergedChallenge}
-          onFinish={(r: { scoreMs: number; meta?: any }) => submitAttempt({ scoreMs: r.scoreMs, meta: r.meta })}
-        />
+        {!practiceMode && supportsVerifiedMode && !session ? (
+          <div className="rounded-3xl border border-slate-200 bg-white p-6 text-center text-sm text-slate-600">
+            {loadingSession ? "Preparing your server-issued hidden-state challenge..." : "Preparing your game..."}
+          </div>
+        ) : Game ? (
+          <Game
+            disabled={verifiedGameDisabled}
+            challenge={mergedChallenge}
+            onFinish={(r: { scoreMs: number; meta?: any }) => submitAttempt({ scoreMs: r.scoreMs, meta: r.meta })}
+          />
+        ) : (
+          <div className="rounded-3xl border border-amber-200 bg-amber-50 p-6 text-center text-sm text-amber-800">
+            We couldn’t prepare this game right now. Please go back and try again.
+          </div>
+        )}
       </div>
 
       <div className="mt-4 flex flex-wrap gap-3">
