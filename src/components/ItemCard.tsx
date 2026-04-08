@@ -49,15 +49,15 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
   return (
     <Link
       href={href}
-      className="group flex h-full min-h-[158px] flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md lg:h-[calc((100vh-4.35rem)/2)]"
+      className="group flex h-full min-h-[156px] flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md lg:h-[calc((100vh-4.35rem)/2)]"
     >
-      <div className="relative">
+      <div className="relative bg-slate-50">
         <ProductImage
           primarySrc={primaryImage}
           fallbackSrc={fallbackImage}
           alt={item.title}
           className="bg-slate-50"
-          imgClassName="h-36 w-full object-cover bg-white p-0.5 sm:h-40 lg:h-[21.5vh]"
+          imgClassName="h-36 w-full object-contain bg-white p-1.5 sm:h-40 lg:h-[21.5vh]"
         />
         {isClosed ? (
           <div className="pointer-events-none absolute inset-x-0 top-2 flex justify-center">

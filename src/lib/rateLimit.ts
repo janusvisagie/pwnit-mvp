@@ -35,7 +35,7 @@ export async function consumeRateLimit({
   const expiresAt = new Date(bucketStart + windowMs * 2);
   const key = hashForRateLimit(`${scope}:${subject}:${bucketStart}`);
 
-  for (let attempt = 0; attempt < 8; attempt += 1) {
+  for (let attempt = 0; attempt < 6; attempt += 1) {
     const existing = await (prisma as any).apiRateLimit.findUnique({ where: { key } });
 
     if (!existing) {
@@ -65,11 +65,12 @@ export async function consumeRateLimit({
     }
 
     const currentCount = Number(existing.count || 0);
+    const retryAfterSeconds = Math.max(1, Math.ceil((bucketStart + windowMs - now) / 1000));
     if (currentCount >= limit) {
       return {
         ok: false,
         remaining: 0,
-        retryAfterSeconds: Math.max(1, Math.ceil((bucketStart + windowMs - now) / 1000)),
+        retryAfterSeconds,
       };
     }
 
@@ -88,7 +89,7 @@ export async function consumeRateLimit({
       return {
         ok: true,
         remaining: Math.max(0, limit - (currentCount + 1)),
-        retryAfterSeconds: Math.max(1, Math.ceil((bucketStart + windowMs - now) / 1000)),
+        retryAfterSeconds,
       };
     }
   }
