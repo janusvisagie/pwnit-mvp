@@ -110,10 +110,10 @@ export default async function ItemPage({ params }: { params: { id: string } }) {
                   <img
                     src={primaryImage}
                     alt={item.title}
-                    className="mx-auto h-44 w-full object-contain sm:h-52"
+                    className="mx-auto h-60 w-full object-contain sm:h-72"
                   />
                 ) : (
-                  <div className="flex h-44 items-center justify-center rounded-2xl bg-white text-sm text-slate-500 sm:h-52">
+                  <div className="flex h-60 items-center justify-center rounded-2xl bg-white text-sm text-slate-500 sm:h-72">
                     Image coming soon
                   </div>
                 )}

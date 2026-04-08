@@ -51,8 +51,9 @@ function buildChallenge(): Challenge {
 }
 
 export default function ProgressiveMosaicGame({ onFinish, disabled, challenge: injectedChallenge }: GameProps<Challenge>) {
-  const challenge = useMemo(() => injectedChallenge ?? buildChallenge(), [injectedChallenge]);
-  const verifiedMode = Boolean(challenge.attemptId);
+  const [localChallenge, setLocalChallenge] = useState<Challenge>(() => buildChallenge());
+  const verifiedMode = Boolean(injectedChallenge?.attemptId);
+  const challenge = useMemo(() => (verifiedMode ? (injectedChallenge as Challenge) : localChallenge), [verifiedMode, injectedChallenge, localChallenge]);
   const options = challenge.options ?? [];
   const maxReveals = challenge.maxReveals ?? challenge.reveals?.length ?? 4;
 
@@ -70,9 +71,9 @@ export default function ProgressiveMosaicGame({ onFinish, disabled, challenge: i
     setScore(null);
     setPending(false);
     startedAtRef.current = null;
-  }, [challenge.attemptId]);
+  }, [challenge]);
 
-  function start() {
+  function start(nextChallenge?: Challenge) {
     if (disabled) return;
     setPhase("RUNNING");
     setReveals([]);
@@ -155,10 +156,10 @@ export default function ProgressiveMosaicGame({ onFinish, disabled, challenge: i
       </div>
 
       <p className="mt-2 text-sm text-slate-600">
-        Reveal the hidden mosaic one tile at a time. The fewer tiles you need before answering, the better your final score.
+        Reveal the hidden mosaic one tile at a time, then choose the correct prize tile from the options below. The fewer tiles you need before answering, the better your final score.
       </p>
       <p className="mt-1 text-xs text-slate-500">
-        Nothing meaningful is shown before you start. Replay begins a fresh hidden-state round.
+        Nothing meaningful is shown before you start. Replay should begin a fresh hidden-state round.
       </p>
 
       <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -178,7 +179,15 @@ export default function ProgressiveMosaicGame({ onFinish, disabled, challenge: i
       <div className="mt-3 flex flex-wrap gap-2">
         <button
           type="button"
-          onClick={start}
+          onClick={() => {
+            if (!verifiedMode && phase !== "READY") {
+              const nextChallenge = buildChallenge();
+              setLocalChallenge(nextChallenge);
+              start(nextChallenge);
+              return;
+            }
+            start();
+          }}
           disabled={disabled || pending || phase === "RUNNING"}
           className="rounded-2xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-bold text-slate-900 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
         >

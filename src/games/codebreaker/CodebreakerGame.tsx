@@ -56,7 +56,8 @@ function gradeGuess(guess: number[], solution: number[]) {
 }
 
 export default function CodebreakerGame({ onFinish, disabled, challenge: injectedChallenge }: GameProps<Challenge>) {
-  const challenge = useMemo(() => injectedChallenge ?? buildChallenge(), [injectedChallenge]);
+  const [localChallenge, setLocalChallenge] = useState<Challenge>(() => buildChallenge());
+  const challenge = useMemo(() => (injectedChallenge?.attemptId ? injectedChallenge : localChallenge), [injectedChallenge, localChallenge]);
   const digitPool = challenge.digitPool?.length ? challenge.digitPool : DEFAULT_DIGIT_POOL;
   const codeLength = challenge.codeLength ?? DEFAULT_CODE_LENGTH;
   const maxGuesses = challenge.maxGuesses ?? DEFAULT_MAX_GUESSES;
@@ -78,7 +79,7 @@ export default function CodebreakerGame({ onFinish, disabled, challenge: injecte
     setScore(null);
     setPending(false);
     startedAtRef.current = null;
-  }, [challenge.attemptId]);
+  }, [challenge]);
 
   function start() {
     if (disabled) return;
@@ -90,7 +91,7 @@ export default function CodebreakerGame({ onFinish, disabled, challenge: injecte
     setMessage(
       verifiedMode
         ? "The hidden code stays on the server. Each guess comes back with exact and misplaced feedback only."
-        : "Crack the hidden code in as few guesses as possible.",
+        : "Build a guess using the digits below, submit it, then use the exact and misplaced feedback to crack the hidden code in as few guesses as possible.",
     );
     startedAtRef.current = Date.now();
   }
@@ -233,7 +234,7 @@ export default function CodebreakerGame({ onFinish, disabled, challenge: injecte
       </div>
 
       <p className="mt-2 text-sm text-slate-600">
-        Crack the hidden {codeLength}-digit code using digits {digitPool.join("–")}. After each guess, you’ll see how many digits are exact and how many belong elsewhere.
+        Build a {codeLength}-digit guess using digits {digitPool.join("–")}, submit it, then use the exact and misplaced feedback to crack the hidden code.
       </p>
       <p className="mt-1 text-xs text-slate-500">
         The real answer is never shown before the run starts. Clear empties your current unfinished guess. Replay starts a fresh round after this one ends.
@@ -296,7 +297,12 @@ export default function CodebreakerGame({ onFinish, disabled, challenge: injecte
         </button>
         <button
           type="button"
-          onClick={start}
+          onClick={() => {
+            if (!verifiedMode && phase !== "READY") {
+              setLocalChallenge(buildChallenge());
+            }
+            start();
+          }}
           disabled={disabled || pending || phase === "RUNNING"}
           className="rounded-2xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-bold text-slate-900 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
         >

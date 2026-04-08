@@ -53,8 +53,9 @@ function getSymbolMeta(symbolId: string) {
 }
 
 export default function HiddenPairMemoryGame({ onFinish, disabled, challenge: injectedChallenge }: GameProps<Challenge>) {
-  const challenge = useMemo(() => injectedChallenge ?? buildChallenge(), [injectedChallenge]);
-  const verifiedMode = Boolean(challenge.attemptId);
+  const [localChallenge, setLocalChallenge] = useState<Challenge>(() => buildChallenge());
+  const verifiedMode = Boolean(injectedChallenge?.attemptId);
+  const challenge = useMemo(() => (verifiedMode ? (injectedChallenge as Challenge) : localChallenge), [verifiedMode, injectedChallenge, localChallenge]);
   const boardSize = challenge.boardSize ?? challenge.deck?.length ?? DEFAULT_PAIR_COUNT * 2;
   const pairCount = challenge.pairCount ?? DEFAULT_PAIR_COUNT;
   const maxTurns = challenge.maxTurns ?? DEFAULT_MAX_TURNS;
@@ -79,7 +80,7 @@ export default function HiddenPairMemoryGame({ onFinish, disabled, challenge: in
     setScore(null);
     setPending(false);
     startedAtRef.current = null;
-  }, [challenge.attemptId]);
+  }, [challenge]);
 
   function start() {
     if (disabled) return;
@@ -93,7 +94,7 @@ export default function HiddenPairMemoryGame({ onFinish, disabled, challenge: in
     setMessage(
       verifiedMode
         ? "The board is hidden on the server. Flip two cards at a time and build your memory from the reveals."
-        : "Flip two cards at a time and clear all pairs before you run out of turns.",
+        : "Flip two hidden cards at a time and clear all matching pairs before you run out of turns.",
     );
     startedAtRef.current = Date.now();
   }
@@ -298,7 +299,7 @@ export default function HiddenPairMemoryGame({ onFinish, disabled, challenge: in
         Match all {pairCount} hidden pairs before you run out of turns. The real board is only revealed one pair at a time after you commit your picks.
       </p>
       <p className="mt-1 text-xs text-slate-500">
-        Replay starts a fresh round after this run ends. Matched cards stay visible. Wrong pairs flash briefly and then hide again.
+        Replay starts a fresh round after this run ends. Match all pairs by remembering where previously revealed symbols sit. Wrong pairs flash briefly and then hide again.
       </p>
 
       <div className="mt-3 grid grid-cols-4 gap-2 sm:grid-cols-4">
@@ -311,7 +312,12 @@ export default function HiddenPairMemoryGame({ onFinish, disabled, challenge: in
         </div>
         <button
           type="button"
-          onClick={start}
+          onClick={() => {
+            if (!verifiedMode && phase !== "READY") {
+              setLocalChallenge(buildChallenge());
+            }
+            start();
+          }}
           disabled={disabled || pending || phase === "RUNNING"}
           className="rounded-2xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-bold text-slate-900 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
         >

@@ -62,8 +62,9 @@ function expectedCaptureAt(stream: string[], targetPair: [string, string]) {
 }
 
 export default function SignalHuntGame({ onFinish, disabled, challenge: injectedChallenge }: GameProps<Challenge>) {
-  const challenge = useMemo(() => injectedChallenge ?? buildChallenge(), [injectedChallenge]);
-  const verifiedMode = Boolean(challenge.attemptId);
+  const [localChallenge, setLocalChallenge] = useState<Challenge>(() => buildChallenge());
+  const verifiedMode = Boolean(injectedChallenge?.attemptId);
+  const challenge = useMemo(() => (verifiedMode ? (injectedChallenge as Challenge) : localChallenge), [verifiedMode, injectedChallenge, localChallenge]);
   const targetPair = challenge.targetPair ?? ["▲", "●"];
   const symbolPool = challenge.symbolPool ?? SYMBOL_POOL;
   const maxSteps = challenge.maxSteps ?? MAX_STEPS;
@@ -82,17 +83,15 @@ export default function SignalHuntGame({ onFinish, disabled, challenge: injected
     setScore(null);
     setPending(false);
     startedAtRef.current = null;
-  }, [challenge.attemptId]);
+  }, [challenge]);
 
-  function start() {
+  function start(nextChallenge?: Challenge) {
+    const activeChallenge = nextChallenge ?? challenge;
+    const activeTargetPair = activeChallenge.targetPair ?? ["▲", "●"];
     if (disabled) return;
     setPhase("RUNNING");
     setRevealed([]);
-    setMessage(
-      verifiedMode
-        ? `Reveal the feed one signal at a time and capture the first time ${targetPair[0]} is followed immediately by ${targetPair[1]}.`
-        : `Reveal the feed one signal at a time and capture the first time ${targetPair[0]} is followed immediately by ${targetPair[1]}.`,
-    );
+    setMessage(`Reveal the feed one signal at a time, then press Capture the first time ${activeTargetPair[0]} is followed immediately by ${activeTargetPair[1]}.`);
     setScore(null);
     setPending(false);
     startedAtRef.current = Date.now();
@@ -202,10 +201,10 @@ export default function SignalHuntGame({ onFinish, disabled, challenge: injected
       </div>
 
       <p className="mt-2 text-sm text-slate-600">
-        Reveal the live feed one symbol at a time. Capture the first time the target pair appears in sequence.
+        Reveal the live feed one symbol at a time. Press Capture the first time the target pair appears in sequence — not later, and not after a second occurrence.
       </p>
       <p className="mt-1 text-xs text-slate-500">
-        Target pair: <span className="font-black text-slate-800">{targetPair[0]} then {targetPair[1]}</span>
+        Target pair: <span className="font-black text-slate-800">{targetPair[0]} then {targetPair[1]}</span>. Skill comes from sustained attention and precise timing. Score drops with elapsed time and with every extra revealed symbol beyond the minimum needed.
       </p>
 
       <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
@@ -226,7 +225,15 @@ export default function SignalHuntGame({ onFinish, disabled, challenge: injected
       <div className="mt-3 flex flex-wrap gap-2">
         <button
           type="button"
-          onClick={start}
+          onClick={() => {
+            if (!verifiedMode && phase !== "READY") {
+              const nextChallenge = buildChallenge();
+              setLocalChallenge(nextChallenge);
+              start(nextChallenge);
+              return;
+            }
+            start();
+          }}
           disabled={disabled || pending || phase === "RUNNING"}
           className="rounded-2xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-bold text-slate-900 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
         >

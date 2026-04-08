@@ -111,8 +111,9 @@ function buildChallenge(): Challenge {
 }
 
 export default function ClueLadderGame({ onFinish, disabled, challenge: injectedChallenge }: GameProps<Challenge>) {
-  const challenge = useMemo(() => injectedChallenge ?? buildChallenge(), [injectedChallenge]);
-  const verifiedMode = Boolean(challenge.attemptId);
+  const [localChallenge, setLocalChallenge] = useState<Challenge>(() => buildChallenge());
+  const verifiedMode = Boolean(injectedChallenge?.attemptId);
+  const challenge = useMemo(() => (verifiedMode ? (injectedChallenge as Challenge) : localChallenge), [verifiedMode, injectedChallenge, localChallenge]);
   const options = challenge.options ?? [];
   const totalClues = challenge.totalClues ?? challenge.clues?.length ?? 4;
 
@@ -130,9 +131,9 @@ export default function ClueLadderGame({ onFinish, disabled, challenge: injected
     setScore(null);
     setPending(false);
     startedAtRef.current = null;
-  }, [challenge.attemptId]);
+  }, [challenge]);
 
-  function start() {
+  function start(nextChallenge?: Challenge) {
     if (disabled) return;
     setPhase("RUNNING");
     setClues([]);
@@ -215,10 +216,10 @@ export default function ClueLadderGame({ onFinish, disabled, challenge: injected
       </div>
 
       <p className="mt-2 text-sm text-slate-600">
-        Unlock clues one by one and solve as early as you can. Every extra clue makes the answer easier, but it trims your score.
+        Unlock clues one by one, then choose the correct prize tile from the options below. Every extra clue makes the answer easier, but it trims your score.
       </p>
       <p className="mt-1 text-xs text-slate-500">
-        The hidden answer is not shown before the run starts. Replay starts a brand-new challenge.
+        The hidden answer is not shown before the run starts. Replay should start a fresh challenge, not repeat the last one.
       </p>
 
       <div className="mt-3 grid gap-2">
@@ -238,7 +239,15 @@ export default function ClueLadderGame({ onFinish, disabled, challenge: injected
       <div className="mt-3 flex flex-wrap gap-2">
         <button
           type="button"
-          onClick={start}
+          onClick={() => {
+            if (!verifiedMode && phase !== "READY") {
+              const nextChallenge = buildChallenge();
+              setLocalChallenge(nextChallenge);
+              start(nextChallenge);
+              return;
+            }
+            start();
+          }}
           disabled={disabled || pending || phase === "RUNNING"}
           className="rounded-2xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-bold text-slate-900 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
         >

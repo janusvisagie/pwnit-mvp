@@ -52,8 +52,9 @@ function buildChallenge(): Challenge {
 }
 
 export default function SafePathFogGame({ onFinish, disabled, challenge: injectedChallenge }: GameProps<Challenge>) {
-  const challenge = useMemo(() => injectedChallenge ?? buildChallenge(), [injectedChallenge]);
-  const verifiedMode = Boolean(challenge.attemptId);
+  const [localChallenge, setLocalChallenge] = useState<Challenge>(() => buildChallenge());
+  const verifiedMode = Boolean(injectedChallenge?.attemptId);
+  const challenge = useMemo(() => (verifiedMode ? (injectedChallenge as Challenge) : localChallenge), [verifiedMode, injectedChallenge, localChallenge]);
   const size = challenge.size ?? DEFAULT_SIZE;
   const start = challenge.start ?? DEFAULT_START;
   const goal = challenge.goal ?? DEFAULT_GOAL;
@@ -77,13 +78,16 @@ export default function SafePathFogGame({ onFinish, disabled, challenge: injecte
     setScore(null);
     setPending(false);
     startedAtRef.current = null;
-  }, [challenge.attemptId, challenge.startHint, start]);
+  }, [challenge]);
 
-  function startRun() {
+  function startRun(nextChallenge?: Challenge) {
     if (disabled) return;
+    const activeChallenge = nextChallenge ?? challenge;
+    const activeStart = activeChallenge.start ?? DEFAULT_START;
+    const activeStartHint = activeChallenge.startHint ?? 0;
     setPhase("RUNNING");
-    setPath([start]);
-    setHints({ [String(start)]: challenge.startHint ?? 0 });
+    setPath([activeStart]);
+    setHints({ [String(activeStart)]: activeStartHint });
     setStatus("RUNNING");
     setScore(null);
     setPending(false);
@@ -186,10 +190,10 @@ export default function SafePathFogGame({ onFinish, disabled, challenge: injecte
       </div>
 
       <p className="mt-2 text-sm text-slate-600">
-        Reach the goal through the fog. You only learn the hint number for a tile after safely stepping onto it.
+        Reach the goal through the fog. Each safe tile reveals a hint number showing how many hazard tiles touch it directly up, down, left, or right.
       </p>
       <p className="mt-1 text-xs text-slate-500">
-        Start is at the bottom-left. Goal is at the top-right. Only adjacent moves are allowed.
+        Start is at the bottom-left. Goal is at the top-right. Only adjacent moves are allowed. This version still includes a luck element, so I would treat it as experimental rather than a final competitive game.
       </p>
 
       <div className="mt-3 grid grid-cols-5 gap-2">
@@ -226,7 +230,15 @@ export default function SafePathFogGame({ onFinish, disabled, challenge: injecte
       <div className="mt-3 flex flex-wrap gap-2">
         <button
           type="button"
-          onClick={startRun}
+          onClick={() => {
+            if (!verifiedMode && phase !== "READY") {
+              const nextChallenge = buildChallenge();
+              setLocalChallenge(nextChallenge);
+              startRun(nextChallenge);
+              return;
+            }
+            startRun();
+          }}
           disabled={disabled || pending || phase === "RUNNING"}
           className="rounded-2xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-bold text-slate-900 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
         >
