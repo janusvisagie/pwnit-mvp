@@ -1,9 +1,8 @@
-
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-async function main() {
+async function clearItemData() {
   await prisma.winner.deleteMany();
   await prisma.attempt.deleteMany();
 
@@ -15,7 +14,19 @@ async function main() {
     await prisma.itemPurchase.deleteMany();
   } catch {}
 
+  try {
+    await prisma.creditLedger.deleteMany({ where: { itemId: { not: null } } });
+  } catch {}
+
+  try {
+    await prisma.itemRound.deleteMany();
+  } catch {}
+
   await prisma.item.deleteMany();
+}
+
+async function main() {
+  await clearItemData();
 
   const now = new Date();
 
@@ -96,7 +107,9 @@ async function main() {
     });
   }
 
-  console.log("Seeded 6 items with Hidden Pair Memory, Codebreaker, Progressive Mosaic, Clue Ladder, Spot the Missing, and Rapid Math Relay.");
+  console.log(
+    "Seeded 6 items with Hidden Pair Memory, Codebreaker, Progressive Mosaic, Clue Ladder, Spot the Missing, and Rapid Math Relay.",
+  );
 }
 
 main()
