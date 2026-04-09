@@ -670,7 +670,7 @@ export function handleProgressiveRunProgress(
   const current = state.currentChallenge;
   const action = String(body?.action || "").trim();
 
-  if (gameKey === "progressive-mosaic" && action === "reveal") {
+  if (current.game === "progressive-mosaic" && action === "reveal") {
     const nextShown = Math.min(current.maxReveals, state.shownCount + 1);
     const nextState: ProgressiveRunState = {
       ...state,
@@ -689,7 +689,7 @@ export function handleProgressiveRunProgress(
     };
   }
 
-  if (gameKey === "clue-ladder" && action === "reveal") {
+  if (current.game === "clue-ladder" && action === "reveal") {
     const nextShown = Math.min(current.totalClues, state.shownCount + 1);
     const nextState: ProgressiveRunState = {
       ...state,

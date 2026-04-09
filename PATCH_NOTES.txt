@@ -1,20 +1,8 @@
-PwnIt live deploy hotfix (GitHub baseline)
+PwnIt competitive-run type hotfix
 
-Changed file:
-- src/app/api/attempt/start/route.ts
+Changed files:
+- src/lib/competitiveRuns.ts
 
 What this fixes:
-- Resolves the Vercel / Next.js production type error in attempt/start/route.ts where
-  a ProgressiveRunServerChallenge was being passed to buildPublicVerifiedChallenge(),
-  which only accepts VerifiedGameKey | VerifiedChallenge.
-- Separates progressive-run challenge handling from normal verified-game challenge handling.
+- narrows reveal handling using current.game instead of gameKey so TypeScript can safely access progressive-mosaic/clue-ladder-only fields during Production build on Vercel.
 
-Why the live site still showed old games:
-1. The deployment in your log failed, so Vercel kept serving the last successful production deployment.
-2. Even after code deploys successfully, Production will only show the new item/game mix if the
-   Production database is the correct one and has been seeded/reset to the new mix.
-
-Reminder:
-- .env and .env.local affect local development.
-- Vercel Production uses the Environment Variables configured in the Vercel project settings.
-- If you change Production env vars in Vercel, redeploy afterward.
