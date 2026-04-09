@@ -1,13 +1,14 @@
-PwnIt patch: Spot the Missing + timed run countdown fixes
+PwnIt patch: autofocus + live-site notes
 
-Files included:
-- src/games/spot-the-missing/SpotTheMissingGame.tsx
+Changed files
+- src/app/play/[itemId]/_components/GameHost.tsx
 - src/games/rapid-math-relay/RapidMathRelayGame.tsx
 
-What this patch changes:
-1. Spot the Missing countdown now ticks live instead of appearing static.
-2. Spot the Missing now shows the original row first, then switches to the shortened row after a brief memorize phase.
-3. Spot the Missing now times out properly when the countdown reaches zero.
-4. Rapid Math Relay now uses the same live ticking timer pattern so timeout expiry is enforced properly there too.
+What this patch does
+1. Adds host-level autofocus handling so the newly available game control gets focus automatically.
+2. Marks Rapid Math Relay's answer input as the preferred autofocus target.
+3. Lets focus move from a clicked Start button into the active input without requiring another click.
+4. Applies the host-level behavior across all games rendered through GameHost (inputs are preferred; otherwise the first active button/control is focused).
 
-Apply on top of the current repo/patch state and restart the dev server.
+Apply on top of your current patched repo state.
+Then restart npm run dev or rebuild on Vercel.

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type ComponentType } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType } from "react";
 import { useRouter } from "next/navigation";
 
 import TurnstileWidget from "@/components/TurnstileWidget";
@@ -195,6 +195,54 @@ const GAME_REGISTRY: Record<GameKey, RegistryEntry> = {
   "signal-hunt": { title: "Signal Hunt", Component: SignalHuntGame as ComponentType<GameComponentProps> },
 };
 
+
+
+const AUTOFOCUS_SELECTOR = [
+  '[data-autofocus="true"]',
+  'input:not([type="hidden"]):not([disabled])',
+  'textarea:not([disabled])',
+  'select:not([disabled])',
+  'button:not([disabled])',
+  '[tabindex]:not([tabindex="-1"])',
+].join(", ");
+
+function isVisibleFocusable(el: HTMLElement) {
+  if (el.hasAttribute("disabled") || el.getAttribute("aria-hidden") === "true") return false;
+  if (el.tabIndex < 0) return false;
+  const style = window.getComputedStyle(el);
+  if (style.display === "none" || style.visibility === "hidden") return false;
+  return true;
+}
+
+function tryAutoFocus(container: HTMLElement | null) {
+  if (!container || typeof window === "undefined") return;
+
+  const candidates = Array.from(container.querySelectorAll<HTMLElement>(AUTOFOCUS_SELECTOR)).filter(isVisibleFocusable);
+  const preferred = candidates.find((candidate) => candidate.dataset.autofocus === "true") ?? candidates[0] ?? null;
+  if (!preferred) return;
+
+  const active = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  const activeInsideContainer = !!active && container.contains(active);
+  const activeIsButton = active?.tagName === "BUTTON";
+  const preferredIsTextEntry = ["INPUT", "TEXTAREA", "SELECT"].includes(preferred.tagName);
+
+  if (
+    active &&
+    active !== document.body &&
+    activeInsideContainer &&
+    active !== preferred &&
+    !(activeIsButton && preferredIsTextEntry)
+  ) {
+    return;
+  }
+
+  preferred.focus({ preventScroll: true });
+  if (preferred instanceof HTMLInputElement || preferred instanceof HTMLTextAreaElement) {
+    const valueLength = preferred.value?.length ?? 0;
+    preferred.setSelectionRange?.(valueLength, valueLength);
+  }
+}
+
 type Props = {
   itemId: string;
   gameKey: GameKey;
@@ -277,6 +325,7 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
   } | null>(null);
   const [turnstileNeeded, setTurnstileNeeded] = useState(false);
   const [turnstileReason, setTurnstileReason] = useState<string | null>(null);
+  const gameViewportRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!canPay) {
@@ -445,6 +494,35 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
   const verifiedGameDisabled =
     submitting || loadingSession || (!practiceMode && supportsVerifiedMode && !session);
 
+  useEffect(() => {
+    const container = gameViewportRef.current;
+    if (!container || typeof window === "undefined") return;
+
+    let frame = 0;
+    const queueFocus = () => {
+      if (frame) window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(() => {
+        frame = 0;
+        tryAutoFocus(container);
+      });
+    };
+
+    queueFocus();
+
+    const observer = new MutationObserver(() => queueFocus());
+    observer.observe(container, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["disabled", "data-autofocus"],
+    });
+
+    return () => {
+      observer.disconnect();
+      if (frame) window.cancelAnimationFrame(frame);
+    };
+  }, [resolvedGameKey, practiceMode, loadingSession, session?.attemptId]);
+
   const mergedChallenge = !practiceMode && session
     ? {
         ...(session.challenge ?? {}),
@@ -571,7 +649,7 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
         </div>
       ) : null}
 
-      <div className="relative z-10 mt-3">
+      <div ref={gameViewportRef} className="relative z-10 mt-3">
         {!practiceMode && supportsVerifiedMode && !session ? (
           <div className="rounded-3xl border border-slate-200 bg-white p-5 text-center text-sm text-slate-600">
             {loadingSession ? "Preparing your server-issued hidden-state challenge..." : "Preparing your game..."}

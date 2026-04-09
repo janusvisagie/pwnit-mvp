@@ -274,6 +274,7 @@ export default function RapidMathRelayGame({
           </div>
           <button
             type="button"
+            data-pwnit-start-control="true"
             onClick={start}
             disabled={disabled || pending || phase === "RUNNING"}
             className="rounded-2xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-bold text-slate-900 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
@@ -289,6 +290,7 @@ export default function RapidMathRelayGame({
         {phase === "RUNNING" ? (
           <div className="mt-4">
             <input
+              data-autofocus="true"
               value={draft}
               onChange={(event) => setDraft(event.target.value.replace(/[^0-9\-]/g, ""))}
               onKeyDown={(event) => {
