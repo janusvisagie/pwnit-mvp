@@ -1,18 +1,20 @@
-PwnIt patch built from GitHub repo baseline: janusvisagie/pwnit-mvp (main)
+PwnIt follow-up hotfix (GitHub-baseline compatible)
 
-Changed files:
-- src/app/api/attempt/progress/route.ts
-- src/lib/competitiveRuns.ts
-- src/games/progressive-mosaic/ProgressiveMosaicGame.tsx
-- src/games/clue-ladder/ClueLadderGame.tsx
+This hotfix replaces:
 - src/app/play/[itemId]/_components/GameHost.tsx
-- src/app/play/[itemId]/page.tsx
 
-What this patch addresses:
-1. Fixes the Next.js compile error in attempt/progress by moving the progressive-run return logic back inside POST().
-2. Progressive Mosaic countdown now updates live during play.
-3. Progressive Mosaic 'Sharpen image' now actually sharpens a masked visual target instead of behaving like a text clue ladder.
-4. Backend progressive challenge builder now diversifies clue-ladder answer pools with a larger target bank and recent-answer avoidance.
-5. Play page shell was tightened and duplicate bottom navigation removed from GameHost to help play screens fit within one screen more often.
+Why:
+- The current GameHost.tsx in the repo baseline is corrupted/truncated.
+- That can cause runtime failures such as:
+  "Element type is invalid. Received a promise that resolves to: undefined."
+- This replacement restores a clean exported React component and keeps the
+  verified/practice game host flow intact.
 
-Apply by overwriting the matching files in your repo, then rebuild.
+Apply:
+1. Unzip into the repo root.
+2. Allow it to replace the existing GameHost.tsx.
+3. Rebuild / restart dev server.
+
+Notes:
+- This is intended as a follow-up on top of the previous game patch.
+- It does not undo the Progressive Mosaic / Clue Ladder backend work.
