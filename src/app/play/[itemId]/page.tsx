@@ -94,13 +94,13 @@ export default async function PlayPage({ params }: { params: { itemId: string } 
     const creditsTotal = free + extra;
 
     return (
-      <main className="mx-auto max-w-[860px] px-3 py-1 sm:px-4 lg:px-5">
-        <div className="rounded-3xl border border-slate-200 bg-white p-2.5 shadow-sm">
+      <main className="mx-auto max-w-[820px] px-2 py-1 sm:px-3 lg:px-4">
+        <div className="rounded-3xl border border-slate-200 bg-white p-2 shadow-sm">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full bg-blue-50 px-3 py-1 text-sm font-semibold text-blue-700">
+            <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
               {playCost} credits / play
             </span>
-            <span className="rounded-full bg-emerald-50 px-3 py-1 text-sm font-semibold text-emerald-700">
+            <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
               Wallet {creditsTotal}
             </span>
             {roundState === ROUND_STATES.ACTIVATED && closesAtIso ? (
@@ -111,19 +111,19 @@ export default async function PlayPage({ params }: { params: { itemId: string } 
           <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
             <div>
               <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Play</div>
-              <h1 className="mt-0.5 text-base font-black text-slate-950 sm:text-lg">{item.title}</h1>
+              <h1 className="mt-0.5 text-sm font-black text-slate-950 sm:text-base">{item.title}</h1>
             </div>
 
             <div className="flex flex-wrap gap-2">
               <Link
                 href={`/item/${itemId}/leaderboard`}
-                className="rounded-2xl border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-900"
+                className="rounded-2xl border border-slate-300 bg-white px-3 py-1.5 text-sm font-bold text-slate-900"
               >
                 Leaderboard
               </Link>
               <Link
                 href={`/item/${itemId}`}
-                className="rounded-2xl border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-900"
+                className="rounded-2xl border border-slate-300 bg-white px-3 py-1.5 text-sm font-bold text-slate-900"
               >
                 Back to item
               </Link>

@@ -184,207 +184,16 @@ function ConfettiOverlay({ show }: { show: boolean }) {
   if (!show) return null;
 
   return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-3xl">
-      {Array.from({ length: 24 }).map((_, i) => {
-        const left = (i * 100) / 24;
-        const delay = (i % 6) * 0.05;
-        const size = 6 + (i % 4) * 2;
-
-        return (
-          <span
-            key={i}
-            className="absolute top-0 animate-bounce rounded-full opacity-80"
-            style={{
-              left: `${left}%`,
-              width: `${size}px`,
-              height: `${size * 1.6}px`,
-              animationDelay: `${delay}s`,
-            }}
-          />
-        );
-      })}
-    </div>
-  );
-}
-
-export default function GameHost({ itemId, gameKey, playCost, credits }: Props) {
-  const router = useRouter();
-  const canPay = credits >= playCost;
-  const supportsVerifiedMode = VERIFIED_GAME_KEYS.has(gameKey);
-  const [practiceMode, setPracticeMode] = useState(!canPay);
-  const [submitting, setSubmitting] = useState(false);
-  const [loadingSession, setLoadingSession] = useState(false);
-  const [session, setSession] = useState<AttemptSession | null>(null);
-  const [result, setResult] = useState<{ scoreMs: number } | null>(null);
-  const [errMsg, setErrMsg] = useState<string | null>(null);
-  const [reviewMsg, setReviewMsg] = useState<string | null>(null);
-  const [status, setStatus] = useState<{ myRank: number; totalPlayers: number; state: "LEADING" | "BONUS" | "CHASING" } | null>(null);
-  const [turnstileNeeded, setTurnstileNeeded] = useState(false);
-  const [turnstileReason, setTurnstileReason] = useState<string | null>(null);
-
-  const resolvedGameKey = useMemo<GameKey | null>(() => {
-    const sessionGame = session?.challenge?.game;
-    if (isRegisteredGameKey(sessionGame)) {
-      return sessionGame;
-    }
-    if (practiceMode && isRegisteredGameKey(gameKey)) {
-      return gameKey;
-    }
-    if (!practiceMode && supportsVerifiedMode) {
-      return null;
-    }
-    return isRegisteredGameKey(gameKey) ? gameKey : "quick-stop";
-  }, [gameKey, practiceMode, session, supportsVerifiedMode]);
-
-  const entry = resolvedGameKey ? GAME_REGISTRY[resolvedGameKey] : null;
-  const Game = useMemo(() => entry?.Component ?? null, [entry]);
-
-  const issueSession = useCallback(
-    async (overrideTurnstileToken?: string | null) => {
-      if (!canPay || practiceMode || !supportsVerifiedMode) {
-        setSession(null);
-        return;
-      }
-
-      setLoadingSession(true);
-      try {
-        const res = await fetch("/api/attempt/start", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ itemId, turnstileToken: overrideTurnstileToken || undefined }),
-        });
-        const data = await res.json().catch(() => null);
-        if (!res.ok || !data?.ok) {
-          setSession(null);
-          if (data?.turnstileRequired) {
-            setTurnstileNeeded(true);
-            setTurnstileReason(String(data?.reason || "human_check"));
-          }
-          setErrMsg(data?.error || `Could not start a verified run (${res.status})`);
-          return;
-        }
-
-        setTurnstileNeeded(false);
-        setTurnstileReason(null);
-        setSession({
-          attemptId: String(data.attemptId),
-          challenge: data.challenge,
-          expiresAt: String(data.expiresAt),
-        });
-      } catch (e: any) {
-        setSession(null);
-        setErrMsg(e?.message || "Could not start a verified run");
-      } finally {
-        setLoadingSession(false);
-      }
-    },
-    [canPay, itemId, practiceMode, supportsVerifiedMode],
-  );
-
-  useEffect(() => {
-    if (!canPay) {
-      setPracticeMode(true);
-      setSession(null);
-      return;
-    }
-    if (!practiceMode && supportsVerifiedMode) {
-      void issueSession();
-    }
-  }, [canPay, issueSession, practiceMode, supportsVerifiedMode]);
-
-  async function submitAttempt(payload: { scoreMs: number; meta?: any }) {
-    if (practiceMode) {
-      setResult({ scoreMs: payload.scoreMs });
-      setStatus(null);
-      setErrMsg(null);
-      setReviewMsg(null);
-      return;
-    }
-
-    if (!supportsVerifiedMode) {
-      setErrMsg("This item is still linked to a legacy game in the database. Run the relink script or reseed to attach one of the server-verified game keys.");
-      return;
-    }
-
-    if (credits < playCost) {
-      setErrMsg("Not enough credits to submit. Practice mode only.");
-      return;
-    }
-
-    if (!session?.attemptId) {
-      setErrMsg("No active verified run. Start a fresh run.");
-      await issueSession();
-      return;
-    }
-
-    setSubmitting(true);
-    setErrMsg(null);
-
-    try {
-      const recaptchaToken = RECAPTCHA_SITE_KEY ? await executeRecaptcha(RECAPTCHA_SITE_KEY, "competitive_finish") : null;
-      const res = await fetch("/api/attempt/finish", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          attemptId: session.attemptId,
-          meta: {
-            ...(payload.meta ?? {}),
-            recaptchaToken,
-          },
-        }),
-      });
-
-      const ct = res.headers.get("content-type") || "";
-      const data = ct.includes("application/json")
-        ? await res.json().catch(() => null)
-        : { ok: false, error: await res.text().catch(() => "Non-JSON error") };
-
-      if (!res.ok || !data?.ok) {
-        setErrMsg(data?.error || `Submit failed (${res.status})`);
-        return;
-      }
-
-      const officialScore = Number(data.officialScore ?? payload.scoreMs ?? 0);
-      setResult({ scoreMs: officialScore });
-      setStatus({
-        myRank: Number(data.myRank || 0),
-        totalPlayers: Number(data.totalPlayers || 0),
-        state: (data.status || "CHASING") as any,
-      });
-      setSession(null);
-      setReviewMsg(data?.reviewRequired ? "Your result was recorded, but winner confirmation may pause for review if the round reaches the podium with suspicious signals." : null);
-
-      window.dispatchEvent(new Event("pwnit:credits"));
-      router.refresh();
-      void issueSession();
-    } catch (e: any) {
-      setErrMsg(e?.message || "Submit failed");
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  const verifiedGameDisabled =
-    submitting ||
-    loadingSession ||
-    (!practiceMode && !supportsVerifiedMode) ||
-    (!practiceMode && supportsVerifiedMode && !session);
-
-  const mergedChallenge = !practiceMode && session
-    ? { ...(session.challenge ?? {}), attemptId: session.attemptId, expiresAt: session.expiresAt }
-    : undefined;
-
-  return (
-    <div className="relative rounded-3xl border border-slate-200 bg-slate-50 p-4">
+    <div className="relative rounded-3xl border border-slate-200 bg-slate-50 p-3">
       <ConfettiOverlay show={status?.state === "LEADING"} />
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <div className="text-sm font-semibold uppercase tracking-wide text-slate-500">Game</div>
-          <h2 className="mt-1 text-xl font-black text-slate-950">{entry?.title ?? "Preparing game..."}</h2>
+          <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Game</div>
+          <h2 className="mt-1 text-lg font-black text-slate-950">{entry?.title ?? "Preparing game..."}</h2>
         </div>
 
-        <label className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700">
+        <label className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700">
           <input
             type="checkbox"
             checked={practiceMode}
@@ -404,41 +213,43 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
       </div>
 
       {!supportsVerifiedMode ? (
-        <div className="mt-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+        <div className="mt-2 rounded-2xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm text-rose-800">
           <div className="font-semibold">Legacy competitive game detected.</div>
-          <div className="mt-1">Competitive submissions are blocked for legacy client-scored games. Use a server-verified game key first.</div>
+          <div className="mt-1">
+            Competitive submissions are blocked for legacy client-scored games. Use a server-verified game key first.
+          </div>
         </div>
       ) : null}
 
       {!canPay ? (
-        <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <div className="mt-2 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-800">
           <div className="font-semibold">Not enough credits to submit a score.</div>
           <div className="mt-1">Practice is enabled until you top up.</div>
         </div>
       ) : null}
 
       {!practiceMode && supportsVerifiedMode ? (
-        <div className="mt-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700">
+        <div className="mt-2 rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700">
           <div className="font-semibold text-slate-900">Verified competitive run</div>
           <div className="mt-1">
             {loadingSession
               ? "Requesting a server-issued challenge..."
               : session
-                ? "Challenge locked to this run. Hidden-state games only reveal clues as you play, and the server recomputes the official result before it is accepted."
+                ? "Challenge locked to this run. Hidden-state games reveal only as you play."
                 : "No active verified run yet."}
           </div>
         </div>
       ) : null}
 
       {turnstileNeeded && TURNSTILE_SITE_KEY ? (
-        <div className="mt-3 rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-4 text-sm text-indigo-900">
+        <div className="mt-2 rounded-2xl border border-indigo-200 bg-indigo-50 px-3 py-3 text-sm text-indigo-900">
           <div className="font-semibold">Human check required</div>
           <div className="mt-1">
             {turnstileReason === "first_competitive_play"
               ? "Complete the human check before your first competitive attempt."
               : "Complete the human check to continue. We noticed unusually rapid competitive start behaviour."}
           </div>
-          <div className="mt-3">
+          <div className="mt-2">
             <TurnstileWidget
               siteKey={TURNSTILE_SITE_KEY}
               action="competitive_start"
@@ -455,7 +266,7 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
       ) : null}
 
       {status ? (
-        <div className="mt-3 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+        <div className="mt-2 rounded-2xl border border-blue-200 bg-blue-50 px-3 py-2.5 text-sm text-blue-900">
           <div className="font-semibold">
             Current standing: #{status.myRank} / {status.totalPlayers}
           </div>
@@ -469,29 +280,29 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
       ) : null}
 
       {result ? (
-        <div className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+        <div className="mt-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm text-emerald-800">
           <div className="font-semibold">{practiceMode ? "Practice result" : "Server-verified result"}</div>
           <div className="mt-1">Score {result.scoreMs}</div>
         </div>
       ) : null}
 
       {reviewMsg ? (
-        <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        <div className="mt-2 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-900">
           <div className="font-semibold">Review safeguard active</div>
           <div className="mt-1">{reviewMsg}</div>
         </div>
       ) : null}
 
       {errMsg ? (
-        <div className="mt-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+        <div className="mt-2 rounded-2xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm text-rose-800">
           <div className="font-semibold">Couldn’t continue</div>
           <div className="mt-1">{errMsg}</div>
         </div>
       ) : null}
 
-      <div className="mt-4">
+      <div className="mt-3">
         {!practiceMode && supportsVerifiedMode && !session ? (
-          <div className="rounded-3xl border border-slate-200 bg-white p-6 text-center text-sm text-slate-600">
+          <div className="rounded-3xl border border-slate-200 bg-white p-5 text-center text-sm text-slate-600">
             {loadingSession ? "Preparing your server-issued hidden-state challenge..." : "Preparing your game..."}
           </div>
         ) : Game ? (
@@ -501,30 +312,10 @@ export default function GameHost({ itemId, gameKey, playCost, credits }: Props) 
             onFinish={(r: { scoreMs: number; meta?: any }) => submitAttempt({ scoreMs: r.scoreMs, meta: r.meta })}
           />
         ) : (
-          <div className="rounded-3xl border border-amber-200 bg-amber-50 p-6 text-center text-sm text-amber-800">
+          <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5 text-center text-sm text-amber-800">
             We couldn’t prepare this game right now. Please go back and try again.
           </div>
         )}
-      </div>
-
-      <div className="mt-4 flex flex-wrap gap-3">
-        <button
-          type="button"
-          className="rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-bold text-slate-900"
-          onClick={() => router.push(`/item/${itemId}/leaderboard`)}
-          disabled={submitting}
-        >
-          View leaderboard
-        </button>
-
-        <button
-          type="button"
-          className="rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-bold text-slate-900"
-          onClick={() => router.push(`/item/${itemId}`)}
-          disabled={submitting}
-        >
-          Back to item
-        </button>
       </div>
     </div>
   );

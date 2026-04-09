@@ -1,21 +1,18 @@
-Apply by copying these files over the matching paths in your repo.
+PwnIt patch built from GitHub repo baseline: janusvisagie/pwnit-mvp (main)
 
-Then run locally:
-1. npm run db:seed
-2. node scripts/relink-verified-games.mjs
-3. stop npm run dev
-4. delete .next
-5. npm run dev
+Changed files:
+- src/app/api/attempt/progress/route.ts
+- src/lib/competitiveRuns.ts
+- src/games/progressive-mosaic/ProgressiveMosaicGame.tsx
+- src/games/clue-ladder/ClueLadderGame.tsx
+- src/app/play/[itemId]/_components/GameHost.tsx
+- src/app/play/[itemId]/page.tsx
 
-What changed:
-- Replaced the current seeded mix:
-  - Nintendo Switch OLED -> Spot the Missing
-  - GoPro HERO13 Black -> Rapid Math Relay
-- Fixed local replay so these games start a fresh challenge in practice mode:
-  - Clue Ladder
-  - Progressive Mosaic
-  - Spot the Missing
-  - Rapid Math Relay
-- Progressive Mosaic no longer reveals the answer tile directly in its first clue.
-- Clue Ladder wording now explicitly tells the player to choose the correct answer tile.
-- Removed the Prisma transaction-based rate-limit path that was causing 25P02 aborted-transaction errors.
+What this patch addresses:
+1. Fixes the Next.js compile error in attempt/progress by moving the progressive-run return logic back inside POST().
+2. Progressive Mosaic countdown now updates live during play.
+3. Progressive Mosaic 'Sharpen image' now actually sharpens a masked visual target instead of behaving like a text clue ladder.
+4. Backend progressive challenge builder now diversifies clue-ladder answer pools with a larger target bank and recent-answer avoidance.
+5. Play page shell was tightened and duplicate bottom navigation removed from GameHost to help play screens fit within one screen more often.
+
+Apply by overwriting the matching files in your repo, then rebuild.

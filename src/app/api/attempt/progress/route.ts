@@ -1,4 +1,3 @@
-
 export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
@@ -224,30 +223,7 @@ export async function POST(req: Request) {
       });
     }
 
-    const extraProgress = handleNextHiddenStateProgress(
-      session.gameKey,
-      session.challengeJson as any,
-      session.verificationJson as any,
-      body as Record<string, any>,
-    );
-
-    if (extraProgress.ok) {
-      await (prisma as any).attemptSession.update({
-        where: { id: session.id },
-        data: { verificationJson: extraProgress.progressState },
-      });
-      return NextResponse.json(extraProgress.data);
-    }
-
-    if (extraProgress.status !== 409) {
-      return NextResponse.json({ ok: false, error: extraProgress.error }, { status: extraProgress.status });
-    }
-
-    return NextResponse.json({ ok: false, error: "This game does not use per-move server progress." }, { status: 409 });
-  } catch (e: any) {
-    return NextResponse.json({ ok: false, error: e?.message || String(e) || "Server error" }, { status: 500 });
-  }
-}    if (isProgressiveRunGameKey(session.gameKey)) {
+    if (isProgressiveRunGameKey(session.gameKey)) {
       const progressed = handleProgressiveRunProgress(
         session.gameKey,
         session.challengeJson as any,
@@ -267,4 +243,30 @@ export async function POST(req: Request) {
       return NextResponse.json(progressed.data);
     }
 
+    const extraProgress = handleNextHiddenStateProgress(
+      session.gameKey,
+      session.challengeJson as any,
+      session.verificationJson as any,
+      body as Record<string, any>,
+    );
 
+    if (extraProgress.ok) {
+      await (prisma as any).attemptSession.update({
+        where: { id: session.id },
+        data: { verificationJson: extraProgress.progressState },
+      });
+      return NextResponse.json(extraProgress.data);
+    }
+
+    if (extraProgress.status !== 409) {
+      return NextResponse.json({ ok: false, error: extraProgress.error }, { status: extraProgress.status });
+    }
+
+    return NextResponse.json(
+      { ok: false, error: "This game does not use per-move server progress." },
+      { status: 409 },
+    );
+  } catch (e: any) {
+    return NextResponse.json({ ok: false, error: e?.message || String(e) || "Server error" }, { status: 500 });
+  }
+}

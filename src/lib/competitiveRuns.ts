@@ -13,11 +13,13 @@ export type ChoiceOption = {
   emoji: string;
 };
 
+type Palette = [string, string];
+
 type ProgressiveMosaicTarget = {
   id: string;
   label: string;
   emoji: string;
-  reveals: string[];
+  palette: Palette;
 };
 
 type ClueLadderTarget = {
@@ -32,7 +34,10 @@ type ProgressiveMosaicChallenge = {
   level: number;
   answerId: string;
   options: ChoiceOption[];
-  reveals: string[];
+  targetGlyph: string;
+  palette: Palette;
+  overlayOrder: number[];
+  tileCount: number;
   maxReveals: number;
   timeLimitMs: number;
 };
@@ -72,7 +77,7 @@ export type ProgressiveRunServerChallenge =
   | RapidMathRelayChallenge;
 
 export type ProgressiveRunPublicChallenge =
-  | (Omit<ProgressiveMosaicChallenge, "answerId" | "reveals"> & { shownReveals: string[] })
+  | (Omit<ProgressiveMosaicChallenge, "answerId"> & { shownRevealCount: number })
   | (Omit<ClueLadderChallenge, "answerId" | "clues"> & { shownClues: string[] })
   | Omit<SpotTheMissingChallenge, "missing">
   | Omit<RapidMathRelayChallenge, "answer">;
@@ -88,6 +93,7 @@ export type ProgressiveRunState = {
   totalRevealCount: number;
   currentChallenge: ProgressiveRunServerChallenge;
   shownCount: number;
+  recentAnswerIds: string[];
   lastOutcome?: "CLEARED" | "FAILED" | "TIMED_OUT";
   lastLevelElapsedMs?: number;
   finishedReason?: string;
@@ -114,28 +120,209 @@ type ProgressErr = {
 export type ProgressiveRunProgressResult = ProgressOk | ProgressErr;
 
 const MOSAIC_TARGETS: ProgressiveMosaicTarget[] = [
-  { id: "fuel-voucher", label: "Fuel Voucher", emoji: "⛽", reveals: ["⛽", "Road spend", "Refuel at a filling station", "Helps on the road", "Transport-linked spend", "Redeemed when the tank is low"] },
-  { id: "checkers-voucher", label: "Checkers Voucher", emoji: "🛒", reveals: ["🛒", "Groceries and essentials", "Used at a supermarket", "Basket and trolley spend", "Household staples", "Redeemed at the till"] },
-  { id: "takealot-voucher", label: "Takealot Voucher", emoji: "📦", reveals: ["📦", "Online order", "Delivered to your door", "Shopping from home", "E-commerce spend", "Checkout without a trolley"] },
-  { id: "headphones", label: "Headphones", emoji: "🎧", reveals: ["🎧", "Private listening", "Worn over your ears", "Audio without speakers", "Music and focus", "Noise around you fades"] },
-  { id: "switch", label: "Nintendo Switch", emoji: "🎮", reveals: ["🎮", "Portable play", "Hybrid console", "Detachable controls", "Docked or handheld", "Gaming on the go"] },
-  { id: "camera", label: "GoPro Camera", emoji: "📷", reveals: ["📷", "Adventure footage", "Action capture", "Small rugged camera", "Mounted on gear", "Built for movement"] },
-  { id: "bonus-credits", label: "Bonus Credits", emoji: "⭐", reveals: ["⭐", "More tries", "Platform reward", "Keeps you competing", "Extra credit balance", "Not a physical parcel"] },
-  { id: "podium-place", label: "Podium Place", emoji: "🏆", reveals: ["🏆", "Top finish", "Leaderboard target", "Bragging rights", "Near the very top", "Where winners stand"] },
+  { id: "fuel-voucher", label: "Fuel Voucher", emoji: "⛽", palette: ["#1d4ed8", "#0f172a"] },
+  { id: "grocery-voucher", label: "Grocery Voucher", emoji: "🛒", palette: ["#16a34a", "#14532d"] },
+  { id: "online-voucher", label: "Online Voucher", emoji: "📦", palette: ["#7c3aed", "#312e81"] },
+  { id: "headphones", label: "Headphones", emoji: "🎧", palette: ["#111827", "#475569"] },
+  { id: "switch", label: "Nintendo Switch", emoji: "🎮", palette: ["#ef4444", "#1f2937"] },
+  { id: "camera", label: "Action Camera", emoji: "📷", palette: ["#0f172a", "#334155"] },
+  { id: "bonus-credits", label: "Bonus Credits", emoji: "⭐", palette: ["#f59e0b", "#92400e"] },
+  { id: "podium-place", label: "Podium Place", emoji: "🏆", palette: ["#eab308", "#713f12"] },
+  { id: "smart-tv", label: "Smart TV", emoji: "📺", palette: ["#0ea5e9", "#1e293b"] },
+  { id: "smartwatch", label: "Smartwatch", emoji: "⌚", palette: ["#64748b", "#0f172a"] },
+  { id: "speaker", label: "Bluetooth Speaker", emoji: "🔊", palette: ["#9333ea", "#111827"] },
+  { id: "laptop", label: "Laptop", emoji: "💻", palette: ["#22c55e", "#0f172a"] },
+  { id: "drone", label: "Drone", emoji: "🚁", palette: ["#06b6d4", "#164e63"] },
+  { id: "ar-glasses", label: "AR Glasses", emoji: "🥽", palette: ["#f97316", "#7c2d12"] },
 ];
 
 const CLUE_TARGETS: ClueLadderTarget[] = [
-  { id: "fuel-voucher", label: "Fuel Voucher", emoji: "⛽", clues: ["Practical rather than flashy.", "Used during travel.", "Linked to transport cost.", "Redeemed at a filling station.", "Not a gadget.", "Helps before the road trip is over."] },
-  { id: "checkers-voucher", label: "Checkers Voucher", emoji: "🛒", clues: ["Household spend rather than entertainment.", "Think essentials.", "Fits a trolley better than a gadget bag.", "Redeemed in-store.", "Useful every week.", "Belongs with groceries and basics."] },
-  { id: "takealot-voucher", label: "Takealot Voucher", emoji: "📦", clues: ["Works well from home.", "Convenience and delivery matter.", "Redeemed online, not at a till queue.", "Tied to e-commerce.", "Think checkout and shipment.", "A South African online store gift."] },
-  { id: "headphones", label: "Headphones", emoji: "🎧", clues: ["Worn, not carried while used.", "Improves a personal media experience.", "Helps you focus on sound.", "Sits over your ears.", "Good for music and quiet.", "Private listening gear."] },
-  { id: "switch", label: "Nintendo Switch", emoji: "🎮", clues: ["Built for play rather than work.", "Moves between handheld and docked use.", "Has detachable controls.", "A hybrid console.", "Portable gaming matters.", "Nintendo made it."] },
-  { id: "camera", label: "GoPro Camera", emoji: "📷", clues: ["Captures moments rather than playing them.", "Often used outdoors.", "Good in motion.", "Compact and rugged.", "Mounted on people or gear.", "An action camera."] },
-  { id: "bonus-credits", label: "Bonus Credits", emoji: "⭐", clues: ["A platform reward, not a parcel.", "Lets you keep competing.", "Redeemed inside the experience.", "Gives you more tries.", "Not a retailer voucher.", "It extends play rather than shipping."] },
-  { id: "podium-place", label: "Podium Place", emoji: "🏆", clues: ["A result rather than a product.", "Linked to rank.", "Near the top of the leaderboard.", "Players chase it.", "Bragging rights matter.", "Winners stand here."] },
+  {
+    id: "fuel-voucher",
+    label: "Fuel Voucher",
+    emoji: "⛽",
+    clues: [
+      "Useful when the tank is low.",
+      "Practical travel spend beats flashy gadgets here.",
+      "It matters most before or during a road trip.",
+      "Redeemed at a filling station.",
+      "It helps movement, not entertainment.",
+      "This voucher keeps the car going.",
+    ],
+  },
+  {
+    id: "grocery-voucher",
+    label: "Grocery Voucher",
+    emoji: "🛒",
+    clues: [
+      "Think essentials rather than electronics.",
+      "This fits a trolley better than a gadget bag.",
+      "Useful almost every week.",
+      "Redeemed where baskets and tills matter.",
+      "It supports household basics.",
+      "This voucher belongs with groceries.",
+    ],
+  },
+  {
+    id: "online-voucher",
+    label: "Online Voucher",
+    emoji: "📦",
+    clues: [
+      "Convenience matters more than a queue.",
+      "Shopping happens from a screen, not an aisle.",
+      "Delivery is part of the story.",
+      "Redeemed through an online checkout.",
+      "It points to e-commerce, not a store trolley.",
+      "This voucher is for online orders.",
+    ],
+  },
+  {
+    id: "headphones",
+    label: "Headphones",
+    emoji: "🎧",
+    clues: [
+      "Made for one person's ears at a time.",
+      "It improves a private media experience.",
+      "Useful for focus, music, or travel.",
+      "You wear it rather than place it on a desk.",
+      "It keeps sound close and personal.",
+      "This is over-ear listening gear.",
+    ],
+  },
+  {
+    id: "switch",
+    label: "Nintendo Switch",
+    emoji: "🎮",
+    clues: [
+      "Built for play rather than productivity.",
+      "Portable use is part of the appeal.",
+      "It can move between handheld and docked modes.",
+      "Detachable controls make it distinctive.",
+      "This is a hybrid console.",
+      "Nintendo made it.",
+    ],
+  },
+  {
+    id: "camera",
+    label: "Action Camera",
+    emoji: "📷",
+    clues: [
+      "It captures moments instead of playing them back.",
+      "Motion and adventure suit it well.",
+      "Compact size matters here.",
+      "Often mounted to gear or a helmet.",
+      "It is rugged and travel-friendly.",
+      "This is an action camera.",
+    ],
+  },
+  {
+    id: "bonus-credits",
+    label: "Bonus Credits",
+    emoji: "⭐",
+    clues: [
+      "This is platform value, not a parcel.",
+      "It keeps you competing longer.",
+      "Redeemed inside the experience itself.",
+      "It buys you more tries rather than shipping.",
+      "You cannot hold it in your hand like a gadget.",
+      "These are extra credits.",
+    ],
+  },
+  {
+    id: "podium-place",
+    label: "Podium Place",
+    emoji: "🏆",
+    clues: [
+      "A result matters more than a product.",
+      "This lives on the leaderboard.",
+      "Players chase it every round.",
+      "Bragging rights matter.",
+      "Winners stand near here.",
+      "It is a podium finish.",
+    ],
+  },
+  {
+    id: "smart-tv",
+    label: "Smart TV",
+    emoji: "📺",
+    clues: [
+      "This is for the lounge rather than the pocket.",
+      "Streaming matters more than portability.",
+      "It dominates a wall or cabinet, not a desk drawer.",
+      "Remote control use is expected.",
+      "Movies, series, and sport look better on it.",
+      "This is a smart television.",
+    ],
+  },
+  {
+    id: "smartwatch",
+    label: "Smartwatch",
+    emoji: "⌚",
+    clues: [
+      "It lives on the wrist.",
+      "Notifications travel with you.",
+      "It mixes fitness with convenience.",
+      "Smaller than a phone, smarter than a classic watch.",
+      "Health tracking often matters.",
+      "This is a smartwatch.",
+    ],
+  },
+  {
+    id: "speaker",
+    label: "Bluetooth Speaker",
+    emoji: "🔊",
+    clues: [
+      "This shares sound with a room.",
+      "Portability helps, but ears do not wear it.",
+      "Music becomes social instead of private.",
+      "Wireless pairing is part of the appeal.",
+      "It is about louder playback, not silent focus.",
+      "This is a Bluetooth speaker.",
+    ],
+  },
+  {
+    id: "laptop",
+    label: "Laptop",
+    emoji: "💻",
+    clues: [
+      "It opens and closes like a working shell.",
+      "Useful for school, work, and browsing.",
+      "It travels better than a desktop.",
+      "Keyboard and screen stay attached.",
+      "It does more than a tablet in most workflows.",
+      "This is a laptop.",
+    ],
+  },
+  {
+    id: "drone",
+    label: "Drone",
+    emoji: "🚁",
+    clues: [
+      "This moves through the air rather than on a desk.",
+      "Remote control is essential.",
+      "Photography may happen from above.",
+      "Outdoor use makes more sense than indoor shelves.",
+      "Flying is the whole point.",
+      "This is a drone.",
+    ],
+  },
+  {
+    id: "ar-glasses",
+    label: "AR Glasses",
+    emoji: "🥽",
+    clues: [
+      "This sits in front of your eyes.",
+      "It mixes tech with wearable form.",
+      "Hands-free visuals are part of the idea.",
+      "Less ordinary than standard eyewear.",
+      "Digital overlays matter more than audio alone.",
+      "These are AR glasses.",
+    ],
+  },
 ];
 
 const WORD_BANK = ["Pick", "Play", "PwnIt", "Prize", "Bonus", "Boost", "Credit", "Target", "Podium", "Voucher", "Unlock", "Winner"] as const;
+const MOSAIC_TILE_COUNT = 16;
 
 function shuffle<T>(values: readonly T[]): T[] {
   const copy = [...values];
@@ -156,18 +343,38 @@ function clampInt(value: unknown, min: number, max: number) {
   return Math.max(min, Math.min(max, Math.round(parsed)));
 }
 
-function isChoiceOption(value: unknown): value is ChoiceOption {
-  return !!value && typeof value === "object" && typeof (value as ChoiceOption).id === "string";
-}
-
 export function isProgressiveRunGameKey(gameKey: string): gameKey is ProgressiveRunGameKey {
   return (PROGRESSIVE_RUN_GAME_KEYS as readonly string[]).includes(gameKey);
 }
 
-function buildChoiceOptions<T extends { id: string; label: string; emoji: string }>(source: readonly T[], correctId: string, count: number) {
+function recentWindow(values: readonly string[], size = 4) {
+  return values.slice(Math.max(0, values.length - size));
+}
+
+function pickFreshTarget<T extends { id: string }>(source: readonly T[], recentIds: readonly string[]) {
+  const recentSet = new Set(recentWindow(recentIds));
+  const freshPool = source.filter((entry) => !recentSet.has(entry.id));
+  return choice(freshPool.length ? freshPool : source);
+}
+
+function buildChoiceOptions<T extends { id: string; label: string; emoji: string }>(
+  source: readonly T[],
+  correctId: string,
+  count: number,
+  recentIds: readonly string[] = [],
+) {
+  const cappedCount = Math.max(2, Math.min(count, source.length));
   const correct = source.find((entry) => entry.id === correctId) ?? choice(source);
-  const distractors = shuffle(source.filter((entry) => entry.id !== correct.id)).slice(0, Math.max(0, count - 1));
-  return shuffle([correct, ...distractors]).map(({ id, label, emoji }) => ({ id, label, emoji }));
+  const recentSet = new Set(recentWindow(recentIds).filter((id) => id !== correct.id));
+  const distractors = source.filter((entry) => entry.id !== correct.id);
+  const fresh = shuffle(distractors.filter((entry) => !recentSet.has(entry.id)));
+  const repeated = shuffle(distractors.filter((entry) => recentSet.has(entry.id)));
+  const chosen = [...fresh, ...repeated].slice(0, Math.max(0, cappedCount - 1));
+  return shuffle([correct, ...chosen]).map(({ id, label, emoji }) => ({ id, label, emoji }));
+}
+
+function buildOverlayOrder(tileCount: number) {
+  return shuffle(Array.from({ length: tileCount }, (_, index) => index));
 }
 
 function mosaicRevealCount(level: number) {
@@ -182,32 +389,34 @@ function optionCount(level: number) {
   return Math.min(6, 4 + Math.floor((level - 1) / 2));
 }
 
-function buildProgressiveMosaicLevel(level: number): ProgressiveMosaicChallenge {
-  const target = choice(MOSAIC_TARGETS);
+function buildProgressiveMosaicLevel(level: number, recentAnswerIds: readonly string[] = []): ProgressiveMosaicChallenge {
+  const target = pickFreshTarget(MOSAIC_TARGETS, recentAnswerIds);
   const maxReveals = mosaicRevealCount(level);
-  const reveals = target.reveals.slice(0, maxReveals);
   return {
     game: "progressive-mosaic",
     level,
     answerId: target.id,
-    options: buildChoiceOptions(MOSAIC_TARGETS, target.id, optionCount(level)),
-    reveals,
+    options: buildChoiceOptions(MOSAIC_TARGETS, target.id, optionCount(level), recentAnswerIds),
+    targetGlyph: target.emoji,
+    palette: target.palette,
+    overlayOrder: buildOverlayOrder(MOSAIC_TILE_COUNT),
+    tileCount: MOSAIC_TILE_COUNT,
     maxReveals,
-    timeLimitMs: Math.max(6000, 16000 - level * 700),
+    timeLimitMs: Math.max(6000, 15500 - level * 650),
   };
 }
 
-function buildClueLadderLevel(level: number): ClueLadderChallenge {
-  const target = choice(CLUE_TARGETS);
+function buildClueLadderLevel(level: number, recentAnswerIds: readonly string[] = []): ClueLadderChallenge {
+  const target = pickFreshTarget(CLUE_TARGETS, recentAnswerIds);
   const totalClues = clueCount(level);
   return {
     game: "clue-ladder",
     level,
     answerId: target.id,
-    options: buildChoiceOptions(CLUE_TARGETS, target.id, optionCount(level)),
+    options: buildChoiceOptions(CLUE_TARGETS, target.id, optionCount(level), recentAnswerIds),
     clues: target.clues.slice(0, totalClues),
     totalClues,
-    timeLimitMs: Math.max(6500, 16500 - level * 650),
+    timeLimitMs: Math.max(6500, 16000 - level * 620),
   };
 }
 
@@ -263,12 +472,27 @@ function buildRapidMathLevel(level: number): RapidMathRelayChallenge {
   };
 }
 
-export function buildProgressiveRunChallenge(gameKey: ProgressiveRunGameKey, level: number): ProgressiveRunServerChallenge {
+function initialShownCount(challenge: ProgressiveRunServerChallenge) {
+  return challenge.game === "progressive-mosaic" || challenge.game === "clue-ladder" ? 1 : 0;
+}
+
+function initialHistoryForChallenge(challenge: ProgressiveRunServerChallenge) {
+  if (challenge.game === "progressive-mosaic" || challenge.game === "clue-ladder") {
+    return [challenge.answerId];
+  }
+  return [];
+}
+
+export function buildProgressiveRunChallenge(
+  gameKey: ProgressiveRunGameKey,
+  level: number,
+  recentAnswerIds: readonly string[] = [],
+): ProgressiveRunServerChallenge {
   switch (gameKey) {
     case "progressive-mosaic":
-      return buildProgressiveMosaicLevel(level);
+      return buildProgressiveMosaicLevel(level, recentAnswerIds);
     case "clue-ladder":
-      return buildClueLadderLevel(level);
+      return buildClueLadderLevel(level, recentAnswerIds);
     case "spot-the-missing":
       return buildSpotTheMissingLevel(level);
     case "rapid-math-relay":
@@ -278,15 +502,22 @@ export function buildProgressiveRunChallenge(gameKey: ProgressiveRunGameKey, lev
   }
 }
 
-export function buildPublicProgressiveRunChallenge(challenge: ProgressiveRunServerChallenge, shownCount = 0): ProgressiveRunPublicChallenge {
+export function buildPublicProgressiveRunChallenge(
+  challenge: ProgressiveRunServerChallenge,
+  shownCount = 0,
+): ProgressiveRunPublicChallenge {
   switch (challenge.game) {
     case "progressive-mosaic":
       return {
         game: challenge.game,
         level: challenge.level,
         options: challenge.options,
+        targetGlyph: challenge.targetGlyph,
+        palette: challenge.palette,
+        overlayOrder: challenge.overlayOrder,
+        tileCount: challenge.tileCount,
         maxReveals: challenge.maxReveals,
-        shownReveals: challenge.reveals.slice(0, shownCount),
+        shownRevealCount: shownCount,
         timeLimitMs: challenge.timeLimitMs,
       };
     case "clue-ladder":
@@ -319,7 +550,7 @@ export function buildPublicProgressiveRunChallenge(challenge: ProgressiveRunServ
 
 export function createProgressiveRunSession(gameKey: ProgressiveRunGameKey) {
   const currentChallenge = buildProgressiveRunChallenge(gameKey, 1);
-  const shownCount = currentChallenge.game === "progressive-mosaic" || currentChallenge.game === "clue-ladder" ? 1 : 0;
+  const shownCount = initialShownCount(currentChallenge);
   const progressState: ProgressiveRunState = {
     mode: "competitive-run",
     game: gameKey,
@@ -331,6 +562,7 @@ export function createProgressiveRunSession(gameKey: ProgressiveRunGameKey) {
     totalRevealCount: shownCount,
     currentChallenge,
     shownCount,
+    recentAnswerIds: initialHistoryForChallenge(currentChallenge),
   };
   return {
     serverChallenge: currentChallenge,
@@ -339,7 +571,11 @@ export function createProgressiveRunSession(gameKey: ProgressiveRunGameKey) {
   };
 }
 
-function normalizeState(gameKey: ProgressiveRunGameKey, fallbackChallenge: ProgressiveRunServerChallenge, state: unknown): ProgressiveRunState {
+function normalizeState(
+  gameKey: ProgressiveRunGameKey,
+  fallbackChallenge: ProgressiveRunServerChallenge,
+  state: unknown,
+): ProgressiveRunState {
   if (
     state &&
     typeof state === "object" &&
@@ -356,8 +592,13 @@ function normalizeState(gameKey: ProgressiveRunGameKey, fallbackChallenge: Progr
       mistakes: clampInt(typed.mistakes, 0, 99),
       totalElapsedMs: clampInt(typed.totalElapsedMs, 0, 600000),
       totalRevealCount: clampInt(typed.totalRevealCount, 0, 999),
+      recentAnswerIds: Array.isArray((typed as any).recentAnswerIds)
+        ? (typed as any).recentAnswerIds.filter((value: unknown) => typeof value === "string").slice(-8)
+        : initialHistoryForChallenge(typed.currentChallenge ?? fallbackChallenge),
     };
   }
+
+  const shownCount = initialShownCount(fallbackChallenge);
   return {
     mode: "competitive-run",
     game: gameKey,
@@ -366,9 +607,10 @@ function normalizeState(gameKey: ProgressiveRunGameKey, fallbackChallenge: Progr
     levelsCleared: 0,
     mistakes: 0,
     totalElapsedMs: 0,
-    totalRevealCount: fallbackChallenge.game === "progressive-mosaic" || fallbackChallenge.game === "clue-ladder" ? 1 : 0,
+    totalRevealCount: shownCount,
     currentChallenge: fallbackChallenge,
-    shownCount: fallbackChallenge.game === "progressive-mosaic" || fallbackChallenge.game === "clue-ladder" ? 1 : 0,
+    shownCount,
+    recentAnswerIds: initialHistoryForChallenge(fallbackChallenge),
   };
 }
 
@@ -412,8 +654,13 @@ export function handleProgressiveRunProgress(
   progressState: unknown,
   body: Record<string, any>,
 ): ProgressiveRunProgressResult {
-  const fallbackChallenge = (initialChallenge && typeof initialChallenge === "object" ? initialChallenge : null) as ProgressiveRunServerChallenge | null;
-  const baseChallenge = fallbackChallenge && fallbackChallenge.game === gameKey ? fallbackChallenge : buildProgressiveRunChallenge(gameKey, 1);
+  const fallbackChallenge = (initialChallenge && typeof initialChallenge === "object"
+    ? initialChallenge
+    : null) as ProgressiveRunServerChallenge | null;
+  const baseChallenge =
+    fallbackChallenge && fallbackChallenge.game === gameKey
+      ? fallbackChallenge
+      : buildProgressiveRunChallenge(gameKey, 1);
   const state = normalizeState(gameKey, baseChallenge, progressState);
 
   if (state.status !== "RUNNING") {
@@ -423,33 +670,46 @@ export function handleProgressiveRunProgress(
   const current = state.currentChallenge;
   const action = String(body?.action || "").trim();
 
-  if ((gameKey === "progressive-mosaic" || gameKey === "clue-ladder") && action === "reveal") {
-    const max = current.game === "progressive-mosaic" ? current.maxReveals : current.totalClues;
-    const nextShown = Math.min(max, state.shownCount + 1);
-    const nextState = { ...state, shownCount: nextShown, totalRevealCount: state.totalRevealCount + 1 };
+  if (gameKey === "progressive-mosaic" && action === "reveal") {
+    const nextShown = Math.min(current.maxReveals, state.shownCount + 1);
+    const nextState: ProgressiveRunState = {
+      ...state,
+      shownCount: nextShown,
+      totalRevealCount: state.totalRevealCount + 1,
+    };
     return {
       ok: true,
       progressState: nextState,
-      data:
-        current.game === "progressive-mosaic"
-          ? {
-              ok: true,
-              game: current.game,
-              shownReveals: current.reveals.slice(0, nextShown),
-              revealed: nextShown,
-              exhausted: nextShown >= max,
-            }
-          : {
-              ok: true,
-              game: current.game,
-              shownClues: current.clues.slice(0, nextShown),
-              revealed: nextShown,
-              exhausted: nextShown >= max,
-            },
+      data: {
+        ok: true,
+        game: current.game,
+        shownRevealCount: nextShown,
+        exhausted: nextShown >= current.maxReveals,
+      },
     };
   }
 
-  if (action !== "resolve_level") {
+  if (gameKey === "clue-ladder" && action === "reveal") {
+    const nextShown = Math.min(current.totalClues, state.shownCount + 1);
+    const nextState: ProgressiveRunState = {
+      ...state,
+      shownCount: nextShown,
+      totalRevealCount: state.totalRevealCount + 1,
+    };
+    return {
+      ok: true,
+      progressState: nextState,
+      data: {
+        ok: true,
+        game: current.game,
+        shownClues: current.clues.slice(0, nextShown),
+        revealed: nextShown,
+        exhausted: nextShown >= current.totalClues,
+      },
+    };
+  }
+
+  if (action != "resolve_level") {
     return { ok: false, status: 422, error: "Unsupported progression action." };
   }
 
@@ -483,8 +743,8 @@ export function handleProgressiveRunProgress(
   }
 
   const nextLevel = state.currentLevel + 1;
-  const nextChallenge = buildProgressiveRunChallenge(gameKey, nextLevel);
-  const shownCount = nextChallenge.game === "progressive-mosaic" || nextChallenge.game === "clue-ladder" ? 1 : 0;
+  const nextChallenge = buildProgressiveRunChallenge(gameKey, nextLevel, state.recentAnswerIds);
+  const shownCount = initialShownCount(nextChallenge);
   const advanced: ProgressiveRunState = {
     ...nextBase,
     currentLevel: nextLevel,
@@ -492,17 +752,28 @@ export function handleProgressiveRunProgress(
     currentChallenge: nextChallenge,
     shownCount,
     totalRevealCount: state.totalRevealCount + shownCount,
+    recentAnswerIds: [...state.recentAnswerIds, ...initialHistoryForChallenge(nextChallenge)].slice(-8),
     lastOutcome: "CLEARED",
   };
   return { ok: true, progressState: advanced, data: nextLevelResponse(advanced) };
 }
 
-export function computeProgressiveRunScore(state: Pick<ProgressiveRunState, "game" | "levelsCleared" | "mistakes" | "totalElapsedMs" | "totalRevealCount" | "status">, serverElapsedMs: number) {
+export function computeProgressiveRunScore(
+  state: Pick<
+    ProgressiveRunState,
+    "game" | "levelsCleared" | "mistakes" | "totalElapsedMs" | "totalRevealCount" | "status"
+  >,
+  serverElapsedMs: number,
+) {
   const effectiveElapsed = Math.max(state.totalElapsedMs, serverElapsedMs);
   const levelWeight =
-    state.game === "rapid-math-relay" ? 6200 :
-    state.game === "spot-the-missing" ? 5600 :
-    state.game === "clue-ladder" ? 6000 : 6100;
+    state.game === "rapid-math-relay"
+      ? 6200
+      : state.game === "spot-the-missing"
+        ? 5600
+        : state.game === "clue-ladder"
+          ? 6000
+          : 6100;
   const levelPoints = state.levelsCleared * levelWeight;
   const revealPenalty = state.totalRevealCount * 220;
   const mistakePenalty = state.mistakes * 3000;
@@ -539,6 +810,7 @@ export function verifyProgressiveRunAttempt(
       totalRevealCount: state.totalRevealCount,
       currentLevel: state.currentLevel,
       finishedReason: state.finishedReason,
+      recentAnswerIds: state.recentAnswerIds,
     },
   };
 }
