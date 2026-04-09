@@ -1,14 +1,20 @@
-PwnIt patch: autofocus + live-site notes
+PwnIt live deploy hotfix (GitHub baseline)
 
-Changed files
-- src/app/play/[itemId]/_components/GameHost.tsx
-- src/games/rapid-math-relay/RapidMathRelayGame.tsx
+Changed file:
+- src/app/api/attempt/start/route.ts
 
-What this patch does
-1. Adds host-level autofocus handling so the newly available game control gets focus automatically.
-2. Marks Rapid Math Relay's answer input as the preferred autofocus target.
-3. Lets focus move from a clicked Start button into the active input without requiring another click.
-4. Applies the host-level behavior across all games rendered through GameHost (inputs are preferred; otherwise the first active button/control is focused).
+What this fixes:
+- Resolves the Vercel / Next.js production type error in attempt/start/route.ts where
+  a ProgressiveRunServerChallenge was being passed to buildPublicVerifiedChallenge(),
+  which only accepts VerifiedGameKey | VerifiedChallenge.
+- Separates progressive-run challenge handling from normal verified-game challenge handling.
 
-Apply on top of your current patched repo state.
-Then restart npm run dev or rebuild on Vercel.
+Why the live site still showed old games:
+1. The deployment in your log failed, so Vercel kept serving the last successful production deployment.
+2. Even after code deploys successfully, Production will only show the new item/game mix if the
+   Production database is the correct one and has been seeded/reset to the new mix.
+
+Reminder:
+- .env and .env.local affect local development.
+- Vercel Production uses the Environment Variables configured in the Vercel project settings.
+- If you change Production env vars in Vercel, redeploy afterward.

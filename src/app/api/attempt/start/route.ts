@@ -107,10 +107,20 @@ export async function POST(req: Request) {
     }
 
     const runSession = isProgressiveRunGameKey(gameKey) ? createProgressiveRunSession(gameKey) : null;
-    const challenge = runSession?.serverChallenge ?? buildVerifiedChallenge(gameKey);
-    const challengeForClient = runSession?.publicChallenge ?? (HIDDEN_STATE_GAME_KEYS.has(gameKey)
-      ? buildPublicVerifiedChallenge(challenge)
-      : challenge);
+
+    let challenge;
+    let challengeForClient;
+    let verificationState: Record<string, any> = {};
+
+    if (runSession) {
+      challenge = runSession.serverChallenge;
+      challengeForClient = runSession.publicChallenge;
+      verificationState = runSession.progressState;
+    } else {
+      const baseChallenge = buildVerifiedChallenge(gameKey);
+      challenge = baseChallenge;
+      challengeForClient = HIDDEN_STATE_GAME_KEYS.has(gameKey) ? buildPublicVerifiedChallenge(baseChallenge) : baseChallenge;
+    }
 
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
@@ -135,7 +145,7 @@ export async function POST(req: Request) {
         gameKey,
         status: "ISSUED",
         challengeJson: challenge,
-        verificationJson: runSession?.progressState ?? {},
+        verificationJson: verificationState,
         expiresAt,
       },
       select: { id: true, expiresAt: true },
