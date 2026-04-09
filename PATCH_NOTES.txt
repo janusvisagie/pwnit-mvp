@@ -1,20 +1,13 @@
-PwnIt follow-up hotfix (GitHub-baseline compatible)
+PwnIt patch: Spot the Missing + timed run countdown fixes
 
-This hotfix replaces:
-- src/app/play/[itemId]/_components/GameHost.tsx
+Files included:
+- src/games/spot-the-missing/SpotTheMissingGame.tsx
+- src/games/rapid-math-relay/RapidMathRelayGame.tsx
 
-Why:
-- The current GameHost.tsx in the repo baseline is corrupted/truncated.
-- That can cause runtime failures such as:
-  "Element type is invalid. Received a promise that resolves to: undefined."
-- This replacement restores a clean exported React component and keeps the
-  verified/practice game host flow intact.
+What this patch changes:
+1. Spot the Missing countdown now ticks live instead of appearing static.
+2. Spot the Missing now shows the original row first, then switches to the shortened row after a brief memorize phase.
+3. Spot the Missing now times out properly when the countdown reaches zero.
+4. Rapid Math Relay now uses the same live ticking timer pattern so timeout expiry is enforced properly there too.
 
-Apply:
-1. Unzip into the repo root.
-2. Allow it to replace the existing GameHost.tsx.
-3. Rebuild / restart dev server.
-
-Notes:
-- This is intended as a follow-up on top of the previous game patch.
-- It does not undo the Progressive Mosaic / Clue Ladder backend work.
+Apply on top of the current repo/patch state and restart the dev server.
