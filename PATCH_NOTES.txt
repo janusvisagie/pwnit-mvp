@@ -1,13 +1,19 @@
-PwnIt Number Chain build hotfix
+PwnIt patch: sync Number Chain label across home/item surfaces
 
-This hotfix replaces:
-- src/games/number-chain/NumberChainGame.tsx
+Changed files:
+- src/lib/gameRules.ts
 
-Why:
-- The previous Number Chain file mixed `shownHints`/`totalHints` with the repo's actual progressive-run public challenge shape, which is `shownClues`/`totalClues` for the `clue-ladder` game key.
-- That mismatch caused the Vercel TypeScript build failure.
+What this fixes:
+- The shared game metadata for backend key "clue-ladder" now uses the user-facing label "Number Chain"
+  and an updated description.
+- Home cards and item pages that call getGameLabel()/getGameMeta() will now show Number Chain
+  instead of Clue Ladder.
 
-What changed:
-- Replaced the Number Chain component with a clean file that uses `shownClues` and `totalClues` consistently.
-- Kept the live/verified flow on the existing `clue-ladder` backend game key so no DB remap is needed.
-- Kept reveal/progress requests wired to `/api/attempt/progress`.
+Why this avoids repeat mismatches:
+- The label is fixed at the shared metadata layer rather than in a one-off page component.
+- Any surface already using gameRules.ts will stay aligned automatically.
+
+Apply:
+1. Replace the file in your repo with the one in this ZIP.
+2. Commit, push, and redeploy.
+3. Hard refresh or use an incognito tab to confirm the updated labels.

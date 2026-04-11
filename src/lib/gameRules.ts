@@ -166,9 +166,9 @@ export const GAME_META: Record<string, GameMeta> = {
     formatScore: (score) => `${Math.max(0, Math.floor(Number(score || 0))).toLocaleString("en-ZA")} pts`,
   },
   "clue-ladder": {
-    label: "Clue Ladder",
+    label: "Number Chain",
     higherIsBetter: true,
-    description: "Unlock clue rungs one by one, then choose the correct answer tile. Fewer clues and faster solves score better.",
+    description: "Read the sequence, work out the next number, and answer before the window closes. Earlier solves score better.",
     formatScore: (score) => `${Math.max(0, Math.floor(Number(score || 0))).toLocaleString("en-ZA")} pts`,
   },
   "safe-path-fog": {
@@ -202,6 +202,7 @@ export function compareScores(
   const meta = getGameMeta(gameKey);
   const diff = meta.higherIsBetter ? b.scoreMs - a.scoreMs : a.scoreMs - b.scoreMs;
   if (diff !== 0) return diff;
+
   const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
   const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
   return aTime - bTime;
