@@ -17,3 +17,5 @@ prisma/dev.db
 .env*.local
 
 scripts/db-targets.json
+.vercel
+.env*.local

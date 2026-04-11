@@ -1,0 +1,4 @@
+node scripts/sync-item-catalog.mjs --check
+node scripts/sync-item-catalog.mjs
+node scripts/sync-item-catalog.mjs --env .env.vercel.production --check
+node scripts/sync-item-catalog.mjs --env .env.vercel.production

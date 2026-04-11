@@ -1,8 +1,38 @@
-PwnIt competitive-run type hotfix
+PwnIt patch: catalog sync script
 
-Changed files:
-- src/lib/competitiveRuns.ts
+Changed files
+- scripts/sync-item-catalog.mjs
 
-What this fixes:
-- narrows reveal handling using current.game instead of gameKey so TypeScript can safely access progressive-mosaic/clue-ladder-only fields during Production build on Vercel.
+What it does
+- Syncs the 6 live catalog items to the current intended game mapping:
+  Fuel Voucher -> hidden-pair-memory
+  Checkers Voucher -> clue-ladder
+  Takealot Voucher -> progressive-mosaic
+  Sony WH-1000XM5 Headphones -> codebreaker
+  Nintendo Switch OLED -> spot-the-missing
+  GoPro HERO13 Black -> rapid-math-relay
+- Also syncs playCostCredits to the current pricing thresholds from src/lib/playCost.ts.
+- Matches items by title/imageUrl, so it does not depend on environment-specific item IDs.
 
+How to use
+1) Copy scripts/sync-item-catalog.mjs into your repo under scripts/
+
+2) Preview local changes only:
+   node scripts/sync-item-catalog.mjs --check
+
+3) Apply local changes:
+   node scripts/sync-item-catalog.mjs
+
+4) Preview production/live changes without overwriting your local env:
+   node scripts/sync-item-catalog.mjs --env .env.vercel.production --check
+
+5) Apply production/live changes:
+   node scripts/sync-item-catalog.mjs --env .env.vercel.production
+
+Optional flags
+- --only-games
+- --only-costs
+
+Notes
+- Without --env, the script tries .env.local first, then .env.
+- The script does not add or remove items. It only updates matched items already in the DB.
