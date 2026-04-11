@@ -1,21 +1,13 @@
-PATCH NOTES — Number Chain + wider Hidden Pair + longer Spot row
+PwnIt Number Chain build hotfix
 
-Changed files:
-- src/app/play/[itemId]/_components/GameHost.tsx
-- src/games/number-chain/NumberChainGame.tsx   (new)
-- src/lib/competitiveRuns.ts
-- src/lib/nextHiddenStateGames.ts
-- src/lib/verifiedGames.ts
-- src/games/hidden-pair-memory/HiddenPairMemoryGame.tsx
+This hotfix replaces:
+- src/games/number-chain/NumberChainGame.tsx
 
-What this patch does:
-1. Replaces the Clue Ladder frontend with Number Chain while keeping the same underlying game key ("clue-ladder"), so existing mapped items do not need DB remapping.
-2. Replaces the clue/target banks behind clue-ladder with number-sequence content for both local/progressive-run and verified/hidden-state paths.
-3. Makes Spot the Missing show a slightly longer initial row by increasing the shown token count by one in both competitive-run and verified challenge builders.
-4. Adds pair-dispersion logic to Hidden Pair Memory so matching pairs are placed further apart more often, in both local/practice and verified/server challenge builders.
+Why:
+- The previous Number Chain file mixed `shownHints`/`totalHints` with the repo's actual progressive-run public challenge shape, which is `shownClues`/`totalClues` for the `clue-ladder` game key.
+- That mismatch caused the Vercel TypeScript build failure.
 
-How to apply:
-- Unzip into the repo root, overwriting when prompted.
-- Test locally.
-- Commit and push.
-- Deploy to Vercel when ready.
+What changed:
+- Replaced the Number Chain component with a clean file that uses `shownClues` and `totalClues` consistently.
+- Kept the live/verified flow on the existing `clue-ladder` backend game key so no DB remap is needed.
+- Kept reveal/progress requests wired to `/api/attempt/progress`.

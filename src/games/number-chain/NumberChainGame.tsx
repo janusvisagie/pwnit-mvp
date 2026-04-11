@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-
 import type { GameProps } from "../types";
 import {
   buildProgressiveRunChallenge,
@@ -21,6 +20,11 @@ type PublicChallenge = {
   attemptId?: string;
 };
 
+type LocalServerChallenge = {
+  answerId: string;
+  clues: string[];
+};
+
 type RunStats = {
   levelsCleared: number;
   mistakes: number;
@@ -29,11 +33,11 @@ type RunStats = {
   status: "RUNNING" | "FAILED" | "TIMED_OUT";
 };
 
-function buildLocalChallenge(level: number) {
-  const server = buildProgressiveRunChallenge("clue-ladder", level);
+function buildLocalChallenge(level: number): { server: LocalServerChallenge; public: PublicChallenge } {
+  const server = buildProgressiveRunChallenge("clue-ladder", level) as LocalServerChallenge;
   return {
     server,
-    public: buildPublicProgressiveRunChallenge(server, 1) as PublicChallenge,
+    public: buildPublicProgressiveRunChallenge(server as any, 1) as PublicChallenge,
   };
 }
 
@@ -47,7 +51,7 @@ function formatCountdown(ms: number) {
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
-export default function ClueLadderGame({
+export default function NumberChainGame({
   onFinish,
   disabled,
   challenge: injectedChallenge,
@@ -55,7 +59,7 @@ export default function ClueLadderGame({
   const verifiedMode = Boolean(injectedChallenge?.attemptId);
   const initialLocal = useMemo(() => buildLocalChallenge(1), []);
   const [publicChallenge, setPublicChallenge] = useState<PublicChallenge>(injectedChallenge ?? initialLocal.public);
-  const [localServerChallenge, setLocalServerChallenge] = useState<any>(initialLocal.server);
+  const [localServerChallenge, setLocalServerChallenge] = useState<LocalServerChallenge>(initialLocal.server);
   const [phase, setPhase] = useState<"READY" | "RUNNING" | "DONE">("READY");
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -95,13 +99,14 @@ export default function ClueLadderGame({
     return () => window.clearInterval(timer);
   }, [phase]);
 
-  const shownHints = publicChallenge.shownHints ?? [];
-  const totalHints = publicChallenge.totalHints ?? shownClues.length;
+  const shownClues = publicChallenge.shownClues ?? [];
+  const totalClues = publicChallenge.totalClues ?? shownClues.length;
   const level = publicChallenge.level ?? 1;
   const timeLimitMs = publicChallenge.timeLimitMs ?? 12000;
   const options = publicChallenge.options ?? [];
-  const elapsedMs =
-    phase === "RUNNING" && startedAtRef.current ? Math.max(0, nowMs - startedAtRef.current) : 0;
+  const elapsedMs = phase === "RUNNING" && startedAtRef.current
+    ? Math.max(0, nowMs - startedAtRef.current)
+    : 0;
   const remainingMs = Math.max(0, timeLimitMs - elapsedMs);
 
   async function resolveLevel(selectedId: string | null, timedOut = false) {
@@ -122,10 +127,12 @@ export default function ClueLadderGame({
           }),
         });
         const data = await res.json().catch(() => null);
+
         if (!res.ok || !data?.ok) {
           setMessage(data?.error || `Could not continue (${res.status})`);
           return;
         }
+
         if (data.finished) {
           const nextStats: RunStats = {
             levelsCleared: Number(data.run?.levelsCleared || 0),
@@ -149,6 +156,7 @@ export default function ClueLadderGame({
           onFinish({ scoreMs: preview, meta: { competitiveRun: true, game: "clue-ladder" } });
           return;
         }
+
         setPublicChallenge({ ...(data.nextChallenge || publicChallenge), attemptId: injectedChallenge?.attemptId });
         setRunStats({
           levelsCleared: Number(data.run?.levelsCleared || 0),
@@ -157,7 +165,7 @@ export default function ClueLadderGame({
           totalRevealCount: Number(data.run?.totalRevealCount || 0),
           status: "RUNNING",
         });
-        setMessage(`Correct. Level ${Number(data.nextChallenge?.level || level + 1)} starts with hint 1.`);
+        setMessage(`Correct. Level ${Number(data.nextChallenge?.level || level + 1)} begins with clue 1.`);
         startedAtRef.current = Date.now();
         setNowMs(Date.now());
       } catch (error: any) {
@@ -170,6 +178,7 @@ export default function ClueLadderGame({
 
     const success = !timedOut && selectedId === localServerChallenge.answerId;
     const nextElapsed = runStats.totalElapsedMs + levelElapsedMs;
+
     if (!success) {
       const finalStats: RunStats = {
         levelsCleared: runStats.levelsCleared,
@@ -200,7 +209,7 @@ export default function ClueLadderGame({
       totalRevealCount: runStats.totalRevealCount + (next.public.shownClues?.length ?? 1),
       status: "RUNNING",
     });
-    setMessage(`Correct. Level ${level + 1} begins with hint 1 already visible.`);
+    setMessage(`Correct. Level ${level + 1} begins with clue 1 already visible.`);
     startedAtRef.current = Date.now();
     setNowMs(Date.now());
   }
@@ -225,7 +234,7 @@ export default function ClueLadderGame({
       });
     }
     setPhase("RUNNING");
-    setMessage("Hint 1 is visible. Reveal more only if you need them.");
+    setMessage("Clue 1 is visible. Reveal more only if you need them.");
     setScore(null);
     startedAtRef.current = Date.now();
     setNowMs(Date.now());
@@ -233,11 +242,12 @@ export default function ClueLadderGame({
 
   async function revealNext() {
     if (disabled || pending || phase !== "RUNNING" || shownClues.length >= totalClues) return;
+
     if (!verifiedMode) {
       const nextShown = localServerChallenge.clues.slice(0, shownClues.length + 1);
       setPublicChallenge({ ...publicChallenge, shownClues: nextShown });
       setRunStats((prev) => ({ ...prev, totalRevealCount: prev.totalRevealCount + 1 }));
-      setMessage(nextShown.length >= totalHints ? "All hints shown. Pick the next number." : "One more hint unlocked.");
+      setMessage(nextShown.length >= totalClues ? "All clues shown. Pick the next number." : "One more clue unlocked.");
       return;
     }
 
@@ -249,80 +259,70 @@ export default function ClueLadderGame({
         body: JSON.stringify({ attemptId: injectedChallenge?.attemptId, action: "reveal" }),
       });
       const data = await res.json().catch(() => null);
+
       if (!res.ok || !data?.ok) {
         setMessage(data?.error || `Could not continue (${res.status})`);
         return;
       }
-      setPublicChallenge((prev) => ({ ...prev, shownClues: data.shownHints }));
+
+      setPublicChallenge((prev) => ({ ...prev, shownClues: data.shownClues ?? [] }));
       setRunStats((prev) => ({ ...prev, totalRevealCount: prev.totalRevealCount + 1 }));
-      setMessage(data.exhausted ? "All hints shown. Pick the next number." : "One more hint unlocked.");
+      setMessage(data.exhausted ? "All clues shown. Pick the next number." : "One more clue unlocked.");
     } catch (error: any) {
-      setMessage(error?.message || "Could not reveal another hint.");
+      setMessage(error?.message || "Could not reveal another clue.");
     } finally {
       setPending(false);
     }
   }
 
   return (
-    <div className="mx-auto max-w-xl rounded-3xl border border-slate-200 bg-white p-3 shadow-sm sm:p-3.5">
-      <div className="flex flex-wrap items-center justify-between gap-2">
+    <section className="rounded-3xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-4 shadow-sm sm:p-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-            Number Chain
+          <h2 className="text-lg font-black tracking-tight text-slate-900">Number Chain</h2>
+          <p className="mt-1 text-sm text-slate-600">Spot the sequence, then choose the next number before time runs out.</p>
+        </div>
+        <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
+          <div className="rounded-2xl bg-white px-3 py-2 shadow-sm ring-1 ring-slate-100">
+            <div className="text-slate-500">Clues</div>
+            <div className="mt-1 font-bold text-slate-900">{shownClues.length}/{totalClues}</div>
           </div>
-          <div className="mt-1 text-sm font-black text-slate-950">Spot the pattern, then choose the next number fast.</div>
-        </div>
-        <div className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-700">
-          Hints {shownClues.length}/{totalClues}
-        </div>
-      </div>
-
-      <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] sm:grid-cols-4">
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2">
-          <div className="uppercase tracking-[0.14em] text-slate-500">Level</div>
-          <div className="mt-0.5 text-base font-black text-slate-900">L{level}</div>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2">
-          <div className="uppercase tracking-[0.14em] text-slate-500">Cleared</div>
-          <div className="mt-0.5 text-base font-black text-slate-900">{runStats.levelsCleared}</div>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2">
-          <div className="uppercase tracking-[0.14em] text-slate-500">Time left</div>
-          <div className="mt-0.5 text-base font-black text-slate-900">{formatCountdown(remainingMs)}</div>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2">
-          <div className="uppercase tracking-[0.14em] text-slate-500">Scoring</div>
-          <div className="mt-0.5 font-bold text-slate-900">Less help, better finish</div>
+          <div className="rounded-2xl bg-white px-3 py-2 shadow-sm ring-1 ring-slate-100">
+            <div className="text-slate-500">Level</div>
+            <div className="mt-1 font-bold text-slate-900">L{level}</div>
+          </div>
+          <div className="rounded-2xl bg-white px-3 py-2 shadow-sm ring-1 ring-slate-100">
+            <div className="text-slate-500">Cleared</div>
+            <div className="mt-1 font-bold text-slate-900">{runStats.levelsCleared}</div>
+          </div>
+          <div className="rounded-2xl bg-white px-3 py-2 shadow-sm ring-1 ring-slate-100">
+            <div className="text-slate-500">Time left</div>
+            <div className="mt-1 font-bold text-slate-900">{formatCountdown(remainingMs)}</div>
+          </div>
         </div>
       </div>
 
-      <div className="mt-3 grid gap-2">
-        {Array.from({ length: totalHints }, (_, index) => {
-          const clue = shownClues[index];
-          return (
-            <div
-              key={index}
-              className={`rounded-2xl border px-3 py-2.5 text-sm ${
-                clue
-                  ? "border-slate-200 bg-white text-slate-800 shadow-sm"
-                  : "border-dashed border-slate-200 bg-slate-50 text-slate-400"
-              }`}
-            >
-              <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-                Hint {index + 1}
+      <div className="mt-4 rounded-3xl bg-slate-900 p-4 text-white">
+        <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">Sequence clues</div>
+        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          {Array.from({ length: totalClues }, (_, index) => {
+            const clue = shownClues[index];
+            return (
+              <div key={index} className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
+                <div className="text-[11px] uppercase tracking-[0.16em] text-slate-400">Clue {index + 1}</div>
+                <div className="mt-1 text-base font-bold text-white">{clue ? clue : `Locked clue ${index + 1}`}</div>
               </div>
-              <div className="mt-1 leading-5">{clue ? clue : `Locked hint ${index + 1}`}</div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
 
-      <div className="mt-3 flex flex-wrap gap-2">
+      <div className="mt-4 flex flex-wrap gap-2">
         <button
           type="button"
           onClick={start}
-          disabled={disabled || pending || phase === "RUNNING"}
-          className="rounded-2xl border border-slate-300 bg-white px-3.5 py-2 text-sm font-bold text-slate-900 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+          disabled={disabled || pending}
+          className="rounded-2xl bg-emerald-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-50"
         >
           {phase === "READY" ? "Start run" : "Replay"}
         </button>
@@ -332,32 +332,27 @@ export default function ClueLadderGame({
           disabled={disabled || pending || phase !== "RUNNING" || shownClues.length >= totalClues}
           className="rounded-2xl bg-slate-900 px-3.5 py-2 text-sm font-bold text-white disabled:opacity-50"
         >
-          {pending ? "Working..." : shownClues.length >= totalHints ? "All hints shown" : "Reveal next hint"}
+          {pending ? "Working..." : shownClues.length >= totalClues ? "All clues shown" : "Reveal next clue"}
         </button>
       </div>
 
-      <div className="mt-3">
-        <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-          Answer options
-        </div>
-        <div className="mt-2 grid gap-2 sm:grid-cols-2">
-          {options.map((option) => (
+      <div className="mt-4">
+        <div className="mb-2 text-sm font-semibold text-slate-700">Answer options</div>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {options.map((option, index) => (
             <button
               key={option.id}
               type="button"
               onClick={() => void resolveLevel(option.id, false)}
               disabled={disabled || pending || phase !== "RUNNING"}
+              data-autofocus={index === 0 ? "true" : undefined}
               className="rounded-2xl border border-slate-200 bg-white px-3 py-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 disabled:opacity-50"
             >
-              <div className="flex items-center gap-2.5">
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-100 text-xl text-amber-900 shadow-sm">
-                  {option.emoji}
-                </div>
-                <div className="min-w-0">
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-                    Choose next number
-                  </div>
-                  <div className="mt-0.5 truncate text-sm font-black text-slate-950">{option.label}</div>
+              <div className="flex items-center gap-3">
+                <div className="text-xl leading-none">{option.emoji}</div>
+                <div>
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Choose next number</div>
+                  <div className="mt-1 text-base font-bold text-slate-900">{option.label}</div>
                 </div>
               </div>
             </button>
@@ -366,15 +361,16 @@ export default function ClueLadderGame({
       </div>
 
       {message ? (
-        <div className="mt-3 rounded-2xl border border-indigo-200 bg-indigo-50 px-3 py-2.5 text-sm text-indigo-900">
+        <div className="mt-4 rounded-2xl bg-amber-50 px-3 py-2 text-sm font-medium text-amber-900 ring-1 ring-amber-200">
           {message}
         </div>
       ) : null}
+
       {score != null ? (
-        <div className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm font-black text-emerald-700">
-          Run score {score.toLocaleString("en-ZA")}
+        <div className="mt-3 text-sm font-semibold text-slate-700">
+          Run score <span className="text-slate-900">{score.toLocaleString("en-ZA")}</span>
         </div>
       ) : null}
-    </div>
+    </section>
   );
 }
