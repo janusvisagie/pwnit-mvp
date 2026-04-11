@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import TurnstileWidget from "@/components/TurnstileWidget";
 import AlphabetSprintGame from "@/games/alphabet-sprint/AlphabetSprintGame";
 import BalanceGridGame from "@/games/balance-grid/BalanceGridGame";
-import ClueLadderGame from "@/games/clue-ladder/ClueLadderGame";
+import NumberChainGame from "@/games/number-chain/NumberChainGame";
 import CodebreakerGame from "@/games/codebreaker/CodebreakerGame";
 import FlashCountGame from "@/games/flash-count/FlashCountGame";
 import HiddenPairMemoryGame from "@/games/hidden-pair-memory/HiddenPairMemoryGame";
@@ -190,7 +190,7 @@ const GAME_REGISTRY: Record<GameKey, RegistryEntry> = {
     title: "Progressive Mosaic",
     Component: ProgressiveMosaicGame as ComponentType<GameComponentProps>,
   },
-  "clue-ladder": { title: "Clue Ladder", Component: ClueLadderGame as ComponentType<GameComponentProps> },
+  "clue-ladder": { title: "Number Chain", Component: NumberChainGame as ComponentType<GameComponentProps> },
   "safe-path-fog": { title: "Safe Path Fog", Component: SafePathFogGame as ComponentType<GameComponentProps> },
   "signal-hunt": { title: "Signal Hunt", Component: SignalHuntGame as ComponentType<GameComponentProps> },
 };

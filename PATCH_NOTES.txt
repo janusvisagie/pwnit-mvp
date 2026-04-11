@@ -1,38 +1,21 @@
-PwnIt patch: catalog sync script
+PATCH NOTES — Number Chain + wider Hidden Pair + longer Spot row
 
-Changed files
-- scripts/sync-item-catalog.mjs
+Changed files:
+- src/app/play/[itemId]/_components/GameHost.tsx
+- src/games/number-chain/NumberChainGame.tsx   (new)
+- src/lib/competitiveRuns.ts
+- src/lib/nextHiddenStateGames.ts
+- src/lib/verifiedGames.ts
+- src/games/hidden-pair-memory/HiddenPairMemoryGame.tsx
 
-What it does
-- Syncs the 6 live catalog items to the current intended game mapping:
-  Fuel Voucher -> hidden-pair-memory
-  Checkers Voucher -> clue-ladder
-  Takealot Voucher -> progressive-mosaic
-  Sony WH-1000XM5 Headphones -> codebreaker
-  Nintendo Switch OLED -> spot-the-missing
-  GoPro HERO13 Black -> rapid-math-relay
-- Also syncs playCostCredits to the current pricing thresholds from src/lib/playCost.ts.
-- Matches items by title/imageUrl, so it does not depend on environment-specific item IDs.
+What this patch does:
+1. Replaces the Clue Ladder frontend with Number Chain while keeping the same underlying game key ("clue-ladder"), so existing mapped items do not need DB remapping.
+2. Replaces the clue/target banks behind clue-ladder with number-sequence content for both local/progressive-run and verified/hidden-state paths.
+3. Makes Spot the Missing show a slightly longer initial row by increasing the shown token count by one in both competitive-run and verified challenge builders.
+4. Adds pair-dispersion logic to Hidden Pair Memory so matching pairs are placed further apart more often, in both local/practice and verified/server challenge builders.
 
-How to use
-1) Copy scripts/sync-item-catalog.mjs into your repo under scripts/
-
-2) Preview local changes only:
-   node scripts/sync-item-catalog.mjs --check
-
-3) Apply local changes:
-   node scripts/sync-item-catalog.mjs
-
-4) Preview production/live changes without overwriting your local env:
-   node scripts/sync-item-catalog.mjs --env .env.vercel.production --check
-
-5) Apply production/live changes:
-   node scripts/sync-item-catalog.mjs --env .env.vercel.production
-
-Optional flags
-- --only-games
-- --only-costs
-
-Notes
-- Without --env, the script tries .env.local first, then .env.
-- The script does not add or remove items. It only updates matched items already in the DB.
+How to apply:
+- Unzip into the repo root, overwriting when prompted.
+- Test locally.
+- Commit and push.
+- Deploy to Vercel when ready.

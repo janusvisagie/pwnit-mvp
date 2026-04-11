@@ -204,6 +204,54 @@ function shuffle<T>(values: readonly T[]): T[] {
   return copy;
 }
 
+function gridDistance(left: number, right: number, columns = 4) {
+  const leftRow = Math.floor(left / columns);
+  const leftCol = left % columns;
+  const rightRow = Math.floor(right / columns);
+  const rightCol = right % columns;
+  return Math.abs(leftRow - rightRow) + Math.abs(leftCol - rightCol);
+}
+
+function buildDispersedMemoryDeck(symbols: readonly string[], columns = 4) {
+  const boardSize = symbols.length * 2;
+  const deck = Array.from({ length: boardSize }, () => "");
+  const available = Array.from({ length: boardSize }, (_, index) => index);
+
+  for (const symbol of shuffle(symbols)) {
+    let placed = false;
+    const firstCandidates = shuffle(available);
+
+    for (const first of firstCandidates) {
+      const partnerCandidates = shuffle(
+        available.filter(
+          (candidate) =>
+            candidate !== first && gridDistance(first, candidate, columns) >= 3 && Math.abs(candidate - first) >= 3,
+        ),
+      );
+      const partner = partnerCandidates[0];
+      if (partner == null) continue;
+
+      deck[first] = symbol;
+      deck[partner] = symbol;
+      available.splice(available.indexOf(first), 1);
+      available.splice(available.indexOf(partner), 1);
+      placed = true;
+      break;
+    }
+
+    if (!placed) {
+      const [first, partner] = shuffle(available).slice(0, 2);
+      if (first == null || partner == null) break;
+      deck[first] = symbol;
+      deck[partner] = symbol;
+      available.splice(available.indexOf(first), 1);
+      available.splice(available.indexOf(partner), 1);
+    }
+  }
+
+  return deck;
+}
+
 function randomChoice<T>(values: readonly T[]): T {
   return values[Math.floor(Math.random() * values.length)]!;
 }
@@ -291,7 +339,7 @@ function buildCodebreakerChallenge(): CodebreakerChallenge {
 }
 
 function buildHiddenPairMemoryChallenge(): HiddenPairMemoryChallenge {
-  const deck = shuffle([...MEMORY_SYMBOLS, ...MEMORY_SYMBOLS]);
+  const deck = buildDispersedMemoryDeck(MEMORY_SYMBOLS);
   return {
     game: "hidden-pair-memory",
     deck,
@@ -414,7 +462,7 @@ function buildPatternMatchChallenge(): PatternMatchChallenge {
 }
 
 function buildSpotTheMissingChallenge(): SpotTheMissingChallenge {
-  const shown = shuffle(PWNIT_WORD_BANK).slice(0, 6) as string[];
+  const shown = shuffle(PWNIT_WORD_BANK).slice(0, 7) as string[];
   const missingIndex = Math.floor(Math.random() * shown.length);
   const missing = shown[missingIndex]!;
   const remaining = shown.filter((_, index) => index !== missingIndex);

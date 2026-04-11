@@ -38,11 +38,59 @@ function shuffle<T>(values: readonly T[]) {
   return copy;
 }
 
+function gridDistance(left: number, right: number, columns = 4) {
+  const leftRow = Math.floor(left / columns);
+  const leftCol = left % columns;
+  const rightRow = Math.floor(right / columns);
+  const rightCol = right % columns;
+  return Math.abs(leftRow - rightRow) + Math.abs(leftCol - rightCol);
+}
+
+function buildDispersedDeck(symbols: readonly string[], columns = 4) {
+  const boardSize = symbols.length * 2;
+  const deck = Array.from({ length: boardSize }, () => "");
+  const available = Array.from({ length: boardSize }, (_, index) => index);
+
+  for (const symbol of shuffle(symbols)) {
+    let placed = false;
+    const firstCandidates = shuffle(available);
+
+    for (const first of firstCandidates) {
+      const partnerCandidates = shuffle(
+        available.filter(
+          (candidate) =>
+            candidate !== first && gridDistance(first, candidate, columns) >= 3 && Math.abs(candidate - first) >= 3,
+        ),
+      );
+      const partner = partnerCandidates[0];
+      if (partner == null) continue;
+
+      deck[first] = symbol;
+      deck[partner] = symbol;
+      available.splice(available.indexOf(first), 1);
+      available.splice(available.indexOf(partner), 1);
+      placed = true;
+      break;
+    }
+
+    if (!placed) {
+      const [first, partner] = shuffle(available).slice(0, 2);
+      if (first == null || partner == null) break;
+      deck[first] = symbol;
+      deck[partner] = symbol;
+      available.splice(available.indexOf(first), 1);
+      available.splice(available.indexOf(partner), 1);
+    }
+  }
+
+  return deck;
+}
+
 function buildChallenge(): Challenge {
   const pairCount = DEFAULT_PAIR_COUNT;
   return {
     game: "hidden-pair-memory",
-    deck: shuffle([...SYMBOL_BANK.slice(0, pairCount), ...SYMBOL_BANK.slice(0, pairCount)]),
+    deck: buildDispersedDeck(SYMBOL_BANK.slice(0, pairCount)),
     pairCount,
     maxTurns: DEFAULT_MAX_TURNS,
   };
