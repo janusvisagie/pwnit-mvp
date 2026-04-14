@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 
 type ReferralEntry = {
   id: string;
@@ -34,6 +34,8 @@ export function ReferralPanel({
   creditedCount,
   pendingCount,
   totalEarnedCredits,
+  activationSupportCredits,
+  bonusCreditsPerReferral,
 }: {
   isGuest: boolean;
   myCode: string | null;
@@ -44,6 +46,8 @@ export function ReferralPanel({
   creditedCount: number;
   pendingCount: number;
   totalEarnedCredits: number;
+  activationSupportCredits: number;
+  bonusCreditsPerReferral: number;
 }) {
   const [manualCode, setManualCode] = useState(incomingCode ?? "");
   const [message, setMessage] = useState<string | null>(null);
@@ -59,13 +63,13 @@ export function ReferralPanel({
 
     try {
       await navigator.clipboard.writeText(shareUrl);
-      setMessage("Referral link copied.");
+      setMessage("Invite link copied.");
     } catch {
       setMessage("Could not copy automatically. You can still copy the link manually below.");
     }
   }
 
-  async function applyCode(event: React.FormEvent) {
+  async function applyCode(event: FormEvent) {
     event.preventDefault();
     setBusy(true);
     setMessage(null);
@@ -79,12 +83,12 @@ export function ReferralPanel({
 
       const data = await response.json().catch(() => null);
       if (!response.ok || !data?.ok) {
-        setMessage(data?.error || "Could not save that referral code.");
+        setMessage(data?.error || "Could not save that invite code.");
         return;
       }
 
       setManualCode(String(data.code || manualCode).toUpperCase());
-      setMessage("Referral code saved. Once you complete your first real play, the bonus can be credited.");
+      setMessage("Invite code saved. Finish your first real play to qualify it.");
     } finally {
       setBusy(false);
     }
@@ -92,24 +96,30 @@ export function ReferralPanel({
 
   return (
     <div className="space-y-6">
-      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="text-xl font-bold text-slate-900">Referral rewards</h2>
-        <p className="mt-2 text-sm leading-6 text-slate-600">
-          Share your code. When a new player arrives through your link and completes their first real play,
-          you receive <span className="font-semibold">20 free credits</span> and they receive <span className="font-semibold">10 free credits</span>.
-        </p>
+      <section className="rounded-[30px] border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+        <div className="max-w-3xl">
+          <div className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-600">Invite and earn</div>
+          <h2 className="mt-2 text-2xl font-black text-slate-950">Your referral hub</h2>
+          <p className="mt-3 text-sm leading-6 text-slate-600 sm:text-base">
+            Each qualified referral unlocks PwnIt&apos;s 50/50 growth split:
+            <span className="font-semibold text-slate-900"> {activationSupportCredits} hidden activation credits</span>
+            {" "}for the first prize your friend starts playing, and
+            <span className="font-semibold text-slate-900"> {bonusCreditsPerReferral} bonus credits</span>
+            {" "}for you.
+          </p>
+        </div>
 
         {isGuest ? (
-          <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-            Sign in first to get your own referral link. You can still enter a friend&apos;s referral code below.
+          <div className="mt-5 rounded-3xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm leading-6 text-amber-950">
+            Sign in first to unlock your own invite link. You can still save a friend&apos;s invite code below.
           </div>
         ) : (
-          <div className="mt-5 grid gap-4 lg:grid-cols-[1.2fr,0.8fr]">
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <div className="mt-5 grid gap-4 lg:grid-cols-[1.15fr,0.85fr]">
+            <div className="rounded-[28px] border border-slate-200 bg-slate-50 p-4 sm:p-5">
               <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Your code</div>
-              <div className="mt-2 text-2xl font-black tracking-wide text-slate-900">{myCode ?? "—"}</div>
-              <div className="mt-3 rounded-2xl bg-white px-4 py-3 text-xs text-slate-600 break-all">
-                {shareUrl ?? "Referral link will appear here."}
+              <div className="mt-2 text-3xl font-black tracking-[0.14em] text-slate-950">{myCode ?? "—"}</div>
+              <div className="mt-4 rounded-3xl bg-white px-4 py-3 text-xs leading-5 text-slate-600 break-all ring-1 ring-slate-200">
+                {shareUrl ?? "Invite link will appear here."}
               </div>
               <div className="mt-4 flex flex-wrap gap-3">
                 <button
@@ -117,40 +127,40 @@ export function ReferralPanel({
                   onClick={copyLink}
                   className="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
                 >
-                  Copy link
+                  Copy invite link
                 </button>
               </div>
             </div>
 
             <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
-              <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Credited</div>
-                <div className="mt-2 text-2xl font-black text-slate-900">{creditedCount}</div>
+              <div className="rounded-3xl border border-slate-200 bg-white p-4">
+                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Qualified</div>
+                <div className="mt-2 text-2xl font-black text-slate-950">{creditedCount}</div>
               </div>
-              <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Pending</div>
-                <div className="mt-2 text-2xl font-black text-slate-900">{pendingCount}</div>
+              <div className="rounded-3xl border border-slate-200 bg-white p-4">
+                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Pending</div>
+                <div className="mt-2 text-2xl font-black text-slate-950">{pendingCount}</div>
               </div>
-              <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Credits earned</div>
-                <div className="mt-2 text-2xl font-black text-slate-900">{totalEarnedCredits}</div>
+              <div className="rounded-3xl border border-slate-200 bg-white p-4">
+                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Bonus credits</div>
+                <div className="mt-2 text-2xl font-black text-slate-950">{totalEarnedCredits}</div>
               </div>
             </div>
           </div>
         )}
       </section>
 
-      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h3 className="text-lg font-bold text-slate-900">Use a friend&apos;s referral code</h3>
-        <p className="mt-2 text-sm leading-6 text-slate-600">
-          Use this if somebody sent you a code instead of a direct link.
+      <section className="rounded-[30px] border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+        <h3 className="text-lg font-black text-slate-950">Use a friend&apos;s invite code</h3>
+        <p className="mt-2 text-sm leading-6 text-slate-600 sm:text-base">
+          Save a code here if a friend sent you one directly instead of a full invite link.
         </p>
 
         <form onSubmit={applyCode} className="mt-4 flex flex-col gap-3 sm:flex-row">
           <input
             value={manualCode}
             onChange={(event) => setManualCode(event.target.value.toUpperCase())}
-            placeholder="Enter referral code"
+            placeholder="Enter invite code"
             className="min-h-11 flex-1 rounded-full border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-500"
           />
           <button
@@ -163,18 +173,27 @@ export function ReferralPanel({
         </form>
 
         {activeReferral ? (
-          <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
-            Active referral: <span className="font-semibold">{activeReferral.code}</span>
-            {activeReferrerLabel ? <> from <span className="font-semibold">{activeReferrerLabel}</span></> : null}. Status: {activeReferral.status.toLowerCase()}.
+          <div className="mt-4 rounded-3xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm leading-6 text-emerald-950">
+            Active invite: <span className="font-semibold">{activeReferral.code}</span>
+            {activeReferrerLabel ? (
+              <>
+                {" "}from <span className="font-semibold">{activeReferrerLabel}</span>
+              </>
+            ) : null}
+            . Status: {activeReferral.status === "CREDITED" ? "Qualified" : "Pending first real play"}.
           </div>
         ) : null}
 
-        {message ? <div className="mt-4 rounded-2xl bg-slate-100 px-4 py-3 text-sm text-slate-700">{message}</div> : null}
+        {message ? (
+          <div className="mt-4 rounded-3xl bg-slate-100 px-4 py-3 text-sm text-slate-700">
+            {message}
+          </div>
+        ) : null}
       </section>
 
       {!isGuest && referrals.length ? (
-        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h3 className="text-lg font-bold text-slate-900">Recent referrals</h3>
+        <section className="rounded-[30px] border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+          <h3 className="text-lg font-black text-slate-950">Recent referrals</h3>
           <div className="mt-4 overflow-x-auto">
             <table className="min-w-full text-left text-sm text-slate-700">
               <thead>
@@ -191,7 +210,9 @@ export function ReferralPanel({
                     <td className="py-3 pr-4">
                       {entry.referred?.alias || entry.referred?.email || "Pending player"}
                     </td>
-                    <td className="py-3 pr-4">{entry.status === "CREDITED" ? "Credited" : "Pending first real play"}</td>
+                    <td className="py-3 pr-4">
+                      {entry.status === "CREDITED" ? "Qualified" : "Pending first real play"}
+                    </td>
                     <td className="py-3 pr-4">+{entry.referrerRewardCredits}</td>
                     <td className="py-3">{new Date(entry.createdAt).toLocaleDateString()}</td>
                   </tr>

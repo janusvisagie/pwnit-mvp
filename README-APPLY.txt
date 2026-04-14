@@ -1,26 +1,23 @@
-Patch contents
-- src/components/ItemCard.tsx
-- src/games/progressive-mosaic/ProgressiveMosaicGame.tsx
-- src/games/clue-ladder/ClueLadderGame.tsx
-- src/games/spot-the-missing/SpotTheMissingGame.tsx
-- src/games/rapid-math-relay/RapidMathRelayGame.tsx
-- src/lib/rateLimit.ts
-- apply-item-page-image-fix.mjs
+PwnIt patch - activation/referral UX refresh
 
-Apply steps
-1. Unzip into your repo root and overwrite the included files.
-2. Run:
-   node apply-item-page-image-fix.mjs
-3. Stop dev if running.
-4. Delete .next
-5. Start again:
-   npm run dev
-6. Hard refresh the browser.
+What is included
+- Larger, clearer homepage prize cards
+- Item page activation copy refresh
+- New invite modal on the item page
+- Redesigned referrals/rules screen
+- Monthly referral leaderboard
+- Referral growth split for NEW referrals:
+  - +5 hidden activation credits to the first prize the referred player starts playing
+  - +5 bonus credits to the referrer
+
+Apply
+1. Download this ZIP.
+2. Open your local pwnit-mvp folder.
+3. Extract the ZIP into the repo root.
+4. Allow Windows to replace the existing files.
+5. Run your normal dev/build flow.
 
 Notes
-- Home-page images are switched back to full-image containment.
-- Item-page image is enlarged via the small patch script.
-- Progressive Mosaic and Clue Ladder now auto-reveal the first clue when a run starts.
-- Practice mode for Progressive Mosaic, Clue Ladder, Spot the Missing, and Rapid Math Relay now continues until the user makes a mistake or times out.
-- Rapid Math Relay now enforces timer expiry.
-- The Prisma rate limiter no longer uses a transaction wrapper.
+- No Prisma/schema migration is required for this patch.
+- Existing historical referrals remain as they were.
+- The new 50/50 split applies to new referral qualifications after this patch is deployed.
