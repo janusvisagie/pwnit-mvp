@@ -4,18 +4,39 @@ import { AutoRefreshActivated } from "@/components/AutoRefreshActivated";
 import { ItemCard } from "@/components/ItemCard";
 import { WelcomeModal } from "@/components/WelcomeModal";
 import { prisma } from "@/lib/db";
-import { resolvePlayCostCredits } from "@/lib/playCost";
+import { activationProgress, resolvePlayCostCredits } from "@/lib/playCost";
 import { ensureCurrentRound, publicProgress, ROUND_STATES, syncHomeItems } from "@/lib/rounds";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-export default async function HomePage() {
-  noStore();
+type CardModel = {
+  id: string;
+  title: string;
+  prizeValueZAR: number;
+  state: string;
+  imageUrl: string | null;
+  closesAt: string | null;
+  playCostCredits: number;
+  gameKey: string | null;
+  activationPct: number;
+  playerActivityPct: number;
+  verifiedSubscriberPct: number;
+  activationCurrent: number;
+  activationTarget: number;
+  playerActivityCredits: number;
+  verifiedSubscriberCredits: number;
+};
 
+async function loadRoundBasedCards(): Promise<CardModel[]> {
   await syncHomeItems();
-  const items = await prisma.item.findMany({ orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }], take: 6 });
-  const cards = await Promise.all(
+
+  const items = await prisma.item.findMany({
+    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+    take: 6,
+  });
+
+  return Promise.all(
     items.map(async (item) => {
       const round = await ensureCurrentRound(item.id);
       const progress = round
@@ -44,11 +65,85 @@ export default async function HomePage() {
         activationTarget: Number(progress.target ?? 1),
         playerActivityCredits: Number(progress.playerCredits ?? 0),
         verifiedSubscriberCredits: Number(progress.verifiedSubscriberCredits ?? 0),
-      };
+      } satisfies CardModel;
     }),
   );
+}
 
-  const anyActivated = cards.some((item) => item.state === ROUND_STATES.ACTIVATED);
+async function loadLegacyCompatibleCards(): Promise<CardModel[]> {
+  const items = await prisma.item.findMany({
+    select: {
+      id: true,
+      title: true,
+      prizeValueZAR: true,
+      state: true,
+      imageUrl: true,
+      closesAt: true,
+      createdAt: true,
+      gameKey: true,
+    },
+    orderBy: [{ createdAt: "asc" }],
+    take: 6,
+  });
+
+  const usage = await prisma.attempt.groupBy({
+    by: ["itemId"],
+    _sum: {
+      paidUsed: true,
+      freeUsed: true,
+    },
+  });
+
+  const usageMap = new Map(
+    usage.map((row) => [
+      row.itemId,
+      {
+        paid: Number(row._sum.paidUsed ?? 0),
+        free: Number(row._sum.freeUsed ?? 0),
+      },
+    ]),
+  );
+
+  return items.map((item) => {
+    const playCostCredits = resolvePlayCostCredits({ prizeValueZAR: item.prizeValueZAR });
+    const target = playCostCredits * 100;
+    const usageRow = usageMap.get(item.id) ?? { paid: 0, free: 0 };
+    const current = usageRow.paid + usageRow.free;
+    const progress = activationProgress(current, target);
+
+    return {
+      id: item.id,
+      title: item.title,
+      prizeValueZAR: item.prizeValueZAR,
+      state: String(item.state || "OPEN"),
+      imageUrl: item.imageUrl,
+      closesAt: item.closesAt ? new Date(item.closesAt).toISOString() : null,
+      playCostCredits,
+      gameKey: item.gameKey,
+      activationPct: Number(progress.pct ?? 0),
+      playerActivityPct: Number(progress.pct ?? 0),
+      verifiedSubscriberPct: 0,
+      activationCurrent: current,
+      activationTarget: target,
+      playerActivityCredits: current,
+      verifiedSubscriberCredits: 0,
+    } satisfies CardModel;
+  });
+}
+
+export default async function HomePage() {
+  noStore();
+
+  let cards: CardModel[] = [];
+
+  try {
+    cards = await loadRoundBasedCards();
+  } catch (error) {
+    console.error("HomePage round-based load failed; falling back to legacy-compatible cards.", error);
+    cards = await loadLegacyCompatibleCards();
+  }
+
+  const anyActivated = cards.some((item) => item.state === ROUND_STATES.ACTIVATED || item.state === "ACTIVATED");
 
   return (
     <>
