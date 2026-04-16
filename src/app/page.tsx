@@ -52,7 +52,7 @@ export default async function HomePage() {
 
   return (
     <>
-      {anyActivated ? <AutoRefreshActivated /> : null}
+      <AutoRefreshActivated enabled={anyActivated} />
       <WelcomeModal />
       <main className="mx-auto max-w-7xl px-4 pb-6 pt-4 sm:px-5 lg:px-6">
         <div className="mb-5 rounded-[30px] border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
