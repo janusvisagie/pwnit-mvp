@@ -2,6 +2,8 @@
 export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
+
+import { buildReferralDiscountQuote, getAvailableReferralDiscountZAR } from "@/lib/referrals";
 import { prisma } from "@/lib/db";
 import { getOrCreateDemoUser } from "@/lib/auth";
 import { buyPriceAfterSpend, tierLabel } from "@/lib/pricing";
@@ -11,7 +13,9 @@ export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => ({}));
     const itemId = String(body?.itemId || "").trim();
-    if (!itemId) return NextResponse.json({ ok: false, error: "Missing itemId" }, { status: 400 });
+    if (!itemId) {
+      return NextResponse.json({ ok: false, error: "Missing itemId" }, { status: 400 });
+    }
 
     const me = await getOrCreateDemoUser();
     await syncRoundLifecycle(itemId);
@@ -25,8 +29,15 @@ export async function POST(req: Request) {
     const iWon = await prisma.winner.findFirst({ where: { roundId: round.id, userId: me.id, rank: 1, rewardType: "ITEM" } });
     if (iWon) return NextResponse.json({ ok: false, error: "You won this prize — no need to buy." }, { status: 400 });
 
-    const agg = await prisma.attempt.aggregate({ where: { itemId, roundId: round.id, userId: me.id }, _sum: { paidUsed: true } });
-    const fresh = await prisma.user.findUnique({ where: { id: me.id }, select: { paidCreditsBalance: true } });
+    const agg = await prisma.attempt.aggregate({
+      where: { itemId, roundId: round.id, userId: me.id },
+      _sum: { paidUsed: true },
+    });
+
+    const fresh = await prisma.user.findUnique({
+      where: { id: me.id },
+      select: { paidCreditsBalance: true, referralDiscountBalanceZAR: true },
+    });
 
     const price = buyPriceAfterSpend({
       prizeValueZAR: item.prizeValueZAR,
@@ -35,12 +46,20 @@ export async function POST(req: Request) {
       walletCredits: Number(fresh?.paidCreditsBalance ?? 0),
     });
 
+    const referralQuote = buildReferralDiscountQuote({
+      basePriceCredits: price.newPriceCredits,
+      availableReferralDiscountZAR: Math.max(0, Number(fresh?.referralDiscountBalanceZAR ?? 0)),
+    });
+
     return NextResponse.json({
       ok: true,
       tier: tierLabel(price.tierKey),
       priceCredits: price.priceCredits,
       playDiscountCredits: price.playDiscountCredits,
       newPriceCredits: price.newPriceCredits,
+      referralDiscountAvailableZAR: await getAvailableReferralDiscountZAR(me.id),
+      referralDiscountAppliedZAR: referralQuote.referralDiscountAppliedZAR,
+      finalPayCredits: referralQuote.amountDueCredits,
       walletAppliedCredits: price.walletAppliedCredits,
       topUpCredits: price.topUpCredits,
     });

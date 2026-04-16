@@ -20,6 +20,8 @@ model User {
   tier                  Int                    @default(1)
   freeCreditsBalance    Int                    @default(0)
   paidCreditsBalance    Int                    @default(0)
+  referralDiscountBalanceZAR Int               @default(0)
+  referralRewardPreference String              @default("CREDITS")
   lastDailyCreditsDayKey String?
   emailVerifiedAt       DateTime?
   attempts              Attempt[]
@@ -43,7 +45,7 @@ model Item {
   landedCostZAR         Int             @default(0)
   allowedSubsidyCredits Int             @default(0)
   playCostCredits       Int             @default(5)
-  fundingWindowHours    Int             @default(48)
+  fundingWindowHours    Int             @default(168)
   purchaseGraceHours    Int             @default(24)
   sortOrder             Int             @default(0)
   isHero                Boolean         @default(false)
@@ -51,8 +53,8 @@ model Item {
   shortDesc             String?
   productUrl            String?
   state                 String          @default("OPEN")
-  activationGoalEntries Int             @default(3)
-  countdownMinutes      Int             @default(120)
+  activationGoalEntries Int             @default(100)
+  countdownMinutes      Int             @default(30)
   opensAt               DateTime?
   closesAt              DateTime?
   subscriberOnly        Boolean         @default(false)
@@ -79,6 +81,7 @@ model ItemRound {
   purchaseGraceEndsAt     DateTime?
   activationTargetCredits Int              @default(0)
   paidCreditsCollected    Int              @default(0)
+  verifiedSubscriberCreditsCollected Int      @default(0)
   freeCreditsCollected    Int              @default(0)
   attemptCount            Int              @default(0)
   winnerUserId            String?
@@ -240,11 +243,13 @@ model Referral {
   referrerUserId        String
   referredUserId        String?
   referredBucketKey     String?
+  sharedItemId          String?
   status                String    @default("PENDING")
   qualifiedAt           DateTime?
   rewardedAt            DateTime?
-  referrerRewardCredits Int       @default(20)
-  referredRewardCredits Int       @default(10)
+  referrerRewardCredits Int       @default(10)
+  referrerRewardType    String    @default("CREDITS")
+  referredRewardCredits Int       @default(0)
   referrer              User      @relation("ReferralReferrer", fields: [referrerUserId], references: [id])
   referred              User?     @relation("ReferralReferred", fields: [referredUserId], references: [id])
 
@@ -252,6 +257,7 @@ model Referral {
   @@index([code])
   @@index([referrerUserId, createdAt])
   @@index([referredUserId, createdAt])
+  @@index([sharedItemId, createdAt])
   @@index([status, createdAt])
 }
 

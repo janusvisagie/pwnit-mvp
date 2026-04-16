@@ -8,22 +8,23 @@ export function InviteFriendsModal({
   isGuest,
   referralCode,
   shareUrl,
-  activationSupportCredits,
-  bonusCredits,
+  verifiedSubscriberCredits,
+  rewardValue,
+  rewardPreference,
 }: {
   itemTitle: string;
   isGuest: boolean;
   referralCode: string | null;
   shareUrl: string | null;
-  activationSupportCredits: number;
-  bonusCredits: number;
+  verifiedSubscriberCredits: number;
+  rewardValue: number;
+  rewardPreference: "CREDITS" | "DISCOUNT";
 }) {
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
   async function copyLink() {
     if (!shareUrl) return;
-
     try {
       await navigator.clipboard.writeText(shareUrl);
       setMessage("Invite link copied.");
@@ -51,7 +52,7 @@ export function InviteFriendsModal({
             <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4 sm:px-6">
               <div>
                 <div className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-600">Share this prize</div>
-                <h2 className="mt-1 text-xl font-black text-slate-950 sm:text-2xl">Invite friends to help move {itemTitle} live</h2>
+                <h2 className="mt-1 text-xl font-black text-slate-950 sm:text-2xl">Invite verified subscribers to help move {itemTitle} live</h2>
               </div>
               <button
                 type="button"
@@ -65,11 +66,10 @@ export function InviteFriendsModal({
 
             <div className="space-y-5 px-5 py-5 sm:px-6">
               <p className="text-sm leading-6 text-slate-600 sm:text-base">
-                Qualified referrals help the platform grow in two ways. PwnIt uses a 50/50 growth split:
-                <span className="font-semibold text-slate-900"> {activationSupportCredits} hidden activation credits</span>
-                {" "}for the first prize your friend starts playing, and
-                <span className="font-semibold text-slate-900"> {bonusCredits} bonus credits</span>
-                {" "}for you.
+                Each qualified referral helps in two visible ways.
+                <span className="font-semibold text-slate-900"> +{verifiedSubscriberCredits} activation credits</span>
+                {" "}go to this shared prize, and you receive a personal reward.
+                <span className="font-semibold text-slate-900"> Your current choice is {rewardPreference === "DISCOUNT" ? `R${rewardValue} referral discount` : `${rewardValue} bonus credits`}.</span>
               </p>
 
               {isGuest ? (
@@ -79,16 +79,10 @@ export function InviteFriendsModal({
                     Guest mode can still play, but you need an account to earn referral rewards and appear on the monthly Community Builder leaderboard.
                   </p>
                   <div className="mt-4 flex flex-wrap gap-3">
-                    <Link
-                      href="/login"
-                      className="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
-                    >
+                    <Link href="/login" className="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800">
                       Sign in / create account
                     </Link>
-                    <Link
-                      href="/referrals"
-                      className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-50"
-                    >
+                    <Link href="/referrals" className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-50">
                       View referral rules
                     </Link>
                   </div>
@@ -109,17 +103,10 @@ export function InviteFriendsModal({
                   </div>
 
                   <div className="mt-4 flex flex-wrap items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={copyLink}
-                      className="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
-                    >
+                    <button type="button" onClick={copyLink} className="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800">
                       Copy invite link
                     </button>
-                    <Link
-                      href="/referrals"
-                      className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-50"
-                    >
+                    <Link href="/referrals" className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-50">
                       Full referral rules
                     </Link>
                   </div>
@@ -135,23 +122,23 @@ export function InviteFriendsModal({
               <div className="grid gap-3 md:grid-cols-3">
                 <div className="rounded-3xl border border-slate-200 bg-white p-4">
                   <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Qualified referral</div>
-                  <div className="mt-2 text-base font-black text-slate-950">Sign up + first real play</div>
+                  <div className="mt-2 text-base font-black text-slate-950">Sign up + first registered play</div>
                   <p className="mt-2 text-sm leading-6 text-slate-600">
-                    A referral qualifies once your friend arrives through your link and completes a first real play.
+                    A referral qualifies once your friend arrives through your item link and completes a first real registered play.
                   </p>
                 </div>
                 <div className="rounded-3xl border border-slate-200 bg-white p-4">
-                  <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">50 / 50 growth split</div>
-                  <div className="mt-2 text-base font-black text-slate-950">{activationSupportCredits} hidden + {bonusCredits} back to you</div>
+                  <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Visible prize support</div>
+                  <div className="mt-2 text-base font-black text-slate-950">+{verifiedSubscriberCredits} activation credits</div>
                   <p className="mt-2 text-sm leading-6 text-slate-600">
-                    PwnIt quietly supports activation in the background while still giving the referrer a clear reward.
+                    Verified subscribers contribute directly to the activation bar of the specific prize they were invited to.
                   </p>
                 </div>
                 <div className="rounded-3xl border border-slate-200 bg-white p-4">
-                  <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Monthly leaderboard</div>
-                  <div className="mt-2 text-base font-black text-slate-950">Community Builder</div>
+                  <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Your reward</div>
+                  <div className="mt-2 text-base font-black text-slate-950">{rewardValue} credits or R{rewardValue} discount</div>
                   <p className="mt-2 text-sm leading-6 text-slate-600">
-                    Top spot each month earns a featured badge and a boosted vote on the next prize shortlist.
+                    Bonus credits are the default. You can switch future rewards to referral discount in your referral hub.
                   </p>
                 </div>
               </div>

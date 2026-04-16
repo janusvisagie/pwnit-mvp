@@ -1,7 +1,7 @@
-
 import { prisma } from "@/lib/db";
-import { settleRound } from "@/lib/settle";
 import { compareScores, publicProgressPct, publicStageLabel } from "@/lib/gameRules";
+import { activationTargetCreditsForItem } from "@/lib/playCost";
+import { settleRound } from "@/lib/settle";
 
 export const ROUND_STATES = {
   BUILDING: "BUILDING",
@@ -14,13 +14,12 @@ export const ROUND_STATES = {
 } as const;
 
 export function activationTargetForItem(item: {
-  landedCostZAR?: number | null;
+  activationGoalEntries?: number | null;
+  playCostCredits?: number | null;
   prizeValueZAR: number;
   allowedSubsidyCredits?: number | null;
 }) {
-  const landed = Math.max(0, Number(item.landedCostZAR ?? item.prizeValueZAR ?? 0));
-  const subsidy = Math.max(0, Number(item.allowedSubsidyCredits ?? 0));
-  return Math.max(1, landed - subsidy);
+  return activationTargetCreditsForItem(item);
 }
 
 function addHours(date: Date, hours: number) {
@@ -29,6 +28,27 @@ function addHours(date: Date, hours: number) {
 
 function addMinutes(date: Date, minutes: number) {
   return new Date(date.getTime() + Math.max(0, minutes) * 60 * 1000);
+}
+
+export function playerActivityCredits(round: {
+  paidCreditsCollected?: number | null;
+  freeCreditsCollected?: number | null;
+}) {
+  return Math.max(0, Number(round.paidCreditsCollected ?? 0)) + Math.max(0, Number(round.freeCreditsCollected ?? 0));
+}
+
+export function verifiedSubscriberCredits(round: {
+  verifiedSubscriberCreditsCollected?: number | null;
+}) {
+  return Math.max(0, Number(round.verifiedSubscriberCreditsCollected ?? 0));
+}
+
+export function effectiveActivationCredits(round: {
+  paidCreditsCollected?: number | null;
+  freeCreditsCollected?: number | null;
+  verifiedSubscriberCreditsCollected?: number | null;
+}) {
+  return playerActivityCredits(round) + verifiedSubscriberCredits(round);
 }
 
 export async function getCurrentRound(itemId: string) {
@@ -51,10 +71,12 @@ async function createFreshRound(item: any, sequence: number) {
       purchaseGraceEndsAt: addHours(now, item.purchaseGraceHours),
     },
   });
+
   await prisma.item.update({
     where: { id: item.id },
     data: { state: "OPEN", opensAt: now, closesAt: null },
   });
+
   return round;
 }
 
@@ -75,30 +97,20 @@ export async function ensureCurrentRound(itemId: string) {
     }
   }
 
-  // REVIEW is terminal until a deliberate admin action resolves it.
-  // Do not auto-create a new round after publish/fail/refund/review.
   return round;
 }
 
 async function applyFailedRefunds(roundId: string) {
-  const round = await prisma.itemRound.findUnique({
-    where: { id: roundId },
-    include: { item: true },
-  });
+  const round = await prisma.itemRound.findUnique({ where: { id: roundId }, include: { item: true } });
   if (!round) return;
 
   const rewardCount = await prisma.creditLedger.count({
     where: { roundId, kind: "FAILED_ROUND_REFUND" },
   });
+
   if (rewardCount > 0) {
-    await prisma.itemRound.update({
-      where: { id: roundId },
-      data: { state: ROUND_STATES.REFUNDED },
-    });
-    await prisma.item.update({
-      where: { id: round.itemId },
-      data: { state: "FAILED", closesAt: round.fundingEndsAt },
-    });
+    await prisma.itemRound.update({ where: { id: roundId }, data: { state: ROUND_STATES.REFUNDED } });
+    await prisma.item.update({ where: { id: round.itemId }, data: { state: "FAILED", closesAt: round.fundingEndsAt } });
     return;
   }
 
@@ -115,10 +127,7 @@ async function applyFailedRefunds(roundId: string) {
   await prisma.$transaction(async (tx) => {
     for (const [userId, credits] of refundByUser.entries()) {
       if (credits <= 0) continue;
-      await tx.user.update({
-        where: { id: userId },
-        data: { paidCreditsBalance: { increment: credits } },
-      });
+      await tx.user.update({ where: { id: userId }, data: { paidCreditsBalance: { increment: credits } } });
       await tx.creditLedger.create({
         data: {
           userId,
@@ -140,7 +149,7 @@ async function applyFailedRefunds(roundId: string) {
       select: { userId: true, scoreMs: true, createdAt: true },
     });
 
-    const bestByUser = new Map();
+    const bestByUser = new Map<string, any>();
     for (const row of leaderboardAttempts) {
       const current = bestByUser.get(row.userId);
       if (!current || compareScores(round.item.gameKey, row, current) < 0) {
@@ -155,10 +164,7 @@ async function applyFailedRefunds(roundId: string) {
     const failedBonuses = [10, 5, 5];
     const userIds = ranked.map((r: any) => r.userId);
     const users = userIds.length
-      ? await tx.user.findMany({
-          where: { id: { in: userIds } },
-          select: { id: true, alias: true, email: true },
-        })
+      ? await tx.user.findMany({ where: { id: { in: userIds } }, select: { id: true, alias: true, email: true } })
       : [];
     const aliasMap = new Map(users.map((u) => [u.id, (u.alias && u.alias.trim()) || u.email.split("@")[0]]));
 
@@ -166,10 +172,7 @@ async function applyFailedRefunds(roundId: string) {
       const winner: any = ranked[idx];
       const bonus = failedBonuses[idx] ?? 0;
       if (bonus > 0) {
-        await tx.user.update({
-          where: { id: winner.userId },
-          data: { paidCreditsBalance: { increment: bonus } },
-        });
+        await tx.user.update({ where: { id: winner.userId }, data: { paidCreditsBalance: { increment: bonus } } });
         await tx.creditLedger.create({
           data: {
             userId: winner.userId,
@@ -209,7 +212,7 @@ export async function syncRoundLifecycle(itemId: string) {
   if (!round) return null;
 
   const now = new Date();
-  if (round.state === ROUND_STATES.BUILDING && round.paidCreditsCollected >= round.activationTargetCredits) {
+  if (round.state === ROUND_STATES.BUILDING && effectiveActivationCredits(round) >= round.activationTargetCredits) {
     const closesAt = addMinutes(now, item.countdownMinutes);
     round = await prisma.itemRound.update({
       where: { id: round.id },
@@ -228,7 +231,12 @@ export async function syncRoundLifecycle(itemId: string) {
     await prisma.item.update({ where: { id: item.id }, data: { state: "CLOSED", closesAt: round.closesAt } });
   }
 
-  if (round.state === ROUND_STATES.CLOSED) {
+  if (round.state === ROUND_STATES.BUILDING && now >= round.fundingEndsAt) {
+    await applyFailedRefunds(round.id);
+    round = await prisma.itemRound.findUnique({ where: { id: round.id } });
+  }
+
+  if (round?.state === ROUND_STATES.CLOSED) {
     await settleRound(round.id);
     round = await prisma.itemRound.findUnique({ where: { id: round.id } });
   }
@@ -237,15 +245,9 @@ export async function syncRoundLifecycle(itemId: string) {
 }
 
 export async function syncHomeItems(itemIds?: string[]) {
-  const ids =
-    itemIds && itemIds.length
-      ? itemIds
-      : (
-          await prisma.item.findMany({
-            orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-            select: { id: true },
-          })
-        ).map((i) => i.id);
+  const ids = itemIds && itemIds.length
+    ? itemIds
+    : (await prisma.item.findMany({ orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }], select: { id: true } })).map((i) => i.id);
 
   for (const id of ids) {
     await syncRoundLifecycle(id);
@@ -253,25 +255,36 @@ export async function syncHomeItems(itemIds?: string[]) {
 }
 
 export function publicProgress(round: {
-  paidCreditsCollected: number;
+  paidCreditsCollected?: number | null;
+  freeCreditsCollected?: number | null;
+  verifiedSubscriberCreditsCollected?: number | null;
   activationTargetCredits: number;
   state: string;
 }) {
+  const playerCredits = playerActivityCredits(round);
+  const subscriberCredits = verifiedSubscriberCredits(round);
+  const current = playerCredits + subscriberCredits;
+  const target = Math.max(1, Number(round.activationTargetCredits ?? 1));
   const pct =
     round.state === ROUND_STATES.ACTIVATED || round.state === ROUND_STATES.CLOSED || round.state === ROUND_STATES.PUBLISHED
       ? 100
-      : publicProgressPct(round.paidCreditsCollected, round.activationTargetCredits);
-
+      : publicProgressPct(current, target);
   const label =
     round.state === ROUND_STATES.REVIEW
       ? "Under review"
       : round.state === ROUND_STATES.ACTIVATED || round.state === ROUND_STATES.CLOSED || round.state === ROUND_STATES.PUBLISHED
         ? "Activated"
         : publicStageLabel(pct);
-
   return {
     pct,
     label,
     hot: pct >= 80 && round.state === ROUND_STATES.BUILDING,
+    current,
+    target,
+    remaining: Math.max(0, target - current),
+    playerCredits,
+    verifiedSubscriberCredits: subscriberCredits,
+    playerPct: Math.max(0, Math.min(100, Math.round((playerCredits / target) * 100))),
+    verifiedSubscriberPct: Math.max(0, Math.min(100, Math.round((subscriberCredits / target) * 100))),
   };
 }

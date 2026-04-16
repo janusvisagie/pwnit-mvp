@@ -5,6 +5,11 @@ import { NextResponse } from "next/server";
 import { getCurrentActor, requireVerifiedAccount } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { buyPriceAfterSpend, tierLabel } from "@/lib/pricing";
+import {
+  buildReferralDiscountQuote,
+  consumeReferralDiscountForPurchase,
+  getAvailableReferralDiscountZAR,
+} from "@/lib/referrals";
 import { ensureCurrentRound, syncRoundLifecycle } from "@/lib/rounds";
 
 function getParamItemId(params: any) {
@@ -15,7 +20,6 @@ function getParamItemId(params: any) {
 async function buildQuote(itemId: string) {
   const actor = await getCurrentActor();
   const me = actor.user;
-
   await syncRoundLifecycle(itemId);
 
   const item = await prisma.item.findUnique({ where: { id: itemId } });
@@ -39,15 +43,19 @@ async function buildQuote(itemId: string) {
     where: { id: me.id },
     select: { paidCreditsBalance: true, freeCreditsBalance: true },
   });
-
   const paidBal = Number(fresh?.paidCreditsBalance ?? 0);
   const freeBal = Number((fresh as any)?.freeCreditsBalance ?? 0);
-
   const price = buyPriceAfterSpend({
     prizeValueZAR: item.prizeValueZAR,
     tierNumber: item.tier,
     spentCredits: Number(agg._sum.paidUsed ?? 0),
     walletCredits: paidBal,
+  });
+
+  const referralDiscountAvailableZAR = actor.isGuest || actor.isDemoUser ? 0 : await getAvailableReferralDiscountZAR(me.id);
+  const referralQuote = buildReferralDiscountQuote({
+    basePriceCredits: price.newPriceCredits,
+    availableReferralDiscountZAR: referralDiscountAvailableZAR,
   });
 
   return {
@@ -58,11 +66,8 @@ async function buildQuote(itemId: string) {
     round,
     me,
     price,
-    balances: {
-      paid: paidBal,
-      free: freeBal,
-      total: paidBal + freeBal,
-    },
+    referralQuote,
+    balances: { paid: paidBal, free: freeBal, total: paidBal + freeBal },
   };
 }
 
@@ -84,6 +89,9 @@ export async function GET(_: Request, ctx: { params: any }) {
     spentCredits: q.price.spentCredits,
     playDiscountCredits: q.price.playDiscountCredits,
     newPriceCredits: q.price.newPriceCredits,
+    referralDiscountAvailableZAR: q.referralQuote.availableReferralDiscountZAR,
+    referralDiscountAppliedZAR: q.referralQuote.referralDiscountAppliedZAR,
+    finalPayCredits: q.referralQuote.amountDueCredits,
     walletAppliedCredits: q.price.walletAppliedCredits,
     topUpCredits: q.price.topUpCredits,
     balances: q.balances,
@@ -108,7 +116,6 @@ export async function POST(req: Request, ctx: { params: any }) {
 
     const q = await buildQuote(itemId);
     if (!q.ok) return NextResponse.json({ ok: false, error: q.error }, { status: q.status });
-
     if (q.actor.isGuest) {
       return NextResponse.json(
         { ok: false, error: "Please sign in with your email to continue.", requiresVerifiedAccount: true },
@@ -117,17 +124,29 @@ export async function POST(req: Request, ctx: { params: any }) {
     }
 
     const result = await prisma.$transaction(async (tx) => {
-      const fresh = await tx.user.findUnique({ where: { id: q.me.id } });
+      const fresh = await tx.user.findUnique({
+        where: { id: q.me.id },
+        select: { paidCreditsBalance: true },
+      });
       const paidBal = Number(fresh?.paidCreditsBalance ?? 0);
-      const walletAppliedCredits = mode === "mix" ? Math.min(q.price.newPriceCredits, paidBal) : 0;
-      const topUpCredits = Math.max(0, q.price.newPriceCredits - walletAppliedCredits);
+
+      const referralQuote = await consumeReferralDiscountForPurchase(tx, {
+        userId: q.me.id,
+        itemId,
+        roundId: q.round.id,
+        basePriceCredits: q.price.newPriceCredits,
+        itemTitle: q.item.title,
+      });
+
+      const finalPayCredits = referralQuote.amountDueCredits;
+      const walletAppliedCredits = mode === "mix" ? Math.min(finalPayCredits, paidBal) : 0;
+      const topUpCredits = Math.max(0, finalPayCredits - walletAppliedCredits);
 
       if (walletAppliedCredits > 0) {
         await tx.user.update({
           where: { id: q.me.id },
           data: { paidCreditsBalance: paidBal - walletAppliedCredits },
         });
-
         await tx.creditLedger.create({
           data: {
             userId: q.me.id,
@@ -149,9 +168,9 @@ export async function POST(req: Request, ctx: { params: any }) {
           priceCredits: q.price.priceCredits,
           spentCredits: q.price.spentCredits,
           discountPct: q.price.discountPct,
-          discountCredits: q.price.playDiscountCredits,
-          payCredits: q.price.newPriceCredits,
-          tierKey: mode === "full" ? `${q.price.tierKey}_FULLPAY` : q.price.tierKey,
+          discountCredits: q.price.playDiscountCredits + referralQuote.referralDiscountAppliedZAR,
+          payCredits: finalPayCredits,
+          tierKey: referralQuote.referralDiscountAppliedZAR > 0 ? `${q.price.tierKey}_REF` : q.price.tierKey,
         } as any,
       });
 
@@ -160,6 +179,8 @@ export async function POST(req: Request, ctx: { params: any }) {
         newBalance: paidBal - walletAppliedCredits,
         walletAppliedCredits,
         topUpCredits,
+        referralDiscountAppliedZAR: referralQuote.referralDiscountAppliedZAR,
+        finalPayCredits,
       };
     });
 
@@ -171,14 +192,13 @@ export async function POST(req: Request, ctx: { params: any }) {
       spentCredits: q.price.spentCredits,
       playDiscountCredits: q.price.playDiscountCredits,
       newPriceCredits: q.price.newPriceCredits,
+      referralDiscountAppliedZAR: result.referralDiscountAppliedZAR,
+      finalPayCredits: result.finalPayCredits,
       walletAppliedCredits: result.walletAppliedCredits,
       topUpCredits: result.topUpCredits,
       newBalance: result.newBalance,
     });
   } catch (error: any) {
-    return NextResponse.json(
-      { ok: false, error: error?.message || "Server error" },
-      { status: 500 },
-    );
+    return NextResponse.json({ ok: false, error: error?.message || "Server error" }, { status: 500 });
   }
 }

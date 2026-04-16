@@ -1,4 +1,3 @@
-
 export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
@@ -7,11 +6,11 @@ import { getCurrentActor, getRequestIp, hashForRateLimit } from "@/lib/auth";
 import { evaluateCompetitiveAttemptRisk } from "@/lib/botRisk";
 import { prisma } from "@/lib/db";
 import { compareScores } from "@/lib/gameRules";
-import { playCostForPrize } from "@/lib/playCost";
+import { DAILY_FREE_CREDITS, resolvePlayCostCredits } from "@/lib/playCost";
 import { consumeRateLimit } from "@/lib/rateLimit";
 import { ensureCurrentRound, syncRoundLifecycle } from "@/lib/rounds";
-import { isVerifiedGameKey, verifyVerifiedAttempt } from "@/lib/verifiedGames";
 import { isProgressiveRunGameKey, verifyProgressiveRunAttempt } from "@/lib/competitiveRuns";
+import { isVerifiedGameKey, verifyVerifiedAttempt } from "@/lib/verifiedGames";
 import { dayKeyZA } from "@/lib/time";
 
 const INVALID_FLAG_FRAGMENT = '"valid":false';
@@ -86,7 +85,7 @@ export async function POST(req: Request) {
 
     const item = await prisma.item.findUnique({
       where: { id: session.itemId },
-      select: { id: true, prizeValueZAR: true, playCostCredits: true, gameKey: true },
+      select: { id: true, title: true, prizeValueZAR: true, playCostCredits: true, gameKey: true },
     });
     if (!item) {
       return NextResponse.json({ ok: false, error: "Item not found" }, { status: 404 });
@@ -142,7 +141,7 @@ export async function POST(req: Request) {
     });
 
     const dayKey = dayKeyZA();
-    const playCost = playCostForPrize(item.prizeValueZAR);
+    const listedPlayCost = resolvePlayCostCredits(item);
 
     const txRes = await prisma.$transaction(async (tx) => {
       const freshUser: any = await tx.user.findUnique({
@@ -150,22 +149,26 @@ export async function POST(req: Request) {
         select: { id: true, paidCreditsBalance: true, freeCreditsBalance: true },
       });
 
-      const freeBal = Number(freshUser?.freeCreditsBalance ?? 0);
-      const paidBal = Number(freshUser?.paidCreditsBalance ?? 0);
+      const freeBal = Math.max(0, Number(freshUser?.freeCreditsBalance ?? 0));
+      const paidBal = Math.max(0, Number(freshUser?.paidCreditsBalance ?? 0));
+      const qualifiesForDailyFreeCap = listedPlayCost > DAILY_FREE_CREDITS && freeBal >= DAILY_FREE_CREDITS;
+      const chargedPlayCost = qualifiesForDailyFreeCap ? DAILY_FREE_CREDITS : listedPlayCost;
       const totalBal = freeBal + paidBal;
-      if (totalBal < playCost) {
+
+      if (totalBal < chargedPlayCost) {
         return {
           ok: false as const,
           error: "Not enough credits",
-          playCost,
+          listedPlayCost,
+          chargedPlayCost,
           freeBalance: freeBal,
           paidBalance: paidBal,
           totalBalance: totalBal,
         };
       }
 
-      const freeUsed = Math.min(playCost, freeBal);
-      const paidUsed = Math.max(0, playCost - freeUsed);
+      const freeUsed = Math.min(chargedPlayCost, freeBal);
+      const paidUsed = Math.max(0, chargedPlayCost - freeUsed);
       const newFree = freeBal - freeUsed;
       const newPaid = paidBal - paidUsed;
 
@@ -181,6 +184,9 @@ export async function POST(req: Request) {
         challengeType: session.gameKey,
         sessionId: session.id,
         risk,
+        listedPlayCost,
+        chargedPlayCost,
+        usedDailyFreeCap: qualifiesForDailyFreeCap,
       };
       const flags = JSON.stringify(flagsPayload).slice(0, 2000);
 
@@ -190,7 +196,7 @@ export async function POST(req: Request) {
           itemId: session.itemId,
           roundId: round.id,
           dayKey,
-          costCredits: playCost,
+          costCredits: chargedPlayCost,
           freeUsed,
           paidUsed,
           isPaid: paidUsed > 0,
@@ -217,10 +223,11 @@ export async function POST(req: Request) {
             roundId: round.id,
             kind: "PLAY_DEBIT_PAID",
             credits: -paidUsed,
-            note: `Paid verified play on ${session.itemId}`,
+            note: `Paid verified play on ${item.title}`,
           },
         });
       }
+
       if (freeUsed > 0) {
         await tx.creditLedger.create({
           data: {
@@ -229,7 +236,9 @@ export async function POST(req: Request) {
             roundId: round.id,
             kind: "PLAY_DEBIT_FREE",
             credits: -freeUsed,
-            note: `Free verified play on ${session.itemId}`,
+            note: qualifiesForDailyFreeCap
+              ? `Free registered play on ${item.title} used the daily 30-credit cap.`
+              : `Free verified play on ${item.title}`,
           },
         });
       }
@@ -245,13 +254,18 @@ export async function POST(req: Request) {
             ...verification.flags,
             risk,
             attemptRowId: attempt.id,
+            listedPlayCost,
+            chargedPlayCost,
+            usedDailyFreeCap: qualifiesForDailyFreeCap,
           },
         },
       });
 
       return {
         ok: true as const,
-        playCost,
+        listedPlayCost,
+        chargedPlayCost,
+        usedDailyFreeCap: qualifiesForDailyFreeCap,
         freeUsed,
         paidUsed,
         freeBalance: newFree,
@@ -269,7 +283,8 @@ export async function POST(req: Request) {
         {
           ok: false,
           error: txRes.error,
-          playCost: txRes.playCost,
+          playCost: txRes.chargedPlayCost,
+          listedPlayCost: txRes.listedPlayCost,
           freeBalance: txRes.freeBalance,
           paidBalance: txRes.paidBalance,
           totalBalance: txRes.totalBalance,
@@ -279,7 +294,6 @@ export async function POST(req: Request) {
     }
 
     await syncRoundLifecycle(session.itemId);
-
     const rowsRaw = await prisma.attempt.findMany({
       where: {
         itemId: session.itemId,
@@ -290,7 +304,7 @@ export async function POST(req: Request) {
       select: { userId: true, scoreMs: true, createdAt: true },
     });
 
-    const bestByUser = new Map();
+    const bestByUser = new Map<string, any>();
     for (const row of rowsRaw as any[]) {
       const current = bestByUser.get(row.userId);
       if (!current || compareScores(item.gameKey, row, current) < 0) {
@@ -310,7 +324,9 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       ok: true,
-      playCost: txRes.playCost,
+      playCost: txRes.chargedPlayCost,
+      listedPlayCost: txRes.listedPlayCost,
+      usedDailyFreeCap: txRes.usedDailyFreeCap,
       freeUsed: txRes.freeUsed,
       paidUsed: txRes.paidUsed,
       freeBalance: txRes.freeBalance,
