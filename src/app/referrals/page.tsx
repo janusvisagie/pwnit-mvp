@@ -7,6 +7,8 @@ import {
   REFERRAL_VERIFIED_SUBSCRIBER_CREDITS,
 } from "@/lib/referrals";
 
+export const dynamic = "force-dynamic";
+
 export default async function ReferralsPage() {
   const data = await getReferralPageData();
   const leaderboard = data.monthlyLeaderboard.slice(0, 10);

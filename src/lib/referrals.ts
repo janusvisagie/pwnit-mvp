@@ -84,6 +84,17 @@ function actorLabel(user: { alias?: string | null; email?: string | null }) {
   return "Player";
 }
 
+
+function isMissingColumnError(error: unknown, columnName?: string) {
+  if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== "P2022") {
+    return false;
+  }
+  if (!columnName) return true;
+  const actual = String((error.meta as { column?: unknown } | undefined)?.column ?? "");
+  return actual.includes(columnName);
+}
+
+
 export async function ensureReferralCodeForUser(userId: string) {
   const existing = await prisma.user.findUnique({
     where: { id: userId },
@@ -115,20 +126,34 @@ export async function ensureReferralCodeForUser(userId: string) {
 }
 
 export async function getAvailableReferralDiscountZAR(userId: string) {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { referralDiscountBalanceZAR: true },
-  });
-  return Math.max(0, Number(user?.referralDiscountBalanceZAR ?? 0));
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { referralDiscountBalanceZAR: true },
+    });
+    return Math.max(0, Number((user as { referralDiscountBalanceZAR?: unknown } | null)?.referralDiscountBalanceZAR ?? 0));
+  } catch (error) {
+    if (isMissingColumnError(error, "User.referralDiscountBalanceZAR")) {
+      return 0;
+    }
+    throw error;
+  }
 }
 
 export async function setReferralRewardPreference(userId: string, preference: ReferralRewardType) {
   const normalized = normalizeReferralRewardType(preference);
-  await prisma.user.update({
-    where: { id: userId },
-    data: { referralRewardPreference: normalized },
-  });
-  return normalized;
+  try {
+    await prisma.user.update({
+      where: { id: userId },
+      data: { referralRewardPreference: normalized },
+    });
+    return normalized;
+  } catch (error) {
+    if (isMissingColumnError(error, "User.referralRewardPreference")) {
+      return REFERRAL_DEFAULT_REWARD_TYPE;
+    }
+    throw error;
+  }
 }
 
 export function buildReferralDiscountQuote(params: {
@@ -158,37 +183,50 @@ export async function consumeReferralDiscountForPurchase(
     itemTitle: string;
   },
 ) {
-  const user = await tx.user.findUnique({
-    where: { id: params.userId },
-    select: { referralDiscountBalanceZAR: true },
-  });
-
-  const quote = buildReferralDiscountQuote({
-    basePriceCredits: params.basePriceCredits,
-    availableReferralDiscountZAR: Math.max(0, Number(user?.referralDiscountBalanceZAR ?? 0)),
-  });
-
-  if (quote.referralDiscountAppliedZAR > 0) {
-    await tx.user.update({
+  try {
+    const user = await tx.user.findUnique({
       where: { id: params.userId },
-      data: {
-        referralDiscountBalanceZAR: { decrement: quote.referralDiscountAppliedZAR },
-      },
+      select: { referralDiscountBalanceZAR: true },
     });
 
-    await tx.creditLedger.create({
-      data: {
-        userId: params.userId,
-        itemId: params.itemId,
-        roundId: params.roundId ?? null,
-        kind: "REFERRAL_DISCOUNT_REDEEMED",
-        credits: 0,
-        note: `Referral discount used on ${params.itemTitle}: R${quote.referralDiscountAppliedZAR}.`,
-      },
+    const quote = buildReferralDiscountQuote({
+      basePriceCredits: params.basePriceCredits,
+      availableReferralDiscountZAR: Math.max(
+        0,
+        Number((user as { referralDiscountBalanceZAR?: unknown } | null)?.referralDiscountBalanceZAR ?? 0),
+      ),
     });
+
+    if (quote.referralDiscountAppliedZAR > 0) {
+      await tx.user.update({
+        where: { id: params.userId },
+        data: {
+          referralDiscountBalanceZAR: { decrement: quote.referralDiscountAppliedZAR },
+        },
+      });
+
+      await tx.creditLedger.create({
+        data: {
+          userId: params.userId,
+          itemId: params.itemId,
+          roundId: params.roundId ?? null,
+          kind: "REFERRAL_DISCOUNT_REDEEMED",
+          credits: 0,
+          note: `Referral discount used on ${params.itemTitle}: R${quote.referralDiscountAppliedZAR}.`,
+        },
+      });
+    }
+
+    return quote;
+  } catch (error) {
+    if (isMissingColumnError(error, "User.referralDiscountBalanceZAR")) {
+      return buildReferralDiscountQuote({
+        basePriceCredits: params.basePriceCredits,
+        availableReferralDiscountZAR: 0,
+      });
+    }
+    throw error;
   }
-
-  return quote;
 }
 
 async function applyReferralGrowthSplit(
@@ -200,69 +238,94 @@ async function applyReferralGrowthSplit(
     sharedItemId?: string | null;
   },
 ) {
-  const referrer = await tx.user.findUnique({
-    where: { id: params.referrerUserId },
-    select: { referralRewardPreference: true },
-  });
+  let rewardType: ReferralRewardType = REFERRAL_DEFAULT_REWARD_TYPE;
+  try {
+    const referrer = await tx.user.findUnique({
+      where: { id: params.referrerUserId },
+      select: { referralRewardPreference: true },
+    });
+    rewardType = normalizeReferralRewardType(
+      (referrer as { referralRewardPreference?: unknown } | null)?.referralRewardPreference,
+    );
+  } catch (error) {
+    if (!isMissingColumnError(error, "User.referralRewardPreference")) {
+      throw error;
+    }
+  }
 
-  const rewardType = normalizeReferralRewardType(referrer?.referralRewardPreference);
   const ledgerRows: Prisma.CreditLedgerCreateManyInput[] = [];
 
   if (params.sharedItemId) {
-    const round = await tx.itemRound.findFirst({
-      where: { itemId: params.sharedItemId, state: "BUILDING" },
-      orderBy: [{ sequence: "desc" }],
-      select: {
-        id: true,
-        itemId: true,
-        state: true,
-        paidCreditsCollected: true,
-        freeCreditsCollected: true,
-        verifiedSubscriberCreditsCollected: true,
-        activationTargetCredits: true,
-      },
-    });
+    try {
+      const round = await tx.itemRound.findFirst({
+        where: { itemId: params.sharedItemId, state: "BUILDING" },
+        orderBy: [{ sequence: "desc" }],
+        select: {
+          id: true,
+          itemId: true,
+          state: true,
+          paidCreditsCollected: true,
+          freeCreditsCollected: true,
+          verifiedSubscriberCreditsCollected: true,
+          activationTargetCredits: true,
+        },
+      });
 
-    if (round && round.state === "BUILDING") {
-      const current =
-        Math.max(0, Number(round.paidCreditsCollected ?? 0)) +
-        Math.max(0, Number(round.freeCreditsCollected ?? 0)) +
-        Math.max(0, Number(round.verifiedSubscriberCreditsCollected ?? 0));
-      const remaining = Math.max(0, Number(round.activationTargetCredits ?? 0) - current);
-      const supportCredits = Math.min(REFERRAL_VERIFIED_SUBSCRIBER_CREDITS, remaining);
+      if (round && round.state === "BUILDING") {
+        const current =
+          Math.max(0, Number(round.paidCreditsCollected ?? 0)) +
+          Math.max(0, Number(round.freeCreditsCollected ?? 0)) +
+          Math.max(0, Number((round as { verifiedSubscriberCreditsCollected?: unknown }).verifiedSubscriberCreditsCollected ?? 0));
+        const remaining = Math.max(0, Number(round.activationTargetCredits ?? 0) - current);
+        const supportCredits = Math.min(REFERRAL_VERIFIED_SUBSCRIBER_CREDITS, remaining);
 
-      if (supportCredits > 0) {
-        await tx.itemRound.update({
-          where: { id: round.id },
-          data: {
-            verifiedSubscriberCreditsCollected: { increment: supportCredits },
-          },
-        });
+        if (supportCredits > 0) {
+          await tx.itemRound.update({
+            where: { id: round.id },
+            data: {
+              verifiedSubscriberCreditsCollected: { increment: supportCredits },
+            },
+          });
 
-        ledgerRows.push({
-          userId: params.referrerUserId,
-          itemId: round.itemId,
-          roundId: round.id,
-          kind: "VERIFIED_SUBSCRIBER_CONTRIBUTION",
-          credits: supportCredits,
-          note: `Verified subscriber contribution added to this shared prize (+${supportCredits}).`,
-        });
+          ledgerRows.push({
+            userId: params.referrerUserId,
+            itemId: round.itemId,
+            roundId: round.id,
+            kind: "VERIFIED_SUBSCRIBER_CONTRIBUTION",
+            credits: supportCredits,
+            note: `Verified subscriber contribution added to this shared prize (+${supportCredits}).`,
+          });
+        }
+      }
+    } catch (error) {
+      if (!isMissingColumnError(error, "ItemRound.verifiedSubscriberCreditsCollected")) {
+        throw error;
       }
     }
   }
 
   if (rewardType === REFERRAL_REWARD_TYPES.DISCOUNT) {
-    await tx.user.update({
-      where: { id: params.referrerUserId },
-      data: { referralDiscountBalanceZAR: { increment: REFERRAL_REWARD_VALUE } },
-    });
-    ledgerRows.push({
-      userId: params.referrerUserId,
-      kind: "REFERRAL_BONUS_DISCOUNT",
-      credits: 0,
-      note: `Qualified referral reward: R${REFERRAL_REWARD_VALUE} added to your referral discount wallet.`,
-    });
-  } else {
+    try {
+      await tx.user.update({
+        where: { id: params.referrerUserId },
+        data: { referralDiscountBalanceZAR: { increment: REFERRAL_REWARD_VALUE } },
+      });
+      ledgerRows.push({
+        userId: params.referrerUserId,
+        kind: "REFERRAL_BONUS_DISCOUNT",
+        credits: 0,
+        note: `Qualified referral reward: R${REFERRAL_REWARD_VALUE} added to your referral discount wallet.`,
+      });
+    } catch (error) {
+      if (isMissingColumnError(error, "User.referralDiscountBalanceZAR")) {
+        rewardType = REFERRAL_REWARD_TYPES.CREDITS;
+      } else {
+        throw error;
+      }
+    }
+  }
+
+  if (rewardType === REFERRAL_REWARD_TYPES.CREDITS) {
     await tx.user.update({
       where: { id: params.referrerUserId },
       data: { freeCreditsBalance: { increment: REFERRAL_REWARD_VALUE } },
@@ -279,31 +342,66 @@ async function applyReferralGrowthSplit(
     await tx.creditLedger.createMany({ data: ledgerRows });
   }
 
-  await tx.referral.update({
-    where: { id: params.referralId },
-    data: {
-      referrerRewardCredits: REFERRAL_REWARD_VALUE,
-      referrerRewardType: rewardType,
-      referredRewardCredits: 0,
-      qualifiedAt: new Date(),
-      rewardedAt: new Date(),
-      status: "CREDITED",
-      referredUserId: params.referredUserId,
-    },
-  });
+  try {
+    await tx.referral.update({
+      where: { id: params.referralId },
+      data: {
+        referrerRewardCredits: REFERRAL_REWARD_VALUE,
+        referrerRewardType: rewardType,
+        referredRewardCredits: 0,
+        qualifiedAt: new Date(),
+        rewardedAt: new Date(),
+        status: "CREDITED",
+        referredUserId: params.referredUserId,
+      },
+    });
+  } catch (error) {
+    if (isMissingColumnError(error, "Referral.referrerRewardType")) {
+      await tx.referral.update({
+        where: { id: params.referralId },
+        data: {
+          referrerRewardCredits: REFERRAL_REWARD_VALUE,
+          referredRewardCredits: 0,
+          qualifiedAt: new Date(),
+          rewardedAt: new Date(),
+          status: "CREDITED",
+          referredUserId: params.referredUserId,
+        },
+      });
+    } else {
+      throw error;
+    }
+  }
 }
 
 async function settlePendingReferral(referralId: string, referredUserId: string) {
   return prisma.$transaction(async (tx) => {
-    const referral = await tx.referral.findUnique({
-      where: { id: referralId },
-      select: {
-        id: true,
-        status: true,
-        referrerUserId: true,
-        sharedItemId: true,
-      },
-    });
+    let referral: { id: string; status: string; referrerUserId: string; sharedItemId?: string | null } | null = null;
+
+    try {
+      referral = await tx.referral.findUnique({
+        where: { id: referralId },
+        select: {
+          id: true,
+          status: true,
+          referrerUserId: true,
+          sharedItemId: true,
+        },
+      });
+    } catch (error) {
+      if (isMissingColumnError(error, "Referral.sharedItemId")) {
+        referral = await tx.referral.findUnique({
+          where: { id: referralId },
+          select: {
+            id: true,
+            status: true,
+            referrerUserId: true,
+          },
+        }) as typeof referral;
+      } else {
+        throw error;
+      }
+    }
 
     if (!referral || referral.status === "CREDITED") return null;
 
@@ -311,7 +409,7 @@ async function settlePendingReferral(referralId: string, referredUserId: string)
       referralId: referral.id,
       referrerUserId: referral.referrerUserId,
       referredUserId,
-      sharedItemId: referral.sharedItemId,
+      sharedItemId: referral.sharedItemId ?? null,
     });
 
     return true;
@@ -334,10 +432,41 @@ export async function maybeTrackReferralProgressForCurrentActor() {
   if (!referrer || referrer.id === actor.user.id) return;
 
   const attemptCount = await prisma.attempt.count({ where: { userId: actor.user.id } });
-  const existing = await prisma.referral.findUnique({
-    where: { referredBucketKey: actor.bucketKey },
-    select: { id: true, referrerUserId: true, referredUserId: true, status: true, sharedItemId: true },
-  });
+
+  let existing: {
+    id: string;
+    referrerUserId: string;
+    referredUserId: string | null;
+    status: string;
+    sharedItemId?: string | null;
+  } | null = null;
+
+  try {
+    existing = await prisma.referral.findUnique({
+      where: { referredBucketKey: actor.bucketKey },
+      select: {
+        id: true,
+        referrerUserId: true,
+        referredUserId: true,
+        status: true,
+        sharedItemId: true,
+      },
+    });
+  } catch (error) {
+    if (isMissingColumnError(error, "Referral.sharedItemId")) {
+      existing = await prisma.referral.findUnique({
+        where: { referredBucketKey: actor.bucketKey },
+        select: {
+          id: true,
+          referrerUserId: true,
+          referredUserId: true,
+          status: true,
+        },
+      }) as typeof existing;
+    } else {
+      throw error;
+    }
+  }
 
   if (!existing) {
     if (attemptCount <= 0) {
@@ -356,7 +485,25 @@ export async function maybeTrackReferralProgressForCurrentActor() {
           },
         });
       } catch (error) {
-        if (!(error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002")) {
+        if (isMissingColumnError(error, "Referral.sharedItemId") || isMissingColumnError(error, "Referral.referrerRewardType")) {
+          try {
+            await prisma.referral.create({
+              data: {
+                code,
+                referrerUserId: referrer.id,
+                referredUserId: actor.isGuest ? null : actor.user.id,
+                referredBucketKey: actor.bucketKey,
+                status: "PENDING",
+                referrerRewardCredits: REFERRAL_REWARD_VALUE,
+                referredRewardCredits: 0,
+              },
+            });
+          } catch (fallbackError) {
+            if (!(fallbackError instanceof Prisma.PrismaClientKnownRequestError && fallbackError.code === "P2002")) {
+              throw fallbackError;
+            }
+          }
+        } else if (!(error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002")) {
           throw error;
         }
       }
@@ -365,20 +512,39 @@ export async function maybeTrackReferralProgressForCurrentActor() {
 
     try {
       await prisma.$transaction(async (tx) => {
-        const created = await tx.referral.create({
-          data: {
-            code,
-            referrerUserId: referrer.id,
-            referredUserId: actor.user.id,
-            referredBucketKey: actor.bucketKey,
-            sharedItemId,
-            status: "PENDING",
-            referrerRewardCredits: REFERRAL_REWARD_VALUE,
-            referrerRewardType: REFERRAL_DEFAULT_REWARD_TYPE,
-            referredRewardCredits: 0,
-          },
-          select: { id: true },
-        });
+        let created: { id: string };
+        try {
+          created = await tx.referral.create({
+            data: {
+              code,
+              referrerUserId: referrer.id,
+              referredUserId: actor.user.id,
+              referredBucketKey: actor.bucketKey,
+              sharedItemId,
+              status: "PENDING",
+              referrerRewardCredits: REFERRAL_REWARD_VALUE,
+              referrerRewardType: REFERRAL_DEFAULT_REWARD_TYPE,
+              referredRewardCredits: 0,
+            },
+            select: { id: true },
+          });
+        } catch (error) {
+          if (!isMissingColumnError(error, "Referral.sharedItemId") && !isMissingColumnError(error, "Referral.referrerRewardType")) {
+            throw error;
+          }
+          created = await tx.referral.create({
+            data: {
+              code,
+              referrerUserId: referrer.id,
+              referredUserId: actor.user.id,
+              referredBucketKey: actor.bucketKey,
+              status: "PENDING",
+              referrerRewardCredits: REFERRAL_REWARD_VALUE,
+              referredRewardCredits: 0,
+            },
+            select: { id: true },
+          });
+        }
 
         await applyReferralGrowthSplit(tx, {
           referralId: created.id,
@@ -400,10 +566,16 @@ export async function maybeTrackReferralProgressForCurrentActor() {
   }
 
   if ((!existing.sharedItemId || existing.sharedItemId.trim() === "") && sharedItemId) {
-    await prisma.referral.update({
-      where: { id: existing.id },
-      data: { sharedItemId },
-    });
+    try {
+      await prisma.referral.update({
+        where: { id: existing.id },
+        data: { sharedItemId },
+      });
+    } catch (error) {
+      if (!isMissingColumnError(error, "Referral.sharedItemId")) {
+        throw error;
+      }
+    }
   }
 
   if (!existing.referredUserId && !actor.isGuest) {
@@ -456,10 +628,38 @@ async function getMonthlyReferralLeaderboard(actorUserId?: string | null) {
 export async function getReferralPageData() {
   const actor = await getCurrentActor();
   const incomingCode = getReferralCodeFromRequest();
-  const activeReferral = await prisma.referral.findUnique({
-    where: { referredBucketKey: actor.bucketKey },
-    include: { referrer: { select: { alias: true, email: true } } },
-  });
+
+  let activeReferral: any = null;
+  try {
+    activeReferral = await prisma.referral.findUnique({
+      where: { referredBucketKey: actor.bucketKey },
+      include: { referrer: { select: { alias: true, email: true } } },
+    });
+  } catch (error) {
+    if (isMissingColumnError(error, "Referral.sharedItemId") || isMissingColumnError(error, "Referral.referrerRewardType")) {
+      activeReferral = await prisma.referral.findUnique({
+        where: { referredBucketKey: actor.bucketKey },
+        select: {
+          id: true,
+          code: true,
+          status: true,
+          referrerUserId: true,
+          referredUserId: true,
+          referredBucketKey: true,
+          createdAt: true,
+          updatedAt: true,
+          qualifiedAt: true,
+          rewardedAt: true,
+          referrerRewardCredits: true,
+          referredRewardCredits: true,
+          referrer: { select: { alias: true, email: true } },
+        },
+      });
+    } else {
+      throw error;
+    }
+  }
+
   const monthly = await getMonthlyReferralLeaderboard(actor.isGuest || actor.isDemoUser ? null : actor.user.id);
 
   if (actor.isGuest || actor.isDemoUser) {
@@ -482,29 +682,64 @@ export async function getReferralPageData() {
     };
   }
 
-  const [myCode, referrals, userRow] = await Promise.all([
-    ensureReferralCodeForUser(actor.user.id),
-    prisma.referral.findMany({
+  const referralsPromise = prisma.referral.findMany({
+    where: { referrerUserId: actor.user.id },
+    orderBy: { createdAt: "desc" },
+    take: 20,
+    include: { referred: { select: { alias: true, email: true } } },
+  }).catch(async (error) => {
+    if (!(isMissingColumnError(error, "Referral.sharedItemId") || isMissingColumnError(error, "Referral.referrerRewardType"))) {
+      throw error;
+    }
+    return prisma.referral.findMany({
       where: { referrerUserId: actor.user.id },
       orderBy: { createdAt: "desc" },
       take: 20,
-      include: { referred: { select: { alias: true, email: true } } },
-    }),
-    prisma.user.findUnique({
-      where: { id: actor.user.id },
-      select: { referralDiscountBalanceZAR: true, referralRewardPreference: true },
-    }),
+      select: {
+        id: true,
+        createdAt: true,
+        status: true,
+        referredUserId: true,
+        referrerRewardCredits: true,
+        referredRewardCredits: true,
+        referred: { select: { alias: true, email: true } },
+      },
+    }) as Promise<any[]>;
+  });
+
+  const userRowPromise = prisma.user.findUnique({
+    where: { id: actor.user.id },
+    select: { referralDiscountBalanceZAR: true, referralRewardPreference: true },
+  }).catch((error) => {
+    if (!(isMissingColumnError(error, "User.referralDiscountBalanceZAR") || isMissingColumnError(error, "User.referralRewardPreference"))) {
+      throw error;
+    }
+    return null;
+  });
+
+  const [myCode, referrals, userRow] = await Promise.all([
+    ensureReferralCodeForUser(actor.user.id),
+    referralsPromise,
+    userRowPromise,
   ]);
 
-  const credited = referrals.filter((entry) => entry.status === "CREDITED");
+  const credited = referrals.filter((entry: any) => entry.status === "CREDITED");
   const creditedCount = credited.length;
-  const pendingCount = referrals.filter((entry) => entry.status === "PENDING").length;
+  const pendingCount = referrals.filter((entry: any) => entry.status === "PENDING").length;
   const totalEarnedCredits = credited
-    .filter((entry) => String(entry.referrerRewardType || REFERRAL_DEFAULT_REWARD_TYPE) === REFERRAL_REWARD_TYPES.CREDITS)
-    .reduce((sum, entry) => sum + Number(entry.referrerRewardCredits ?? 0), 0);
+    .filter(
+      (entry: any) =>
+        normalizeReferralRewardType((entry as { referrerRewardType?: unknown }).referrerRewardType) ===
+        REFERRAL_REWARD_TYPES.CREDITS,
+    )
+    .reduce((sum: number, entry: any) => sum + Number(entry.referrerRewardCredits ?? 0), 0);
   const totalEarnedDiscountZAR = credited
-    .filter((entry) => String(entry.referrerRewardType || REFERRAL_DEFAULT_REWARD_TYPE) === REFERRAL_REWARD_TYPES.DISCOUNT)
-    .reduce((sum, entry) => sum + Number(entry.referrerRewardCredits ?? 0), 0);
+    .filter(
+      (entry: any) =>
+        normalizeReferralRewardType((entry as { referrerRewardType?: unknown }).referrerRewardType) ===
+        REFERRAL_REWARD_TYPES.DISCOUNT,
+    )
+    .reduce((sum: number, entry: any) => sum + Number(entry.referrerRewardCredits ?? 0), 0);
 
   const siteUrl = process.env.APP_URL || process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
@@ -519,8 +754,8 @@ export async function getReferralPageData() {
     pendingCount,
     totalEarnedCredits,
     totalEarnedDiscountZAR,
-    availableReferralDiscountZAR: Math.max(0, Number(userRow?.referralDiscountBalanceZAR ?? 0)),
-    rewardPreference: normalizeReferralRewardType(userRow?.referralRewardPreference),
+    availableReferralDiscountZAR: Math.max(0, Number((userRow as { referralDiscountBalanceZAR?: unknown } | null)?.referralDiscountBalanceZAR ?? 0)),
+    rewardPreference: normalizeReferralRewardType((userRow as { referralRewardPreference?: unknown } | null)?.referralRewardPreference),
     monthlyLeaderboard: monthly.leaderboard,
     monthlyLabel: monthly.monthLabel,
     myMonthlyRank: monthly.myMonthlyRank,
