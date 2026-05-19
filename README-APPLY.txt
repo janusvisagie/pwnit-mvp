@@ -1,23 +1,30 @@
-PwnIt patch - activation/referral UX refresh
+PwnIt patch: remove homepage intro wording/block
 
-What is included
-- Larger, clearer homepage prize cards
-- Item page activation copy refresh
-- New invite modal on the item page
-- Redesigned referrals/rules screen
-- Monthly referral leaderboard
-- Referral growth split for NEW referrals:
-  - +5 hidden activation credits to the first prize the referred player starts playing
-  - +5 bonus credits to the referrer
+What this does
+- Removes this block from the home page:
+  "Pick. Play. PwnIt."
+  "Prizes build through play and verified subscriber growth."
+  "Each item activates from registered player activity plus visible verified subscriber contribution..."
 
-Apply
-1. Download this ZIP.
-2. Open your local pwnit-mvp folder.
-3. Extract the ZIP into the repo root.
-4. Allow Windows to replace the existing files.
-5. Run your normal dev/build flow.
+Files included
+- apply-remove-home-copy.mjs
+- README-APPLY.txt
+
+How to apply
+1. Extract this ZIP into the root of your pwnit-mvp repository.
+   Example target folder:
+   C:\Users\Janus\Desktop\Planne\JustSkill_MVP
+
+2. From that repository root, run:
+   node apply-remove-home-copy.mjs
+
+3. Then run your normal check/build:
+   npm run build
+
+4. Commit and push the resulting change to src/app/page.tsx.
 
 Notes
-- No Prisma/schema migration is required for this patch.
-- Existing historical referrals remain as they were.
-- The new 50/50 split applies to new referral qualifications after this patch is deployed.
+- No database command is required.
+- You do not need to run npm run db:push.
+- You do not need to run npm run db:seed.
+- If the block is already gone, the script will safely say that no change is needed.

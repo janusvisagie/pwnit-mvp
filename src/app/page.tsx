@@ -47,7 +47,15 @@ async function loadRoundBasedCards(): Promise<CardModel[]> {
             activationTargetCredits: Number((round as any).activationTargetCredits ?? 0),
             state: String(round.state || ""),
           })
-        : { pct: 0, playerPct: 0, verifiedSubscriberPct: 0, current: 0, target: 1, playerCredits: 0, verifiedSubscriberCredits: 0 };
+        : {
+            pct: 0,
+            playerPct: 0,
+            verifiedSubscriberPct: 0,
+            current: 0,
+            target: 1,
+            playerCredits: 0,
+            verifiedSubscriberCredits: 0,
+          };
 
       return {
         id: item.id,
@@ -150,14 +158,6 @@ export default async function HomePage() {
       <AutoRefreshActivated enabled={anyActivated} />
       <WelcomeModal />
       <main className="mx-auto max-w-7xl px-4 pb-6 pt-4 sm:px-5 lg:px-6">
-        <div className="mb-5 rounded-[30px] border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-          <div className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-600">Pick. Play. PwnIt.</div>
-          <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">Prizes build through play and verified subscriber growth.</h1>
-          <p className="mt-3 max-w-4xl text-sm leading-7 text-slate-600 sm:text-base">
-            Each item activates from registered player activity plus visible verified subscriber contribution. Free daily credits stay at 30, unlimited practice remains open, and premium items can still use that full daily free balance for one registered attempt.
-          </p>
-        </div>
-
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {cards.map((item) => (
             <ItemCard key={item.id} item={item} />
