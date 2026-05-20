@@ -1,11 +1,14 @@
 node_modules
 .next
 
-# env
+# Vercel
+.vercel
+
+# env / secrets
 .env
-.env.local
-.env.development
-.env.production
+.env.*
+!.env.example
+!.env.*.example
 
 # local db
 prisma/dev.db
@@ -13,9 +16,5 @@ prisma/dev.db
 *.sqlite
 *.sqlite3
 
-.vercel
-.env*.local
-
+# local scripts / generated files
 scripts/db-targets.json
-.vercel
-.env*.local
