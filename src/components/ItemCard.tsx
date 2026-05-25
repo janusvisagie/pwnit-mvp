@@ -29,6 +29,13 @@ function formatZAR(v: number) {
   return `R${Number(v || 0).toLocaleString("en-ZA")}`;
 }
 
+function closedBannerLabelForState(state: string) {
+  const normalized = String(state || '').toUpperCase();
+  if (normalized === 'FAILED' || normalized === 'REFUNDED') return 'Closed';
+  if (normalized === 'CLOSED' || normalized === 'PUBLISHED') return 'Prize won';
+  return 'Closed';
+}
+
 function displayGameLabel(item: ItemCardModel) {
   if (item.title === "Checkers Voucher" && item.gameKey === "clue-ladder") return "Number Chain";
   return item.gameKey ? getGameLabel(item.gameKey) : null;
@@ -41,7 +48,7 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
   const normalizedState = String(item.state || "").toUpperCase();
   const isActivated = normalizedState === "ACTIVATED";
   const isPlayable = normalizedState === "OPEN" || normalizedState === "BUILDING" || normalizedState === "ACTIVATED";
-  const isClosed = !isPlayable;
+  const isClosed = !isPlayable; const closedBannerLabel = closedBannerLabelForState(normalizedState);
   const href = isClosed ? `/item/${item.id}/leaderboard` : `/item/${item.id}`;
   const product = getProductContent(item.title, item.imageUrl);
   const fallbackImage = getFallbackProductImage(item.title, item.imageUrl);
@@ -57,9 +64,7 @@ export function ItemCard({ item }: { item: ItemCardModel }) {
     <Link href={href} className="group block h-full">
       <article className="relative flex h-full flex-col overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
         {isClosed ? (
-          <div className="absolute inset-x-0 top-5 z-20 -rotate-6 bg-slate-950 py-2 text-center text-sm font-black uppercase tracking-[0.24em] text-white shadow-lg">
-            Prize won
-          </div>
+          <div className="absolute inset-x-0 top-5 z-20 -rotate-6 bg-slate-950 py-2 text-center text-sm font-black uppercase tracking-[0.24em] text-white shadow-lg">{closedBannerLabel}</div>
         ) : null}
 
         <div className="flex items-center justify-between gap-3 px-4 pt-4 sm:px-5">
