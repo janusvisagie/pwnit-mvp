@@ -30,6 +30,10 @@ function addMinutes(date: Date, minutes: number) {
   return new Date(date.getTime() + Math.max(0, minutes) * 60 * 1000);
 }
 
+
+function autoItemExpiryEnabled() {
+  return String(process.env.AUTO_ITEM_EXPIRY_ENABLED || "").toLowerCase() === "true";
+}
 export function playerActivityCredits(round: {
   paidCreditsCollected?: number | null;
   freeCreditsCollected?: number | null;
@@ -232,8 +236,10 @@ export async function syncRoundLifecycle(itemId: string) {
   }
 
   if (round.state === ROUND_STATES.BUILDING && now >= round.fundingEndsAt) {
-    await applyFailedRefunds(round.id);
-    round = await prisma.itemRound.findUnique({ where: { id: round.id } });
+    if (autoItemExpiryEnabled()) {
+      await applyFailedRefunds(round.id);
+      round = await prisma.itemRound.findUnique({ where: { id: round.id } });
+    }
   }
 
   if (round?.state === ROUND_STATES.CLOSED) {
