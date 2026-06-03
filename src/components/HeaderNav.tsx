@@ -23,7 +23,6 @@ export function HeaderNav() {
 
   useEffect(() => {
     let alive = true;
-
     setIsLocalHost(["localhost", "127.0.0.1"].includes(window.location.hostname));
 
     async function refresh() {
@@ -38,14 +37,11 @@ export function HeaderNav() {
     }
 
     void refresh();
-
     const handler = () => {
       void refresh();
     };
-
     window.addEventListener("pwnit:userChanged", handler as EventListener);
     window.addEventListener("focus", handler as EventListener);
-
     return () => {
       alive = false;
       window.removeEventListener("pwnit:userChanged", handler as EventListener);
@@ -60,6 +56,7 @@ export function HeaderNav() {
     () =>
       ([
         { href: "/", label: "Home", mobileMode: "always", desktop: true, show: true },
+        { href: "/pwnit-2", label: "PwnIt 2", mobileMode: "always", desktop: true, show: true },
         { href: "/pay", label: "Buy credits", mobileMode: "always", desktop: true, show: true },
         {
           href: "/how-activation-works",
@@ -74,7 +71,7 @@ export function HeaderNav() {
         { href: "/terms", label: "Terms", mobileMode: "hide-on-detail", desktop: true, show: true },
         { href: "/admin", label: "Admin", mobileMode: "never", desktop: true, show: showAdmin },
       ] satisfies NavItem[]).filter((item) => item.show !== false),
-    [showAdmin]
+    [showAdmin],
   );
 
   const mobileItems = items.filter((item) => {
@@ -102,24 +99,24 @@ export function HeaderNav() {
 
   return (
     <>
-      <nav className="mt-2 flex gap-2 overflow-x-auto pb-1 md:hidden" aria-label="Primary">
+      <nav className="flex gap-2 overflow-x-auto px-4 py-2 md:hidden" aria-label="Primary navigation">
         {mobileItems.map((item) => {
           const active = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
           return (
-            <Link key={`mobile-${item.href}`} href={item.href} className={linkClasses(active, "mobile")}>
+            <Link key={item.href} href={item.href} className={linkClasses(active, "mobile")}>
               {item.label}
             </Link>
           );
         })}
       </nav>
 
-      <nav className="mt-2 hidden flex-wrap items-center gap-1.5 md:flex" aria-label="Primary">
+      <nav className="hidden items-center justify-center gap-2 px-4 py-2 md:flex" aria-label="Primary navigation">
         {items
           .filter((item) => item.desktop)
           .map((item) => {
             const active = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
             return (
-              <Link key={`desktop-${item.href}`} href={item.href} className={linkClasses(active, "desktop")}>
+              <Link key={item.href} href={item.href} className={linkClasses(active, "desktop")}>
                 {item.label}
               </Link>
             );
