@@ -1,4 +1,4 @@
-export const PWNIT_2_LIFECYCLE_VERSION = "safe-foundation-v1" as const;
+export const PWNIT_2_LIFECYCLE_VERSION = "single-campaign-foundation-v2" as const;
 
 export const PWNIT_2_STATUSES = ["FUNDING", "COUNTDOWN", "CLOSED", "ARCHIVED"] as const;
 
@@ -77,10 +77,10 @@ export function getPwnit2LifecycleState(input: Pwnit2LifecycleInput): Pwnit2Life
   const canClose = status === "COUNTDOWN" && Boolean(closesAt && closesAt.getTime() <= now.getTime());
   const canArchive = status === "CLOSED" && Boolean(purchaseWindowEndsAt && purchaseWindowEndsAt.getTime() <= now.getTime());
 
-  let message = "Campaign is collecting verified engagement before activation.";
+  let message = "Campaign is collecting activation progress before the countdown can start.";
   if (status === "COUNTDOWN") message = "Campaign is active and the countdown is running.";
-  if (status === "CLOSED") message = "Campaign is closed; final recognition is frozen.";
-  if (status === "ARCHIVED") message = "Campaign is archived.";
+  if (status === "CLOSED") message = "Campaign is closed; the result and campaign value are frozen.";
+  if (status === "ARCHIVED") message = "Campaign is archived and ready to be replaced by the next voucher.";
 
   return {
     status,
@@ -97,11 +97,11 @@ export function getPwnit2LifecycleState(input: Pwnit2LifecycleInput): Pwnit2Life
 
 export const PWNIT_2_SAFE_LIFECYCLE_COPY = {
   fundingTitle: "Funding / activation",
-  fundingBody: "Before activation, the campaign collects verified engagement. No value growth happens before activation.",
+  fundingBody: "Before activation, the campaign collects progress toward a safe countdown. The voucher value stays fixed before activation.",
   countdownTitle: "Countdown",
-  countdownBody: "After activation, the countdown runs and players can continue free skill attempts for leaderboard position.",
-  closedTitle: "Closed",
-  closedBody: "When the countdown ends, the leaderboard freezes and the top player receives recognition.",
+  countdownBody: "After activation, the countdown runs. The campaign becomes time-limited and the final winner value can grow under the campaign rules.",
+  closedTitle: "Closed / purchase window",
+  closedBody: "When the countdown ends, the result freezes. A short post-closure window can remain open for campaign-specific follow-through.",
   archivedTitle: "Archived",
-  archivedBody: "After the review window, the campaign is archived and a new campaign can start.",
+  archivedBody: "After the review and purchase window, the campaign is archived and the next single voucher campaign can replace it.",
 } as const;

@@ -25,7 +25,7 @@ export function HeaderNav() {
   const items = useMemo(
     () =>
       ([
-        { href: "/", label: "Campaigns", mobileMode: "always", desktop: true, show: true },
+        { href: "/", label: "Campaign", mobileMode: "always", desktop: true, show: true },
         { href: "/buy-credits", label: "Credits", mobileMode: "always", desktop: true, show: true },
         { href: "/pwnit-2", label: "How it works", mobileMode: "always", desktop: true, show: true },
         { href: "/dashboard", label: "Profile", mobileMode: "hide-on-detail", desktop: true, show: true },
@@ -49,16 +49,16 @@ export function HeaderNav() {
       return [
         "rounded-full border px-3 py-1.5 text-sm font-bold whitespace-nowrap transition",
         active
-          ? "border-slate-950 bg-slate-950 text-white"
-          : "border-slate-300 bg-white text-slate-700 hover:border-amber-300 hover:bg-amber-50 hover:text-amber-800",
+          ? "border-[#2f3a32] bg-[#2f3a32] text-white"
+          : "border-[#d8c7b5] bg-[#fffaf3] text-[#5f5047] hover:border-[#b89572] hover:bg-[#fbf3ea]",
       ].join(" ");
     }
 
     return [
       "rounded-full px-3 py-1.5 text-sm font-bold transition",
       active
-        ? "bg-slate-950 text-white"
-        : "text-slate-600 hover:bg-gradient-to-r hover:from-amber-50 hover:to-cyan-50 hover:text-slate-950",
+        ? "bg-[#2f3a32] text-white"
+        : "text-[#5f5047] hover:bg-[#fbf3ea] hover:text-slate-950",
     ].join(" ");
   }
 
