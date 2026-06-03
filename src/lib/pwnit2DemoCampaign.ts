@@ -1,3 +1,5 @@
+export type Pwnit2StatusTone = "funding" | "countdown" | "closed";
+
 export type Pwnit2LeaderboardEntry = {
   rank: number;
   alias: string;
@@ -5,56 +7,88 @@ export type Pwnit2LeaderboardEntry = {
   bestTime: string;
   attempts: number;
   badge: string;
+  isYou?: boolean;
 };
 
-export const pwnit2DemoCampaign = {
+export type Pwnit2CampaignSnapshot = {
+  title: string;
+  category: string;
+  statusLabel: string;
+  statusTone: Pwnit2StatusTone;
+  baseValueLabel: string;
+  currentValueLabel: string;
+  activationPct: number;
+  activationPoints: number;
+  activationTargetPoints: number;
+  participants: number;
+  attempts: number;
+  countdownLabel: string;
+  gameTitle: string;
+  gameHref: string;
+  leaderboardHref: string;
+  statusHref: string;
+  helper: string;
+  primaryMetricLabel: string;
+  primaryMetricValue: string;
+  secondaryMetricLabel: string;
+  secondaryMetricValue: string;
+  tertiaryMetricLabel?: string;
+  tertiaryMetricValue?: string;
+  state: "FUNDING" | "COUNTDOWN" | "STATUS_WINDOW" | "ARCHIVED";
+  closesAt?: string | null;
+  statusWindowEndsAt?: string | null;
+  winnerAlias?: string | null;
+  topScore?: number | null;
+};
+
+export const pwnit2DemoCampaign: Pwnit2CampaignSnapshot = {
   title: "Checkers Voucher",
   category: "Live campaign",
   statusLabel: "Funding",
-  statusTone: "funding" as const,
+  statusTone: "funding",
   baseValueLabel: "R500",
   currentValueLabel: "R500",
-  activationPct: 60,
-  activationPoints: 60,
-  activationTargetPoints: 100,
-  participants: 18,
+  activationPct: 0,
+  activationPoints: 0,
+  activationTargetPoints: 5,
+  participants: 0,
+  attempts: 0,
   countdownLabel: "Unlocks after activation",
   gameTitle: "Number Chain Sprint",
   gameHref: "/play/pwnit-2",
   leaderboardHref: "/pwnit-2/leaderboard",
-  helper:
-    "The voucher value stays fixed before activation. Play the linked skill challenge to climb the campaign board and help unlock the countdown.",
+  statusHref: "/pwnit-2/status",
+  helper: "Play the linked skill game to help the campaign reach activation. The countdown starts once activation is reached.",
   primaryMetricLabel: "Activation",
-  primaryMetricValue: "60%",
-  secondaryMetricLabel: "Participants",
-  secondaryMetricValue: "18",
+  primaryMetricValue: "0%",
+  secondaryMetricLabel: "Players",
+  secondaryMetricValue: "0",
   tertiaryMetricLabel: "Game",
   tertiaryMetricValue: "Number Chain",
+  state: "FUNDING",
+  closesAt: null,
+  statusWindowEndsAt: null,
+  winnerAlias: null,
+  topScore: null,
 };
 
-export const pwnit2Leaderboard: Pwnit2LeaderboardEntry[] = [
-  { rank: 1, alias: "PixelPanda", score: 920, bestTime: "00:31", attempts: 5, badge: "Chain boss" },
-  { rank: 2, alias: "QuickQuokka", score: 870, bestTime: "00:34", attempts: 4, badge: "Fast finisher" },
-  { rank: 3, alias: "SageFox", score: 810, bestTime: "00:37", attempts: 3, badge: "Clean run" },
-  { rank: 4, alias: "CapeCoder", score: 760, bestTime: "00:42", attempts: 3, badge: "Climber" },
-  { rank: 5, alias: "NumberNinja", score: 720, bestTime: "00:45", attempts: 2, badge: "Rising" },
-];
+export const pwnit2Leaderboard: Pwnit2LeaderboardEntry[] = [];
 
 export const pwnit2HowItWorks = [
   {
-    title: "Start with one campaign",
-    body: "PwnIt 2 begins with one voucher so the activation, game and leaderboard flow stays easy to follow.",
+    title: "Play the campaign game",
+    body: "Number Chain Sprint is linked directly to the current Checkers voucher campaign.",
   },
   {
-    title: "Play the linked skill game",
-    body: "The campaign links directly to one challenge. Your result is based on speed and accuracy.",
+    title: "Build activation",
+    body: "Each completed run counts toward activation until the campaign enters its countdown.",
   },
   {
     title: "Climb the board",
-    body: "Scores feed the leaderboard experience. The board becomes more important once the countdown unlocks.",
+    body: "Scores are saved to the campaign leaderboard so you can track your position.",
   },
   {
-    title: "Countdown after activation",
-    body: "The voucher value stays fixed before activation. After activation, the final sprint can begin.",
+    title: "Watch the final status",
+    body: "When the countdown ends, the board freezes and the final campaign status is shown.",
   },
 ];

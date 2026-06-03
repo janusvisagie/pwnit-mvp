@@ -17,10 +17,11 @@ export type Pwnit2CampaignCardModel = {
   tertiaryMetricValue?: string;
   gameHref?: string;
   leaderboardHref?: string;
+  statusHref?: string;
 };
 
 const toneClasses: Record<Pwnit2CampaignCardModel["statusTone"], string> = {
-  funding: "border-[#ffd0c4] bg-[#fff7f4] text-[#a64f3d]",
+  funding: "border-[#f3c8bb] bg-[#fff7f3] text-[#9f4d3d]",
   countdown: "border-[#8bd7d0] bg-[#effdfb] text-[#10645c]",
   closed: "border-slate-300 bg-slate-50 text-slate-700",
 };
@@ -29,7 +30,7 @@ export default function Pwnit2CampaignCard({ campaign }: { campaign: Pwnit2Campa
   const pct = Math.max(0, Math.min(100, Math.round(campaign.activationPct || 0)));
 
   return (
-    <article className="overflow-hidden rounded-[2rem] border border-[#f0d9d1] bg-white shadow-sm shadow-slate-200/70">
+    <article className="overflow-hidden rounded-[2rem] border border-[#ecd8d0] bg-white shadow-sm shadow-slate-200/70">
       <div className="bg-gradient-to-br from-[#101828] via-[#12324a] to-[#116466] px-5 py-5 text-white sm:px-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -42,18 +43,9 @@ export default function Pwnit2CampaignCard({ campaign }: { campaign: Pwnit2Campa
         </div>
 
         <div className="mt-5 grid gap-3 sm:grid-cols-3">
-          <div className="rounded-2xl bg-white/12 p-4 backdrop-blur">
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-white/70">Base value</p>
-            <p className="mt-1 text-2xl font-black">{campaign.baseValueLabel}</p>
-          </div>
-          <div className="rounded-2xl bg-white/12 p-4 backdrop-blur">
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-white/70">Current value</p>
-            <p className="mt-1 text-2xl font-black">{campaign.currentValueLabel}</p>
-          </div>
-          <div className="rounded-2xl bg-white/12 p-4 backdrop-blur">
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-white/70">Activation</p>
-            <p className="mt-1 text-2xl font-black">{pct}%</p>
-          </div>
+          <HeroMetric label="Base value" value={campaign.baseValueLabel} />
+          <HeroMetric label="Current value" value={campaign.currentValueLabel} />
+          <HeroMetric label="Activation" value={`${pct}%`} />
         </div>
       </div>
 
@@ -61,7 +53,7 @@ export default function Pwnit2CampaignCard({ campaign }: { campaign: Pwnit2Campa
         <div>
           <div className="h-3 overflow-hidden rounded-full bg-[#f3e5df]">
             <div
-              className="h-full rounded-full bg-gradient-to-r from-[#14b8a6] via-[#6fd3c7] to-[#f6a892]"
+              className="h-full rounded-full bg-gradient-to-r from-[#14b8a6] via-[#6fd3c7] to-[#f2a38e]"
               style={{ width: `${pct}%` }}
             />
           </div>
@@ -71,7 +63,7 @@ export default function Pwnit2CampaignCard({ campaign }: { campaign: Pwnit2Campa
         <div className="grid gap-3 sm:grid-cols-3">
           <Metric label={campaign.primaryMetricLabel} value={campaign.primaryMetricValue} />
           <Metric label={campaign.secondaryMetricLabel} value={campaign.secondaryMetricValue} />
-          <Metric label={campaign.tertiaryMetricLabel ?? "Status"} value={campaign.tertiaryMetricValue ?? "Active"} />
+          <Metric label={campaign.tertiaryMetricLabel ?? "Status"} value={campaign.tertiaryMetricValue ?? campaign.statusLabel} />
         </div>
 
         <div className="flex flex-wrap gap-3 pt-1">
@@ -88,10 +80,10 @@ export default function Pwnit2CampaignCard({ campaign }: { campaign: Pwnit2Campa
             View leaderboard
           </Link>
           <Link
-            href="/buy-credits"
-            className="rounded-full border border-[#f2c2b5] bg-[#fff7f4] px-5 py-3 text-sm font-black text-[#9f4d3d] transition hover:-translate-y-0.5 hover:bg-white"
+            href={campaign.statusHref ?? "/pwnit-2/status"}
+            className="rounded-full border border-[#f3c8bb] bg-[#fff7f3] px-5 py-3 text-sm font-black text-[#9f4d3d] transition hover:-translate-y-0.5 hover:bg-white"
           >
-            Credits
+            Campaign status
           </Link>
         </div>
       </div>
@@ -99,9 +91,18 @@ export default function Pwnit2CampaignCard({ campaign }: { campaign: Pwnit2Campa
   );
 }
 
+function HeroMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl bg-white/12 p-4 backdrop-blur">
+      <p className="text-xs font-bold uppercase tracking-[0.18em] text-white/70">{label}</p>
+      <p className="mt-1 text-2xl font-black">{value}</p>
+    </div>
+  );
+}
+
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-[#f0d9d1] bg-[#fffaf8] p-4">
+    <div className="rounded-2xl border border-[#ecd8d0] bg-[#fffaf8] p-4">
       <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">{label}</p>
       <p className="mt-1 text-xl font-black text-slate-950">{value}</p>
     </div>
