@@ -14,12 +14,12 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className="min-h-screen bg-slate-100 text-slate-950 antialiased">
+      <body className="min-h-screen bg-slate-50 text-slate-950 antialiased">
         <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-3 py-3 sm:px-4 sm:py-4">
           <header className="mb-3 rounded-[1.5rem] border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <Link href="/" className="group flex items-center gap-2">
+                <Link href="/" className="group flex items-center gap-2" aria-label="PwnIt 2 home">
                   <span className="rounded-2xl bg-slate-900 px-3 py-2 text-lg font-black tracking-tight text-white transition group-hover:bg-slate-700">
                     PwnIt
                   </span>
