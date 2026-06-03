@@ -25,9 +25,9 @@ export function HeaderNav() {
   const items = useMemo(
     () =>
       ([
-        { href: "/", label: "Campaign", mobileMode: "always", desktop: true, show: true },
-        { href: "/buy-credits", label: "Credits", mobileMode: "always", desktop: true, show: true },
+        { href: "/", label: "Home", mobileMode: "always", desktop: true, show: true },
         { href: "/pwnit-2", label: "How it works", mobileMode: "always", desktop: true, show: true },
+        { href: "/buy-credits", label: "Credits", mobileMode: "always", desktop: true, show: true },
         { href: "/dashboard", label: "Profile", mobileMode: "hide-on-detail", desktop: true, show: true },
         { href: "/referrals", label: "Referrals", mobileMode: "hide-on-detail", desktop: true, show: true },
         { href: "/feedback", label: "Feedback", mobileMode: "hide-on-detail", desktop: true, show: true },
@@ -47,18 +47,16 @@ export function HeaderNav() {
   function linkClasses(active: boolean, tone: "mobile" | "desktop") {
     if (tone === "mobile") {
       return [
-        "rounded-full border px-3 py-1.5 text-sm font-bold whitespace-nowrap transition",
+        "rounded-full border px-3 py-1.5 text-sm font-semibold whitespace-nowrap transition",
         active
-          ? "border-[#2f3a32] bg-[#2f3a32] text-white"
-          : "border-[#d8c7b5] bg-[#fffaf3] text-[#5f5047] hover:border-[#b89572] hover:bg-[#fbf3ea]",
+          ? "border-slate-950 bg-slate-950 text-white"
+          : "border-slate-300 bg-white text-slate-700 hover:border-[#ef8f75] hover:bg-[#fff7f2] hover:text-slate-950",
       ].join(" ");
     }
 
     return [
-      "rounded-full px-3 py-1.5 text-sm font-bold transition",
-      active
-        ? "bg-[#2f3a32] text-white"
-        : "text-[#5f5047] hover:bg-[#fbf3ea] hover:text-slate-950",
+      "rounded-full px-3 py-1.5 text-sm font-semibold transition",
+      active ? "bg-slate-950 text-white" : "text-slate-600 hover:bg-[#fff7f2] hover:text-slate-950",
     ].join(" ");
   }
 
@@ -69,19 +67,19 @@ export function HeaderNav() {
 
   return (
     <>
-      <nav className="flex gap-2 overflow-x-auto pb-2 sm:hidden" aria-label="Primary mobile navigation">
+      <nav className="flex gap-2 overflow-x-auto py-2 md:hidden" aria-label="Primary mobile navigation">
         {mobileItems.map((item) => (
-          <Link key={item.href} className={linkClasses(isActive(item.href), "mobile")} href={item.href}>
+          <Link key={item.href} href={item.href} className={linkClasses(isActive(item.href), "mobile")}>
             {item.label}
           </Link>
         ))}
       </nav>
 
-      <nav className="hidden items-center gap-1 sm:flex" aria-label="Primary navigation">
+      <nav className="hidden items-center gap-1 md:flex" aria-label="Primary navigation">
         {items
           .filter((item) => item.desktop)
           .map((item) => (
-            <Link key={item.href} className={linkClasses(isActive(item.href), "desktop")} href={item.href}>
+            <Link key={item.href} href={item.href} className={linkClasses(isActive(item.href), "desktop")}>
               {item.label}
             </Link>
           ))}
