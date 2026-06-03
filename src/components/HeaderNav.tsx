@@ -25,7 +25,8 @@ export function HeaderNav() {
   const items = useMemo(
     () =>
       ([
-        { href: "/", label: "Home", mobileMode: "always", desktop: true, show: true },
+        { href: "/", label: "Campaigns", mobileMode: "always", desktop: true, show: true },
+        { href: "/buy-credits", label: "Credits", mobileMode: "always", desktop: true, show: true },
         { href: "/pwnit-2", label: "How it works", mobileMode: "always", desktop: true, show: true },
         { href: "/dashboard", label: "Profile", mobileMode: "hide-on-detail", desktop: true, show: true },
         { href: "/referrals", label: "Referrals", mobileMode: "hide-on-detail", desktop: true, show: true },
@@ -46,16 +47,18 @@ export function HeaderNav() {
   function linkClasses(active: boolean, tone: "mobile" | "desktop") {
     if (tone === "mobile") {
       return [
-        "rounded-full border px-3 py-1.5 text-sm font-semibold whitespace-nowrap transition",
+        "rounded-full border px-3 py-1.5 text-sm font-bold whitespace-nowrap transition",
         active
-          ? "border-slate-900 bg-slate-900 text-white"
-          : "border-slate-300 bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-50 hover:text-slate-900",
+          ? "border-slate-950 bg-slate-950 text-white"
+          : "border-slate-300 bg-white text-slate-700 hover:border-amber-300 hover:bg-amber-50 hover:text-amber-800",
       ].join(" ");
     }
 
     return [
-      "rounded-full px-3 py-1.5 text-sm font-medium transition",
-      active ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
+      "rounded-full px-3 py-1.5 text-sm font-bold transition",
+      active
+        ? "bg-slate-950 text-white"
+        : "text-slate-600 hover:bg-gradient-to-r hover:from-amber-50 hover:to-cyan-50 hover:text-slate-950",
     ].join(" ");
   }
 
