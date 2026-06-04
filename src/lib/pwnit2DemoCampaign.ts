@@ -10,6 +10,18 @@ export type Pwnit2LeaderboardEntry = {
   isYou?: boolean;
 };
 
+// Mirrors the quote returned by /api/pwnit-2/purchase (1 credit == R1).
+export type Pwnit2PurchaseQuote = {
+  voucherValueZAR: number;
+  yourDiscountZAR: number;
+  payableZAR: number;
+  walletAppliedZAR: number;
+  topUpZAR: number;
+  canBuy: boolean;
+  isWinnerYou: boolean;
+  alreadyPurchased: boolean;
+};
+
 export type Pwnit2CampaignSnapshot = {
   title: string;
   category: string;
@@ -39,6 +51,17 @@ export type Pwnit2CampaignSnapshot = {
   statusWindowEndsAt?: string | null;
   winnerAlias?: string | null;
   topScore?: number | null;
+
+  // Extended fields supplied by the live API (optional so the demo fallback stays valid).
+  baseValueZAR?: number;
+  currentValueZAR?: number;
+  growthZAR?: number;
+  playCostCredits?: number;
+  yourDiscountZAR?: number;
+  yourPaidPlays?: number;
+  yourTotalPlays?: number;
+  isWinnerYou?: boolean;
+  purchase?: Pwnit2PurchaseQuote | null;
 };
 
 export const pwnit2DemoCampaign: Pwnit2CampaignSnapshot = {
@@ -58,18 +81,29 @@ export const pwnit2DemoCampaign: Pwnit2CampaignSnapshot = {
   gameHref: "/play/pwnit-2",
   leaderboardHref: "/pwnit-2/leaderboard",
   statusHref: "/pwnit-2/status",
-  helper: "Play the linked skill game to help the campaign reach activation. The countdown starts once activation is reached.",
+  helper:
+    "Play the skill game to help unlock the countdown. Paid plays also build your discount on this voucher.",
   primaryMetricLabel: "Activation",
   primaryMetricValue: "0%",
   secondaryMetricLabel: "Players",
   secondaryMetricValue: "0",
-  tertiaryMetricLabel: "Game",
-  tertiaryMetricValue: "Number Chain",
+  tertiaryMetricLabel: "Voucher",
+  tertiaryMetricValue: "R500",
   state: "FUNDING",
   closesAt: null,
   statusWindowEndsAt: null,
   winnerAlias: null,
   topScore: null,
+
+  baseValueZAR: 500,
+  currentValueZAR: 500,
+  growthZAR: 0,
+  playCostCredits: 5,
+  yourDiscountZAR: 0,
+  yourPaidPlays: 0,
+  yourTotalPlays: 0,
+  isWinnerYou: false,
+  purchase: null,
 };
 
 export const pwnit2Leaderboard: Pwnit2LeaderboardEntry[] = [];
@@ -77,18 +111,18 @@ export const pwnit2Leaderboard: Pwnit2LeaderboardEntry[] = [];
 export const pwnit2HowItWorks = [
   {
     title: "Play the campaign game",
-    body: "Number Chain Sprint is linked directly to the current Checkers voucher campaign.",
+    body: "Each run of Number Chain Sprint costs a few credits. You get free credits daily, and you can top up any time.",
   },
   {
-    title: "Build activation",
-    body: "Each completed run counts toward activation until the campaign enters its countdown.",
+    title: "Build the voucher — and your discount",
+    body: "Paid plays fund the campaign toward activation, and every R1 you spend becomes R1 of discount on this voucher.",
   },
   {
-    title: "Climb the board",
-    body: "Scores are saved to the campaign leaderboard so you can track your position.",
+    title: "Activation starts the countdown",
+    body: "Once the campaign is funded, the countdown begins and the voucher value starts to grow.",
   },
   {
-    title: "Watch the final status",
-    body: "When the countdown ends, the board freezes and the final campaign status is shown.",
+    title: "Win it, or buy it with your discount",
+    body: "When the countdown ends, the top score wins the voucher. Everyone else can buy it during the window, minus the discount they earned.",
   },
 ];

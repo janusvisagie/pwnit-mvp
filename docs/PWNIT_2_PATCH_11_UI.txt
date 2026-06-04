@@ -1,0 +1,68 @@
+PWNIT 2 — PATCH 11 (UI LAYER)
+=============================
+Builds on Patch 10. Apply Patch 10 first (it must be live, because these
+screens render the new fields the API now returns: currentValueZAR, growthZAR,
+yourDiscountZAR, playCostCredits, isWinnerYou, and the purchase quote).
+
+  ==> No database migration. No new env vars.
+
+FILES
+-----
+  src/lib/pwnit2DemoCampaign.ts            REPLACE  adds new (optional) snapshot fields +
+                                                    Pwnit2PurchaseQuote type + player-facing how-it-works
+  src/components/Pwnit2Game.tsx            REPLACE  sends rttMs, routes to /buy-credits when out of
+                                                    credits, shows discount earned + your balance
+  src/components/Pwnit2Home.tsx            REPLACE  grown voucher value + your discount in the hero
+  src/components/Pwnit2CampaignCard.tsx    REPLACE  current value (+grown), your discount, buy CTA
+  src/components/Pwnit2Leaderboard.tsx     REPLACE  voucher value + your discount cards
+  src/components/Pwnit2Status.tsx          REPLACE  winner / final value / your rank / buy CTA
+  src/app/pwnit-2/purchase/page.tsx        NEW      buy page (server shell)
+  src/app/pwnit-2/purchase/ui.tsx          NEW      quote + confirm (uses /api/pwnit-2/purchase)
+  src/app/pwnit-2/result/page.tsx          NEW      result page (server shell)
+  src/app/pwnit-2/result/ui.tsx            NEW      winner result + buy-with-discount CTA
+
+WHAT CHANGED FOR THE PLAYER
+---------------------------
+  - The game now states the play cost (R5), shows your credit balance and your
+    earned discount, and on a finished run shows "+Rx discount earned". If you
+    run out of credits it shows a clear prompt with an "Add credits" button.
+  - Every screen now shows the grown voucher value and your discount, and offers
+    a "Buy the voucher" path during the post-closure window.
+  - New /pwnit-2/result page: shows the winner, the final value, your rank, and
+    either "You won it" or a buy-with-your-discount button.
+  - New /pwnit-2/purchase page: shows voucher value − your discount = payable,
+    and confirms a (test) purchase.
+  - Developer-facing wording is gone; copy is written for players.
+  - Palette: the rust #9f4d3d accent (and the orange gradient stop) are replaced
+    with emerald/teal, matching the buy-credits page from Patch 10. The bright
+    cream background is kept.
+
+APPLY (Windows / PowerShell, same flow as before)
+-------------------------------------------------
+1. From your repo root, extract over the repo (replaces the 6 files, adds 4):
+     tar -xf "%USERPROFILE%\Downloads\pwnit2-patch-11-ui.zip"
+   (or PowerShell:)
+     Expand-Archive -Path "$env:USERPROFILE\Downloads\pwnit2-patch-11-ui.zip" -DestinationPath . -Force
+
+2. Build locally:
+     npm run build
+
+3. Commit + push (one line in cmd, no backslashes):
+     git add -A
+     git commit -m "PwnIt 2 Patch 11: UI layer (grown value, discount, purchase + result pages, emerald palette)"
+     git push origin pwnit-2
+
+NOTE ON TYPES
+-------------
+The new snapshot fields are added to Pwnit2CampaignSnapshot as OPTIONAL, and the
+components read them with sensible fallbacks (e.g. R500, R0). That keeps the demo
+fallback object valid and means the Patch 10 server still type-checks unchanged.
+
+SMOKE TEST AFTER DEPLOY
+-----------------------
+  - Home / card / leaderboard show the voucher value and "Your discount".
+  - Play with no paid credits spent yet -> discount stays R0; spend paid credits
+    -> "+Rx discount earned" and "Your discount" rises.
+  - Spend down to zero credits -> game shows the add-credits prompt.
+  - Once in the post-closure window: /pwnit-2/result shows the winner; if you
+    didn't win, /pwnit-2/purchase shows value − discount = payable and confirms.
