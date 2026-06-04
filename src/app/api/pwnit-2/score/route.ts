@@ -12,14 +12,35 @@ export async function POST(req: Request) {
       elapsedSeconds: Number(body?.elapsedSeconds ?? 0),
       correct: Number(body?.correct ?? 0),
       total: Number(body?.total ?? 1),
+      rttMs: Number(body?.rttMs ?? 0),
     });
 
     if (!result.ok) {
-      return NextResponse.json({ ok: false, error: result.error, campaign: result.snapshot, leaderboard: result.leaderboard }, { status: result.status });
+      return NextResponse.json(
+        {
+          ok: false,
+          error: result.error,
+          needCredits: (result as { needCredits?: boolean }).needCredits ?? false,
+          playCostCredits: (result as { playCostCredits?: number }).playCostCredits ?? null,
+          campaign: result.snapshot,
+          leaderboard: result.leaderboard,
+        },
+        { status: result.status },
+      );
     }
 
-    return NextResponse.json({ ok: true, campaign: result.snapshot, leaderboard: result.leaderboard, myRank: result.myRank });
+    return NextResponse.json({
+      ok: true,
+      campaign: result.snapshot,
+      leaderboard: result.leaderboard,
+      myRank: result.myRank,
+      discountEarnedZAR: result.discountEarnedZAR,
+      creditsSpent: result.creditsSpent,
+    });
   } catch (error: any) {
-    return NextResponse.json({ ok: false, error: error?.message || "Unable to save score." }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, error: error?.message || "Unable to save score." },
+      { status: 500 },
+    );
   }
 }

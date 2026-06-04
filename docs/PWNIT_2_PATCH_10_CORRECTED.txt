@@ -1,0 +1,97 @@
+PWNIT 2 — PATCH 10 (CORRECTED): Wire the campaign onto your real engine
+=======================================================================
+
+WHY THIS LOOKS DIFFERENT FROM THE SPEC'S "CREATE CAMPAIGN TABLES" PLAN
+----------------------------------------------------------------------
+After reading your actual repo, your PwnIt 1 engine already implements almost
+the entire PwnIt 2 brief:
+
+  - Funding-based activation .......... rounds.ts (effectiveActivationCredits >= activationTargetCredits)
+  - Countdown / close / winner ........ rounds.ts syncRoundLifecycle + settle.ts settleRound
+  - Anti-cheat review gating .......... settle.ts (finalistNeedsReview) + antiCheat.ts + botRisk.ts
+  - Post-closure purchase window ...... ItemRound.purchaseGraceEndsAt / Item.purchaseGraceHours
+  - Paid play -> voucher discount ..... pricing.ts buyPriceAfterSpend (capped at face value)
+  - Ledger ............................ CreditLedger
+  - Credits + buy-credits backend ..... credits.ts + /api/credits/buy
+
+Your patch-9 pwnit-2 layer bypassed all of this with a shadow lifecycle that
+activated on a play *count*, recorded every play as FREE (so discount never
+accrued), and trusted a raw client score. This patch deletes that shadow path
+and routes the campaign through your real engine instead.
+
+  ==> NO database migration is required. This reuses your existing models.
+
+FILES IN THIS PATCH
+-------------------
+  src/lib/pwnit2Growth.ts                  NEW    voucher growth formula (activation-gated)
+  src/lib/pwnit2CampaignServer.ts          REPLACE delegates to rounds.ts/settle.ts/pricing.ts
+  src/app/api/pwnit-2/score/route.ts       REPLACE paid plays + anti-cheat flags + need-credits
+  src/app/api/pwnit-2/purchase/route.ts    NEW    GET quote / POST confirm (uses buyPriceAfterSpend)
+  src/app/buy-credits/page.tsx             REPLACE working credits page (was "Free, not required")
+  src/app/buy-credits/ui.tsx               REPLACE real starter/value/max bundles (fixes "medium" bug)
+
+HOW THE MECHANICS NOW MAP TO THE BRIEF
+--------------------------------------
+  Activation  = funding. paid + free credits collected feed activationTargetCredits.
+                (Free daily credits are a platform subsidy and legitimately count.)
+  Discount    = PAID credits only. spendCredits() spends free credits first, so only
+                the paid portion (Attempt.paidUsed) becomes discount. This is exactly
+                the brief's "every paid play becomes discount" — and it avoids the
+                double-count warning, because free-credit plays create no discount.
+  Growth      = paidCreditsCollected x expectedBreakage x releasePercent, capped,
+                ACTIVATED phase only. Never before activation.
+  Purchase    = buyPriceAfterSpend(currentVoucherValue, yourPaidUsed, wallet).
+                Winner (rank 1, rewardType ITEM) is blocked from buying — that is
+                the reserved winner voucher. Blocked after ARCHIVED (discount expired).
+
+APPLY
+-----
+1. Confirm the app currently builds (Patch 9 state):  npm run build
+2. Copy the 6 files above into your repo, replacing where marked REPLACE.
+3. Add these env vars (.env.local AND Vercel — pwnit-2-mvp project only):
+
+     PWNIT2_BASE_VALUE_ZAR=500
+     PWNIT2_PLAY_COST_CREDITS=5          # R5 per play -> R5 discount
+     PWNIT2_ACTIVATION_PLAYS=5           # funding target = 5 x play cost = R25 to activate (demo)
+     PWNIT2_COUNTDOWN_MINUTES=30
+     PWNIT2_STATUS_WINDOW_HOURS=24
+     PWNIT2_EXPECTED_BREAKAGE_PERCENT=0.6
+     PWNIT2_GROWTH_RELEASE_PERCENT=0.3
+     PWNIT2_MAX_GROWTH_ZAR=500           # optional cap; remove for uncapped
+
+   NOTE: on first load the campaign Item is reconfigured automatically
+   (playCostCredits set to 5, base value 500, etc). A patch-9 Item that was
+   created with playCostCredits: 0 will be corrected in place. The active
+   BUILDING round's activation target is reconciled to the funded amount too.
+
+4. Build again:  npm run build
+   (I verified every import/signature against your repo, but I cannot run your
+    build here — no node_modules / Postgres in this sandbox — so this step
+    confirms it against your actual toolchain.)
+
+WHAT IS INDEPENDENTLY TESTABLE AFTER THIS PATCH
+-----------------------------------------------
+The snapshot keeps its original shape (plus extra fields), so your existing
+Pwnit2 components keep rendering. After applying you can verify end-to-end:
+
+  - Buy credits at /buy-credits (R30 / R80 / R150 bundles now actually work).
+  - Play /play/pwnit-2 — each play now spends credits; the paid portion is
+    recorded as Attempt.paidUsed and a PWNIT2_DISCOUNT_EARNED ledger entry.
+  - Activation flips to COUNTDOWN once funded (not on a play count).
+  - During COUNTDOWN the voucher value grows (watch currentValueZAR).
+  - GET  /api/pwnit-2/purchase  -> your quote (voucher value, your discount, payable).
+  - POST /api/pwnit-2/purchase  -> confirms a test purchase, applies your discount,
+                                   blocks the winner, blocks after archive.
+
+STILL TO COME (UI LAYER — see chat)
+-----------------------------------
+  - Pwnit2Game.tsx: send rttMs, handle "need credits" (link to /buy-credits),
+    stop trusting localStorage as the score of record, show discount earned.
+  - Pwnit2Home / CampaignCard / Leaderboard / Status: surface currentValueZAR,
+    growthZAR, your discount and the purchase quote; remove developer-facing copy;
+    brighten the palette (replace the rust #9f4d3d accent, keep PwnIt brightness).
+  - New /pwnit-2/purchase and /pwnit-2/result pages.
+
+  These are mechanical and lower-risk, but they render the values above, so
+  they are best built once you've confirmed the parameters and that the core
+  compiles against your toolchain.
