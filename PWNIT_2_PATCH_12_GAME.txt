@@ -1,0 +1,84 @@
+PWNIT 2 — PATCH 12 (SERVER-VALIDATED SKILL GAME)
+================================================
+Replaces the trust-the-client Number Chain game with an endless, difficulty-
+laddered version whose score the SERVER recomputes from a signed seed. Builds on
+Patches 10 + 11 (the campaign engine + UI must already be live).
+
+  ==> No database migration.
+  ==> No REQUIRED new env var (see "Token secret" below).
+
+FILES
+-----
+  src/lib/pwnit2Puzzle.ts                  NEW      pure, deterministic generator (PRNG, generateRound,
+                                                    validateRun, scoreFromRun) shared by client + server
+  src/lib/pwnit2PlayToken.ts               NEW      server-only: signs/verifies the seed (HMAC, 15-min TTL,
+                                                    bound to the user)
+  src/app/api/pwnit-2/play/route.ts        NEW      GET -> issues a fresh server-signed seed for one game
+  src/app/api/pwnit-2/score/route.ts       REPLACE  verifies the token, re-derives every round, counts the
+                                                    correct prefix, computes the score server-side
+  src/components/Pwnit2Game.tsx            REPLACE  endless ladder UI: per-round timer, tap answers, one
+                                                    wrong answer ends the run, shows discount earned
+
+WHAT CHANGED (and why)
+----------------------
+  - SERVER-ISSUED SEED. Starting a game calls GET /api/pwnit-2/play, which
+    returns a signed seed. The client can't shop for an easy seed or pre-compute
+    answers before the clock starts.
+  - ENDLESS LADDER, SKILL NOT REFLEX. Rounds continue until a wrong answer or the
+    round timer expires. Difficulty RISES (more steps, bigger numbers) while the
+    clock stays a thinking budget with a 6s floor, so the top of the board is
+    decided by who solves harder chains — not who has less network latency. Time
+    is only a tie-break between equal depths.
+  - SERVER RECOMPUTES THE SCORE. On submit the client sends { token, answers[],
+    elapsedMs, rttMs } — never a trusted score. The server re-derives each round
+    from the seed, counts the correct prefix as "rounds cleared", and computes
+    the score itself.
+  - Existing engine is reused unchanged: one play is charged, the Attempt is
+    written, paid credits accrue as discount, and the funding-based lifecycle is
+    re-synced (submitPwnit2Score is called exactly as before).
+
+  Honest caveat: because the client shows instant right/wrong feedback so a run
+  can "end on a mistake", the current round's answer briefly exists in the
+  browser — a determined cheat could auto-solve. Guards in place: server-side
+  validation, the impossible-speed flags already in the engine, and the
+  finalist-review gate before payout. Fully closing it needs per-round server
+  challenges (the answer never reaches the client). That's the right hardening
+  step before real money is at stake at scale — not required to test the concept.
+
+TOKEN SECRET (optional but recommended for production)
+------------------------------------------------------
+  The seed is signed with the first of these that is set:
+      PWNIT2_PLAY_SECRET  ->  AUTH_SESSION_SECRET  ->  NEXTAUTH_SECRET  ->  dev fallback
+  If you already have AUTH_SESSION_SECRET / NEXTAUTH_SECRET on Vercel (used for
+  session cookies), nothing is needed. To be explicit, set a dedicated value:
+      PWNIT2_PLAY_SECRET = <any long random string>
+  Do NOT rely on the built-in dev fallback in production.
+
+APPLY (Windows / PowerShell — same flow as Patches 10/11)
+---------------------------------------------------------
+1. From the repo root, extract over the repo (adds 3 files, replaces 2):
+     tar -xf "$env:USERPROFILE\Downloads\pwnit2-patch-12-game.zip"
+   (or)
+     Expand-Archive -Path "$env:USERPROFILE\Downloads\pwnit2-patch-12-game.zip" -DestinationPath . -Force
+
+2. Build locally:
+     npm run build
+
+3. Commit + push:
+     git add -A
+     git commit -m "PwnIt 2 Patch 12: server-validated endless skill game (signed seed, server-recomputed score)"
+     git push origin pwnit-2
+
+NOTE: the /api/pwnit-2/score POST body changed (now token+answers, not a raw
+score). The new client and route ship together, so this is consistent. A stale,
+cached old client would get a friendly "please refresh to start a new game" —
+not a crash.
+
+SMOKE TEST AFTER DEPLOY
+-----------------------
+  - Open the game: rounds start easy (two small steps, ~12s) and get harder.
+  - A wrong answer (or letting the timer run out) ends the run; "Cleared" shows
+    how many rounds you got. Strong runs should place higher on the leaderboard.
+  - Spending paid credits raises "Your discount" and shows "+Rx discount earned".
+  - With zero credits, finishing a run shows the add-credits prompt.
+  - Reload mid-thought and the old token expires gracefully (start a new round).
