@@ -1,44 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  pwnit2DemoCampaign,
-  type Pwnit2CampaignSnapshot,
-  type Pwnit2LeaderboardEntry,
-} from "@/lib/pwnit2DemoCampaign";
+  generateRound,
+  PWNIT2_PUZZLE_CONFIG,
+  type Pwnit2PuzzleConfig,
+} from "@/lib/pwnit2Puzzle";
+import { pwnit2DemoCampaign, type Pwnit2CampaignSnapshot } from "@/lib/pwnit2DemoCampaign";
 
-type Round = {
-  prompt: string;
-  answer: number;
-  options: number[];
-};
+type Phase = "idle" | "loading" | "playing" | "finished";
+type SaveState = "idle" | "saving" | "saved" | "error";
 
-type ScoreSaveState = "idle" | "saving" | "saved" | "error";
+const STORAGE_KEY = "pwnit2-ladder-best";
 
-type ScorePayload = {
-  ok: boolean;
-  campaign?: Pwnit2CampaignSnapshot;
-  leaderboard?: Pwnit2LeaderboardEntry[];
-  myRank?: number | null;
-  discountEarnedZAR?: number;
-  creditsSpent?: number;
-  needCredits?: boolean;
-  playCostCredits?: number;
-  error?: string;
-};
-
-const rounds: Round[] = [
-  { prompt: "Start at 12. Add 8, then subtract 5.", answer: 15, options: [13, 15, 17, 20] },
-  { prompt: "Start at 7. Double it, then add 6.", answer: 20, options: [18, 20, 22, 24] },
-  { prompt: "Start at 30. Divide by 3, then add 9.", answer: 19, options: [17, 18, 19, 21] },
-  { prompt: "Start at 11. Add 14, then subtract 7.", answer: 18, options: [16, 18, 21, 25] },
-  { prompt: "Start at 6. Triple it, then subtract 4.", answer: 14, options: [12, 14, 16, 18] },
-];
-
-const STORAGE_KEY = "pwnit2-number-chain-best";
-
-// Measure a real network round-trip so the server's anti-cheat flag has a latency signal.
 async function measureRttMs(): Promise<number> {
   try {
     const t0 = performance.now();
@@ -57,18 +32,29 @@ async function measureRttMs(): Promise<number> {
 export default function Pwnit2Game() {
   const [campaign, setCampaign] = useState<Pwnit2CampaignSnapshot>(pwnit2DemoCampaign);
   const [balance, setBalance] = useState<number | null>(null);
+  const [bestRounds, setBestRounds] = useState<number | null>(null);
+
+  const [phase, setPhase] = useState<Phase>("idle");
+  const [seed, setSeed] = useState<number | null>(null);
+  const [config, setConfig] = useState<Pwnit2PuzzleConfig>(PWNIT2_PUZZLE_CONFIG);
   const [roundIndex, setRoundIndex] = useState(0);
-  const [correct, setCorrect] = useState(0);
-  const [startedAt, setStartedAt] = useState<number | null>(null);
-  const [finishedAt, setFinishedAt] = useState<number | null>(null);
+  const [answers, setAnswers] = useState<Array<number | null>>([]);
   const [selected, setSelected] = useState<number | null>(null);
-  const [bestScore, setBestScore] = useState<number | null>(null);
-  const [saveState, setSaveState] = useState<ScoreSaveState>("idle");
-  const [rank, setRank] = useState<number | null>(null);
+  const [timeLeftMs, setTimeLeftMs] = useState(0);
+
+  const [saveState, setSaveState] = useState<SaveState>("idle");
+  const [serverCleared, setServerCleared] = useState<number | null>(null);
   const [discountEarned, setDiscountEarned] = useState<number | null>(null);
+  const [rank, setRank] = useState<number | null>(null);
   const [needCredits, setNeedCredits] = useState(false);
-  const [submittedScore, setSubmittedScore] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Refs for values read inside timers/callbacks (avoid stale closures).
+  const tokenRef = useRef<string | null>(null);
+  const answersRef = useRef<Array<number | null>>([]);
+  const gameStartedRef = useRef<number | null>(null);
+  const lockRef = useRef(false); // true during answer-feedback window
+  const finishedRef = useRef(false);
 
   async function refreshBalance() {
     try {
@@ -84,129 +70,146 @@ export default function Pwnit2Game() {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = Number.parseInt(raw, 10);
-      if (Number.isFinite(parsed)) setBestScore(parsed);
+      if (Number.isFinite(parsed)) setBestRounds(parsed);
     }
-
     fetch("/api/pwnit-2/campaign", { cache: "no-store" })
       .then((res) => res.json())
       .then((data) => {
         if (data?.ok && data?.campaign) setCampaign(data.campaign);
       })
       .catch(() => undefined);
-
     refreshBalance();
   }, []);
 
-  const elapsedSeconds = useMemo(() => {
-    if (!startedAt) return 0;
-    const end = finishedAt ?? Date.now();
-    return Math.max(0, Math.round((end - startedAt) / 1000));
-  }, [finishedAt, startedAt]);
+  const round = useMemo(() => {
+    if (seed === null || phase !== "playing") return null;
+    return generateRound(seed, roundIndex, config);
+  }, [seed, roundIndex, phase, config]);
 
-  const score = useMemo(() => {
-    if (!finishedAt) return null;
-    const speedBonus = Math.max(0, 300 - elapsedSeconds * 5);
-    return correct * 160 + speedBonus;
-  }, [correct, elapsedSeconds, finishedAt]);
-
-  // Device-local best, shown as a convenience only — the leaderboard/rank is the source of record.
+  // Per-round countdown. Times out -> end the run (no answer recorded for this round).
   useEffect(() => {
-    if (score === null) return;
-    const nextBest = Math.max(bestScore ?? 0, score);
-    setBestScore(nextBest);
-    window.localStorage.setItem(STORAGE_KEY, String(nextBest));
-  }, [bestScore, score]);
-
-  useEffect(() => {
-    if (score === null || submittedScore === score) return;
-    let cancelled = false;
-
-    async function saveScore() {
-      setSaveState("saving");
-      setError(null);
-      setNeedCredits(false);
-      try {
-        const rttMs = await measureRttMs();
-        const res = await fetch("/api/pwnit-2/score", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ score, elapsedSeconds, correct, total: rounds.length, rttMs }),
-        });
-        const data = (await res.json()) as ScorePayload;
-        if (cancelled) return;
-        if (!res.ok || !data.ok) {
-          setSaveState("error");
-          setSubmittedScore(score); // don't auto-retry a charge
-          if (data.needCredits || res.status === 402) {
-            setNeedCredits(true);
-            setError(
-              `You need ${data.playCostCredits ?? campaign.playCostCredits ?? 5} credits to play this round.`,
-            );
-          } else {
-            setError(data.error || "Score could not be saved.");
-          }
-          if (data.campaign) setCampaign(data.campaign);
-          return;
-        }
-        if (data.campaign) setCampaign(data.campaign);
-        setRank(data.myRank ?? null);
-        setDiscountEarned(Number(data.discountEarnedZAR ?? 0));
-        setSaveState("saved");
-        setSubmittedScore(score);
-        refreshBalance();
-      } catch {
-        if (!cancelled) {
-          setSaveState("error");
-          setError("Score could not be saved. Please try again.");
-        }
+    if (phase !== "playing" || !round) return;
+    const deadline = Date.now() + round.timeLimitMs;
+    setTimeLeftMs(round.timeLimitMs);
+    const id = window.setInterval(() => {
+      const rem = deadline - Date.now();
+      setTimeLeftMs(Math.max(0, rem));
+      if (rem <= 0) {
+        window.clearInterval(id);
+        if (!lockRef.current && !finishedRef.current) finishGame();
       }
-    }
+    }, 100);
+    return () => window.clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, roundIndex, round]);
 
-    saveScore();
-    return () => {
-      cancelled = true;
-    };
-  }, [correct, elapsedSeconds, score, submittedScore, campaign.playCostCredits]);
-
-  const currentRound = rounds[roundIndex];
-  const isFinished = finishedAt !== null;
-  const progressPct = Math.round((roundIndex / rounds.length) * 100);
   const playClosed = campaign.state === "STATUS_WINDOW" || campaign.state === "ARCHIVED";
   const playCost = campaign.playCostCredits ?? 5;
   const currentValue = campaign.currentValueZAR ?? 500;
 
-  function startGame() {
-    setRoundIndex(0);
-    setCorrect(0);
-    setStartedAt(Date.now());
-    setFinishedAt(null);
-    setSelected(null);
+  async function startGame() {
+    setPhase("loading");
+    setError(null);
+    setNeedCredits(false);
     setSaveState("idle");
-    setSubmittedScore(null);
-    setRank(null);
+    setServerCleared(null);
     setDiscountEarned(null);
+    setRank(null);
+    finishedRef.current = false;
+    lockRef.current = false;
+    try {
+      const res = await fetch("/api/pwnit-2/play", { cache: "no-store" });
+      const data = await res.json();
+      if (!res.ok || !data.ok || !data.token) {
+        setPhase("idle");
+        setError(data?.error || "Could not start a game. Please try again.");
+        return;
+      }
+      tokenRef.current = String(data.token);
+      setSeed(Number(data.seed));
+      if (data.config) setConfig(data.config as Pwnit2PuzzleConfig);
+      answersRef.current = [];
+      setAnswers([]);
+      setSelected(null);
+      setRoundIndex(0);
+      gameStartedRef.current = Date.now();
+      setPhase("playing");
+    } catch {
+      setPhase("idle");
+      setError("Could not start a game. Please try again.");
+    }
+  }
+
+  function advance() {
+    const next = roundIndex + 1;
+    if (next >= config.maxRounds) {
+      finishGame();
+    } else {
+      setRoundIndex(next);
+    }
+  }
+
+  function chooseOption(option: number) {
+    if (phase !== "playing" || lockRef.current || !round) return;
+    lockRef.current = true;
+    setSelected(option);
+    answersRef.current[roundIndex] = option;
+    setAnswers(answersRef.current.slice());
+    const wasCorrect = option === round.answer;
+    window.setTimeout(() => {
+      setSelected(null);
+      lockRef.current = false;
+      if (finishedRef.current) return;
+      if (wasCorrect) advance();
+      else finishGame();
+    }, 360);
+  }
+
+  async function finishGame() {
+    if (finishedRef.current) return;
+    finishedRef.current = true;
+    setPhase("finished");
+    setSaveState("saving");
     setNeedCredits(false);
     setError(null);
-  }
 
-  function chooseOption(value: number) {
-    if (!startedAt || isFinished || selected !== null) return;
-    setSelected(value);
-
-    const wasCorrect = value === currentRound.answer;
-    const nextCorrect = correct + (wasCorrect ? 1 : 0);
-    setCorrect(nextCorrect);
-
-    window.setTimeout(() => {
-      const nextRound = roundIndex + 1;
-      if (nextRound >= rounds.length) {
-        setFinishedAt(Date.now());
-      } else {
-        setRoundIndex(nextRound);
-        setSelected(null);
+    const rttMs = await measureRttMs();
+    const elapsedMs = Date.now() - (gameStartedRef.current ?? Date.now());
+    try {
+      const res = await fetch("/api/pwnit-2/score", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: tokenRef.current, answers: answersRef.current, elapsedMs, rttMs }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        setSaveState("error");
+        if (data?.needCredits || res.status === 402) {
+          setNeedCredits(true);
+          setError(`You need ${data?.playCostCredits ?? playCost} credits to play.`);
+        } else {
+          setError(data?.error || "Score could not be saved.");
+        }
+        if (data?.campaign) setCampaign(data.campaign);
+        return;
       }
-    }, 450);
+      const cleared = Number(data.roundsCleared ?? 0);
+      setServerCleared(cleared);
+      setDiscountEarned(Number(data.discountEarnedZAR ?? 0));
+      setRank(data.myRank ?? null);
+      if (data.campaign) setCampaign(data.campaign);
+      setSaveState("saved");
+      const nextBest = Math.max(bestRounds ?? 0, cleared);
+      setBestRounds(nextBest);
+      window.localStorage.setItem(STORAGE_KEY, String(nextBest));
+      refreshBalance();
+    } catch {
+      setSaveState("error");
+      setError("Score could not be saved. Please try again.");
+    }
   }
+
+  const timerPct = round ? Math.max(0, Math.min(100, Math.round((timeLeftMs / round.timeLimitMs) * 100))) : 0;
 
   return (
     <main className="min-h-screen bg-[#fffaf8] px-4 py-6 text-slate-950 sm:px-6 lg:px-8">
@@ -215,10 +218,11 @@ export default function Pwnit2Game() {
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <p className="text-xs font-black uppercase tracking-[0.22em] text-emerald-700">{campaign.title}</p>
-              <h1 className="mt-2 text-3xl font-black tracking-tight sm:text-5xl">{campaign.gameTitle}</h1>
+              <h1 className="mt-2 text-3xl font-black tracking-tight sm:text-5xl">Number Chain Sprint</h1>
               <p className="mt-3 max-w-2xl text-sm font-semibold leading-6 text-slate-700">
-                Solve each number chain quickly and accurately. Each round costs R{playCost} — and every R1
-                you spend becomes R1 of discount on this voucher (now R{currentValue}).
+                Solve each chain before the timer runs out. One wrong answer ends the run — the further you
+                get, the higher you place. Each game costs R{playCost}, and every R1 you spend becomes R1 off
+                this voucher (now R{currentValue}).
               </p>
             </div>
             <Link
@@ -265,18 +269,22 @@ export default function Pwnit2Game() {
                 </Link>
               </div>
             </div>
-          ) : !startedAt ? (
+          ) : phase === "idle" ? (
             <div className="space-y-5 text-center">
-              <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 text-3xl font-black text-white">
-                5
+              <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 text-2xl font-black text-white">
+                ∞
               </div>
               <div>
-                <h2 className="text-2xl font-black">Five quick chains</h2>
+                <h2 className="text-2xl font-black">How far can you go?</h2>
                 <p className="mt-2 text-sm font-semibold leading-6 text-slate-700">
-                  Pick the correct result for each chain. A clean, fast run gets the strongest score. This
-                  round costs R{playCost}.
+                  The chains start easy and get harder. Keep solving — one wrong answer (or running out of
+                  time) ends the run.
                 </p>
+                {bestRounds ? (
+                  <p className="mt-2 text-xs font-bold text-slate-500">Your best on this device: {bestRounds} rounds</p>
+                ) : null}
               </div>
+              {error ? <p className="text-sm font-bold text-red-600">{error}</p> : null}
               <button
                 onClick={startGame}
                 className="rounded-full bg-[#0f172a] px-6 py-3 text-sm font-black text-white transition hover:-translate-y-0.5 hover:bg-[#172554]"
@@ -284,13 +292,62 @@ export default function Pwnit2Game() {
                 Start round · R{playCost}
               </button>
             </div>
-          ) : isFinished ? (
+          ) : phase === "loading" ? (
+            <div className="py-10 text-center text-sm font-bold text-slate-500">Starting your round…</div>
+          ) : phase === "playing" && round ? (
+            <div className="space-y-5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">Round {roundIndex + 1}</p>
+                  <h2 className="mt-2 text-2xl font-black">{round.prompt}</h2>
+                </div>
+                <div className="rounded-2xl bg-emerald-50 px-4 py-3 text-right">
+                  <p className="text-xs font-black uppercase tracking-[0.16em] text-emerald-700">Cleared</p>
+                  <p className="text-2xl font-black text-emerald-700">{roundIndex}</p>
+                </div>
+              </div>
+
+              <div className="h-3 overflow-hidden rounded-full bg-[#e8efe9]">
+                <div
+                  className={`h-full rounded-full transition-[width] duration-100 ${
+                    timerPct > 33 ? "bg-gradient-to-r from-emerald-400 to-teal-400" : "bg-amber-400"
+                  }`}
+                  style={{ width: `${timerPct}%` }}
+                />
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                {round.options.map((option) => {
+                  const isSelected = selected === option;
+                  const isAnswer = option === round.answer;
+                  const feedbackClass =
+                    selected === null
+                      ? "border-[#e6ded9] bg-[#fffaf8] hover:border-emerald-300 hover:bg-emerald-50"
+                      : isAnswer
+                        ? "border-emerald-300 bg-emerald-50 text-emerald-700"
+                        : isSelected
+                          ? "border-slate-300 bg-slate-50 text-slate-500"
+                          : "border-[#e6ded9] bg-white text-slate-400";
+                  return (
+                    <button
+                      key={option}
+                      onClick={() => chooseOption(option)}
+                      disabled={selected !== null}
+                      className={`rounded-2xl border p-5 text-left text-2xl font-black transition ${feedbackClass}`}
+                    >
+                      {option}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : phase === "finished" ? (
             <div className="space-y-5 text-center">
-              <p className="text-xs font-black uppercase tracking-[0.22em] text-emerald-700">Round complete</p>
-              <h2 className="text-4xl font-black">{score} points</h2>
-              <p className="text-sm font-semibold text-slate-700">
-                {correct}/{rounds.length} correct · {elapsedSeconds}s elapsed · Best on this device: {bestScore ?? score}
-              </p>
+              <p className="text-xs font-black uppercase tracking-[0.22em] text-emerald-700">Run complete</p>
+              <h2 className="text-4xl font-black">
+                {serverCleared ?? roundIndex} {(serverCleared ?? roundIndex) === 1 ? "round" : "rounds"} cleared
+              </h2>
+              <p className="text-sm font-semibold text-slate-700">Your best on this device: {bestRounds ?? serverCleared ?? roundIndex} rounds</p>
 
               {needCredits ? (
                 <div className="space-y-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
@@ -307,9 +364,9 @@ export default function Pwnit2Game() {
               ) : (
                 <div className="rounded-2xl bg-[#f3faf7] p-4 text-sm font-bold leading-6 text-slate-700">
                   {saveState === "saving"
-                    ? "Saving your score…"
+                    ? "Saving your run…"
                     : saveState === "saved"
-                      ? `Score saved${rank ? ` · rank #${rank}` : ""}${
+                      ? `Run saved${rank ? ` · rank #${rank}` : ""}${
                           discountEarned ? ` · +R${discountEarned} discount earned` : ""
                         }.`
                       : saveState === "error"
@@ -333,55 +390,7 @@ export default function Pwnit2Game() {
                 </Link>
               </div>
             </div>
-          ) : (
-            <div className="space-y-5">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">
-                    Question {roundIndex + 1} of {rounds.length}
-                  </p>
-                  <h2 className="mt-2 text-2xl font-black">{currentRound.prompt}</h2>
-                </div>
-                <div className="rounded-2xl bg-emerald-50 px-4 py-3 text-right">
-                  <p className="text-xs font-black uppercase tracking-[0.16em] text-emerald-700">Correct</p>
-                  <p className="text-2xl font-black text-emerald-700">{correct}</p>
-                </div>
-              </div>
-
-              <div className="h-3 overflow-hidden rounded-full bg-[#e8efe9]">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-teal-400"
-                  style={{ width: `${progressPct}%` }}
-                />
-              </div>
-
-              <div className="grid gap-3 sm:grid-cols-2">
-                {currentRound.options.map((option) => {
-                  const isSelected = selected === option;
-                  const isCorrect = option === currentRound.answer;
-                  const feedbackClass =
-                    selected === null
-                      ? "border-[#e6ded9] bg-[#fffaf8] hover:border-emerald-300 hover:bg-emerald-50"
-                      : isSelected && isCorrect
-                        ? "border-emerald-300 bg-emerald-50 text-emerald-700"
-                        : isSelected
-                          ? "border-slate-300 bg-slate-50 text-slate-500"
-                          : "border-[#e6ded9] bg-white text-slate-400";
-
-                  return (
-                    <button
-                      key={option}
-                      onClick={() => chooseOption(option)}
-                      disabled={selected !== null}
-                      className={`rounded-2xl border p-5 text-left text-2xl font-black transition ${feedbackClass}`}
-                    >
-                      {option}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+          ) : null}
         </div>
       </section>
     </main>
