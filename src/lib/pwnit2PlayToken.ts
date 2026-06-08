@@ -1,10 +1,8 @@
-// Server-only. Issues and verifies a signed "play token" that carries the
-// puzzle seed. The seed is generated and signed server-side so the client can't
-// shop for an easy seed or pre-compute answers before the clock starts. On
-// submit, the server re-derives the rounds from this seed and validates them.
+// Server-only. Issues/verifies a signed play token carrying the puzzle seed AND the
+// campaign slug, so a token minted for one campaign can't be replayed against another.
 import { createHmac, timingSafeEqual, randomBytes } from "crypto";
 
-const TTL_MS = 15 * 60 * 1000; // a game must be submitted within 15 minutes
+const TTL_MS = 15 * 60 * 1000;
 
 function secret(): string {
   return (
@@ -20,13 +18,13 @@ function sign(body: string): string {
 }
 
 export function newSeed(): number {
-  return randomBytes(4).readUInt32LE(0); // uint32 for mulberry32
+  return randomBytes(4).readUInt32LE(0);
 }
 
-export function issuePlayToken(userId: string): { seed: number; token: string; issuedAt: number } {
+export function issuePlayToken(userId: string, slug: string): { seed: number; token: string; issuedAt: number } {
   const seed = newSeed();
   const issuedAt = Date.now();
-  const body = Buffer.from(`${seed}.${issuedAt}.${userId}`).toString("base64url");
+  const body = Buffer.from(`${seed}.${issuedAt}.${userId}.${slug}`).toString("base64url");
   const token = `${body}.${sign(body)}`;
   return { seed, token, issuedAt };
 }
@@ -34,6 +32,7 @@ export function issuePlayToken(userId: string): { seed: number; token: string; i
 export function verifyPlayToken(
   token: string,
   userId: string,
+  slug: string,
 ): { ok: boolean; seed?: number; reason?: string } {
   if (!token || typeof token !== "string" || !token.includes(".")) return { ok: false, reason: "missing" };
   const idx = token.lastIndexOf(".");
@@ -51,10 +50,11 @@ export function verifyPlayToken(
     return { ok: false, reason: "decode" };
   }
   const parts = payload.split(".");
-  if (parts.length !== 3) return { ok: false, reason: "format" };
+  if (parts.length !== 4) return { ok: false, reason: "format" };
 
-  const [seedStr, issuedAtStr, tokenUser] = parts;
+  const [seedStr, issuedAtStr, tokenUser, tokenSlug] = parts;
   if (tokenUser !== userId) return { ok: false, reason: "user-mismatch" };
+  if (tokenSlug !== slug) return { ok: false, reason: "slug-mismatch" };
 
   const issuedAt = Number(issuedAtStr);
   if (!Number.isFinite(issuedAt) || Date.now() - issuedAt > TTL_MS) return { ok: false, reason: "expired" };

@@ -14,7 +14,9 @@ type CampaignPayload = {
   leaderboard?: Pwnit2LeaderboardEntry[];
 };
 
-export default function Pwnit2Result() {
+export default function Pwnit2Result({ slug = "hero" }: { slug?: string }) {
+  const campaignSlug = slug === "staple" ? "staple" : "hero";
+  const q = `?item=${campaignSlug}`;
   const [campaign, setCampaign] = useState<Pwnit2CampaignSnapshot>(pwnit2DemoCampaign);
   const [leaderboard, setLeaderboard] = useState<Pwnit2LeaderboardEntry[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -23,7 +25,7 @@ export default function Pwnit2Result() {
     let cancelled = false;
     async function load() {
       try {
-        const res = await fetch("/api/pwnit-2/campaign", { cache: "no-store" });
+        const res = await fetch(`/api/pwnit-2/campaign?item=${campaignSlug}`, { cache: "no-store" });
         const data = (await res.json()) as CampaignPayload;
         if (!cancelled && data.ok) {
           if (data.campaign) setCampaign(data.campaign);
@@ -41,7 +43,7 @@ export default function Pwnit2Result() {
       cancelled = true;
       window.clearInterval(timer);
     };
-  }, []);
+  }, [campaignSlug]);
 
   const leader = leaderboard[0] ?? null;
   const yourRank = useMemo(() => leaderboard.find((e) => e.isYou)?.rank ?? null, [leaderboard]);
@@ -107,14 +109,14 @@ export default function Pwnit2Result() {
             <div className="flex flex-wrap justify-center gap-3">
               {canBuy ? (
                 <Link
-                  href="/pwnit-2/purchase"
+                  href={`/pwnit-2/purchase${q}`}
                   className="rounded-full bg-emerald-600 px-6 py-3 text-sm font-black text-white transition hover:-translate-y-0.5 hover:bg-emerald-700"
                 >
                   Buy with your discount
                 </Link>
               ) : null}
               <Link
-                href="/pwnit-2/leaderboard"
+                href={`/pwnit-2/leaderboard${q}`}
                 className="rounded-full border border-emerald-200 bg-emerald-50 px-6 py-3 text-sm font-black text-emerald-800 transition hover:-translate-y-0.5 hover:bg-white"
               >
                 Full leaderboard

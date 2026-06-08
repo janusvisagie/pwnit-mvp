@@ -21,14 +21,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <header className="mb-3 rounded-[1.5rem] border border-[#ded0c0] bg-[#fffaf3]/95 p-3 shadow-sm backdrop-blur sm:p-4">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <Link href="/" className="group flex items-center gap-2" aria-label="PwnIt home">
-                  <span className="rounded-2xl bg-[#2f3a32] px-3 py-2 text-lg font-black tracking-tight text-white transition group-hover:bg-[#3f4d43]">
-                    PwnIt
-                  </span>
-                  <span className="text-xs font-black uppercase tracking-[0.18em] text-[#7c5638]">
-                    Pick. Play. PwnIt.
-                  </span>
-                </Link>
+                <span className="flex items-baseline gap-1.5 text-lg font-black tracking-tight text-[#2f3a32]">
+                  <span>Pick. Play.</span>
+                  <Link href="/" aria-label="PwnIt home" className="transition hover:text-[#3f4d43]">
+                    PwnIt.
+                  </Link>
+                </span>
                 <div className="lg:hidden">
                   <AuthStatusShell />
                 </div>
@@ -46,7 +44,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <div className="flex-1">{children}</div>
 
           <footer className="mt-3 rounded-[1.5rem] border border-[#ded0c0] bg-[#fffaf3]/95 px-4 py-3 text-center text-xs font-bold text-[#75695f] shadow-sm backdrop-blur sm:text-sm">
-            Pick. Play. PwnIt. · Contact: hello@pwnit.co.za
+            Pick. Play. PwnIt. · WhatsApp: +27 60 123 4567 · hello@pwnit.co.za
           </footer>
         </div>
       </body>

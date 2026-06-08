@@ -53,6 +53,7 @@ export type Pwnit2CampaignSnapshot = {
   topScore?: number | null;
 
   // Extended fields supplied by the live API (optional so the demo fallback stays valid).
+  slug?: string;
   baseValueZAR?: number;
   currentValueZAR?: number;
   growthZAR?: number;
@@ -65,19 +66,19 @@ export type Pwnit2CampaignSnapshot = {
 };
 
 export const pwnit2DemoCampaign: Pwnit2CampaignSnapshot = {
-  title: "Checkers Voucher",
+  title: "R1,000 Shopping Voucher",
   category: "Live campaign",
   statusLabel: "Funding",
   statusTone: "funding",
-  baseValueLabel: "R500",
-  currentValueLabel: "R500",
+  baseValueLabel: "R1000",
+  currentValueLabel: "R1000",
   activationPct: 0,
   activationPoints: 0,
   activationTargetPoints: 5,
   participants: 0,
   attempts: 0,
   countdownLabel: "Unlocks after activation",
-  gameTitle: "Number Chain Sprint",
+  gameTitle: "Memory Sprint",
   gameHref: "/play/pwnit-2",
   leaderboardHref: "/pwnit-2/leaderboard",
   statusHref: "/pwnit-2/status",
@@ -88,15 +89,16 @@ export const pwnit2DemoCampaign: Pwnit2CampaignSnapshot = {
   secondaryMetricLabel: "Players",
   secondaryMetricValue: "0",
   tertiaryMetricLabel: "Voucher",
-  tertiaryMetricValue: "R500",
+  tertiaryMetricValue: "R1000",
   state: "FUNDING",
   closesAt: null,
   statusWindowEndsAt: null,
   winnerAlias: null,
   topScore: null,
 
-  baseValueZAR: 500,
-  currentValueZAR: 500,
+  slug: "hero",
+  baseValueZAR: 1000,
+  currentValueZAR: 1000,
   growthZAR: 0,
   playCostCredits: 5,
   yourDiscountZAR: 0,

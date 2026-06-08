@@ -6,22 +6,14 @@ import { getCurrentActor } from "@/lib/auth";
 import { issuePlayToken } from "@/lib/pwnit2PlayToken";
 import { PWNIT2_PUZZLE_CONFIG } from "@/lib/pwnit2Puzzle";
 
-// GET /api/pwnit-2/play -> a fresh server-signed seed for one game.
-export async function GET() {
+// GET /api/pwnit-2/play?item=hero -> a fresh server-signed seed for one game of that campaign.
+export async function GET(req: Request) {
   try {
+    const slug = new URL(req.url).searchParams.get("item") === "staple" ? "staple" : "hero";
     const actor = await getCurrentActor();
-    const { seed, token } = issuePlayToken(actor.user.id);
-    return NextResponse.json({
-      ok: true,
-      seed,
-      token,
-      serverStartMs: Date.now(),
-      config: PWNIT2_PUZZLE_CONFIG,
-    });
+    const { seed, token } = issuePlayToken(actor.user.id, slug);
+    return NextResponse.json({ ok: true, slug, seed, token, serverStartMs: Date.now(), config: PWNIT2_PUZZLE_CONFIG });
   } catch (error: any) {
-    return NextResponse.json(
-      { ok: false, error: error?.message || "Could not start a game." },
-      { status: 500 },
-    );
+    return NextResponse.json({ ok: false, error: error?.message || "Could not start a game." }, { status: 500 });
   }
 }

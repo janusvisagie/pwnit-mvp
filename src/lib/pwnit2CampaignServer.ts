@@ -1,19 +1,13 @@
 // src/lib/pwnit2CampaignServer.ts
 //
-// PwnIt 2 single-voucher campaign, wired onto the REAL PwnIt 1 engine
-// (rounds.ts + settle.ts + pricing.ts + credits.ts) instead of a shadow lifecycle.
+// PwnIt 2 voucher campaigns wired onto the REAL PwnIt 1 engine (rounds.ts + settle.ts
+// + pricing.ts + credits.ts). Now config-driven for TWO campaigns:
+//   - hero   (R1,000 shopping voucher)  — the acquisition draw
+//   - staple (R100 airtime voucher)     — the cheap, fast-activating daily item
 //
-// What this gives you, for free, from the existing engine:
-//   - Funding-based activation (effectiveActivationCredits >= activationTargetCredits)
-//   - Countdown, close, winner settlement, anti-cheat review gating  (settleRound)
-//   - Post-closure purchase window  (purchaseGraceEndsAt)
-//   - Paid play -> voucher discount, capped at face value  (buyPriceAfterSpend)
-//
-// What this file adds on top:
-//   - Voucher growth after activation  (pwnit2Growth.ts)
-//   - A single Checkers campaign Item, configured so plays cost credits
-//     (so paid credits accrue as discount, and free daily credits don't)
-//   - A user-facing snapshot, leaderboard, discount balance, and purchase quote
+// Each function takes a campaign slug ("hero" | "staple") and resolves the matching
+// Item. The single-item flow is preserved per campaign; listPwnit2Campaigns() returns
+// both for the board. Defaults to "hero" so older callers keep working.
 
 import { prisma } from "@/lib/db";
 import { getCurrentActor } from "@/lib/auth";
@@ -22,26 +16,73 @@ import { flagAttempt, flagsToString } from "@/lib/antiCheat";
 import { spendCredits } from "@/lib/credits";
 import { resolvePlayCostCredits } from "@/lib/playCost";
 import { buyPriceAfterSpend, tierKeyFromTierNumber, discountPctForTierKey } from "@/lib/pricing";
-import {
-  ensureCurrentRound,
-  syncRoundLifecycle,
-  activationTargetForItem,
-  publicProgress,
-} from "@/lib/rounds";
+import { ensureCurrentRound, syncRoundLifecycle, activationTargetForItem, publicProgress } from "@/lib/rounds";
 import { computeVoucherValue, pwnit2GrowthConfigFromEnv } from "@/lib/pwnit2Growth";
 import type { Pwnit2CampaignSnapshot, Pwnit2LeaderboardEntry } from "@/lib/pwnit2DemoCampaign";
 
-const ITEM_TITLE = "Checkers Voucher";
-const GAME_TITLE = "Number Chain Sprint";
-const GAME_KEY = "pwnit-2-number-chain";
-const BASE_VALUE_ZAR = Number(process.env.PWNIT2_BASE_VALUE_ZAR ?? "500");
+export type Pwnit2Slug = "hero" | "staple";
+
+type CampaignConfig = {
+  slug: Pwnit2Slug;
+  title: string;
+  category: string;
+  gameTitle: string;
+  gameKey: string;
+  baseValueZAR: number;
+  playCostCredits: number;
+  activationEntries: number;
+  countdownMinutes: number;
+  statusWindowHours: number;
+  sortOrder: number;
+  shortDesc: string;
+  legacyTitles: string[]; // existing titles/keys to adopt as this campaign (avoid duplicates)
+  legacyGameKeys: string[];
+};
+
 const PLAY_COST_CREDITS = Number(process.env.PWNIT2_PLAY_COST_CREDITS ?? "5");
-const ACTIVATION_ENTRIES = Number(process.env.PWNIT2_ACTIVATION_PLAYS ?? "5");
 const COUNTDOWN_MINUTES = Number(process.env.PWNIT2_COUNTDOWN_MINUTES ?? "30");
 const STATUS_WINDOW_HOURS = Number(process.env.PWNIT2_STATUS_WINDOW_HOURS ?? "24");
-const SCORE_OFFSET = 1_000_000;
 
-// ── score <-> scoreMs (higher game score => lower scoreMs => better rank) ──────
+const CAMPAIGNS: CampaignConfig[] = [
+  {
+    slug: "hero",
+    title: process.env.PWNIT2_HERO_TITLE ?? "R1,000 Shopping Voucher",
+    category: "Hero campaign",
+    gameTitle: "Memory Sprint",
+    gameKey: "pwnit2:hero",
+    baseValueZAR: Number(process.env.PWNIT2_HERO_VALUE_ZAR ?? "1000"),
+    playCostCredits: PLAY_COST_CREDITS,
+    activationEntries: Number(process.env.PWNIT2_HERO_ACTIVATION_PLAYS ?? "20"),
+    countdownMinutes: COUNTDOWN_MINUTES,
+    statusWindowHours: STATUS_WINDOW_HOURS,
+    sortOrder: 1,
+    shortDesc: "PwnIt hero voucher campaign",
+    legacyTitles: ["Checkers Voucher"],
+    legacyGameKeys: ["pwnit-2-number-chain"],
+  },
+  {
+    slug: "staple",
+    title: process.env.PWNIT2_STAPLE_TITLE ?? "R100 Airtime Voucher",
+    category: "Daily staple",
+    gameTitle: "Memory Sprint",
+    gameKey: "pwnit2:staple",
+    baseValueZAR: Number(process.env.PWNIT2_STAPLE_VALUE_ZAR ?? "100"),
+    playCostCredits: PLAY_COST_CREDITS,
+    activationEntries: Number(process.env.PWNIT2_STAPLE_ACTIVATION_PLAYS ?? "5"),
+    countdownMinutes: COUNTDOWN_MINUTES,
+    statusWindowHours: STATUS_WINDOW_HOURS,
+    sortOrder: 2,
+    shortDesc: "PwnIt daily staple campaign",
+    legacyTitles: [],
+    legacyGameKeys: [],
+  },
+];
+
+function cfgFor(slug: string | null | undefined): CampaignConfig {
+  return CAMPAIGNS.find((c) => c.slug === slug) ?? CAMPAIGNS[0];
+}
+
+const SCORE_OFFSET = 1_000_000;
 function scoreToScoreMs(score: number) {
   return Math.max(1, SCORE_OFFSET - Math.max(0, Math.floor(score)));
 }
@@ -64,7 +105,6 @@ function aliasForUser(
   return fallback;
 }
 
-// ── State mapping: engine round.state -> PwnIt 2 public state ─────────────────
 function publicState(state: string): Pwnit2CampaignSnapshot["state"] {
   if (state === "ACTIVATED") return "COUNTDOWN";
   if (state === "CLOSED" || state === "REVIEW" || state === "PUBLISHED") return "STATUS_WINDOW";
@@ -87,7 +127,6 @@ function statusTone(state: string): Pwnit2CampaignSnapshot["statusTone"] {
   return "closed";
 }
 
-// ── Extended snapshot (superset of the base type; extra fields pass through) ──
 export type Pwnit2PurchaseQuote = {
   voucherValueZAR: number;
   yourDiscountZAR: number;
@@ -100,6 +139,7 @@ export type Pwnit2PurchaseQuote = {
 };
 
 export type Pwnit2SnapshotEx = Pwnit2CampaignSnapshot & {
+  slug: Pwnit2Slug;
   baseValueZAR: number;
   currentValueZAR: number;
   growthZAR: number;
@@ -111,58 +151,53 @@ export type Pwnit2SnapshotEx = Pwnit2CampaignSnapshot & {
   purchase: Pwnit2PurchaseQuote | null;
 };
 
-// ── Ensure the single campaign Item exists and is correctly configured ────────
-async function ensurePwnit2Item() {
-  const existing = await prisma.item.findFirst({
-    where: { title: ITEM_TITLE },
-    orderBy: { createdAt: "asc" },
-  });
+async function ensurePwnit2Item(cfg: CampaignConfig) {
+  const or: any[] = [{ gameKey: cfg.gameKey }];
+  for (const t of cfg.legacyTitles) or.push({ title: t });
+  for (const k of cfg.legacyGameKeys) or.push({ gameKey: k });
+
+  const existing = await prisma.item.findFirst({ where: { OR: or }, orderBy: { createdAt: "asc" } });
 
   const config = {
+    title: cfg.title,
     prizeType: "VOUCHER",
-    prizeValueZAR: BASE_VALUE_ZAR, // base value; growth is computed, not stored here
-    landedCostZAR: BASE_VALUE_ZAR,
-    playCostCredits: PLAY_COST_CREDITS, // > 0 so paid credits accrue as discount
-    purchaseGraceHours: STATUS_WINDOW_HOURS,
-    activationGoalEntries: ACTIVATION_ENTRIES,
-    countdownMinutes: COUNTDOWN_MINUTES,
-    gameKey: GAME_KEY,
-    isHero: true,
-    shortDesc: "PwnIt 2 single-voucher campaign",
+    prizeValueZAR: cfg.baseValueZAR,
+    landedCostZAR: cfg.baseValueZAR,
+    playCostCredits: cfg.playCostCredits,
+    purchaseGraceHours: cfg.statusWindowHours,
+    activationGoalEntries: cfg.activationEntries,
+    countdownMinutes: cfg.countdownMinutes,
+    gameKey: cfg.gameKey,
+    isHero: cfg.slug === "hero",
+    shortDesc: cfg.shortDesc,
   };
 
   if (existing) {
-    // Reconcile config in case a patch-9 item was created with playCostCredits: 0
     return prisma.item.update({ where: { id: existing.id }, data: config as any });
   }
-
   return prisma.item.create({
-    data: { title: ITEM_TITLE, tier: 1, sortOrder: 1, state: "OPEN", fundingWindowHours: 168, ...config } as any,
+    data: { tier: 1, sortOrder: cfg.sortOrder, state: "OPEN", fundingWindowHours: 168, ...config } as any,
   });
 }
 
-// ── Reconcile the active round's funding target if it was set as a play count ─
 async function reconcileRoundTarget(item: any, round: any) {
   if (!round || round.state !== "BUILDING") return round;
   const target = activationTargetForItem(item);
   if (Number(round.activationTargetCredits) !== target) {
-    return prisma.itemRound.update({
-      where: { id: round.id },
-      data: { activationTargetCredits: target },
-    });
+    return prisma.itemRound.update({ where: { id: round.id }, data: { activationTargetCredits: target } });
   }
   return round;
 }
 
-async function getContext() {
-  const item = await ensurePwnit2Item();
-  await syncRoundLifecycle(item.id); // engine owns the lifecycle transitions
+async function getContext(slug: string) {
+  const cfg = cfgFor(slug);
+  const item = await ensurePwnit2Item(cfg);
+  await syncRoundLifecycle(item.id);
   let round = await ensureCurrentRound(item.id);
   round = await reconcileRoundTarget(item, round);
-  return { item, round: round! };
+  return { cfg, item, round: round! };
 }
 
-// ── Leaderboard: best scoreMs per user in the current round ───────────────────
 async function getLeaderboard(
   itemId: string,
   roundId: string,
@@ -202,12 +237,8 @@ async function getLeaderboard(
     }));
 }
 
-// ── Your earned campaign discount = sum of paid credits across your attempts ──
 async function getUserPaidUsed(itemId: string, roundId: string, userId: string) {
-  const agg = await prisma.attempt.aggregate({
-    where: { itemId, roundId, userId },
-    _sum: { paidUsed: true },
-  });
+  const agg = await prisma.attempt.aggregate({ where: { itemId, roundId, userId }, _sum: { paidUsed: true } });
   return Math.max(0, Number(agg._sum.paidUsed ?? 0));
 }
 
@@ -219,7 +250,6 @@ async function getUserPlayCounts(itemId: string, roundId: string, userId: string
   return { total, paid };
 }
 
-// ── Build a purchase quote for the current user ───────────────────────────────
 async function buildPurchaseQuote(params: {
   item: any;
   round: any;
@@ -236,24 +266,20 @@ async function buildPurchaseQuote(params: {
   });
 
   const yourPaidUsed = await getUserPaidUsed(item.id, round.id, userId);
-  const wallet = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { paidCreditsBalance: true },
-  });
+  const wallet = await prisma.user.findUnique({ where: { id: userId }, select: { paidCreditsBalance: true } });
 
   const price = buyPriceAfterSpend({
-    prizeValueZAR: currentValueZAR, // grown voucher value
+    prizeValueZAR: currentValueZAR,
     tierNumber: item.tier,
     spentCredits: yourPaidUsed,
     walletCredits: Number(wallet?.paidCreditsBalance ?? 0),
   });
 
-  // Purchasing is allowed during countdown and the post-closure window, never after archive.
   const buyableState = ["ACTIVATED", "CLOSED", "PUBLISHED"].includes(round.state);
 
   return {
     voucherValueZAR: currentValueZAR,
-    yourDiscountZAR: price.playDiscountCredits, // 1 credit == R1
+    yourDiscountZAR: price.playDiscountCredits,
     payableZAR: price.newPriceCredits,
     walletAppliedZAR: price.walletAppliedCredits,
     topUpZAR: price.topUpCredits,
@@ -263,10 +289,9 @@ async function buildPurchaseQuote(params: {
   };
 }
 
-// ── Public snapshot ───────────────────────────────────────────────────────────
-export async function getPwnit2CampaignSnapshot(options: { includeActor?: boolean } = {}) {
-  const actor = options.includeActor ? await getCurrentActor() : null;
-  const { item, round } = await getContext();
+// ── Internal snapshot builder (actor passed in to avoid re-fetching) ──────────
+async function snapshotFor(slug: string, actor: Awaited<ReturnType<typeof getCurrentActor>> | null) {
+  const { cfg, item, round } = await getContext(slug);
   const userId = actor?.user?.id ?? null;
 
   const leaderboard = await getLeaderboard(item.id, round.id, userId);
@@ -275,15 +300,13 @@ export async function getPwnit2CampaignSnapshot(options: { includeActor?: boolea
 
   const growth = computeVoucherValue(
     pwnit2GrowthConfigFromEnv({
-      baseValueZAR: BASE_VALUE_ZAR,
-      paidCollectedZAR: Number(round.paidCreditsCollected ?? 0), // 1 credit == R1
+      baseValueZAR: cfg.baseValueZAR,
+      paidCollectedZAR: Number(round.paidCreditsCollected ?? 0),
       activated,
     }),
   );
 
   const top = leaderboard[0] ?? null;
-
-  // Winner (after settlement) or provisional top when closed
   const winnerRow = await prisma.winner.findFirst({
     where: { roundId: round.id, rank: 1 },
     select: { userId: true, alias: true },
@@ -297,21 +320,22 @@ export async function getPwnit2CampaignSnapshot(options: { includeActor?: boolea
     : null;
 
   const state = publicState(round.state);
+  const q = `?item=${cfg.slug}`;
   const helper =
     state === "FUNDING"
-      ? "Play the skill game to help unlock the countdown. Paid plays also build your discount on this voucher."
+      ? "Play the memory game to help unlock the countdown. Paid plays also build your discount on this voucher."
       : state === "COUNTDOWN"
         ? "The countdown is live. Keep playing to climb the leaderboard and watch the voucher grow."
         : state === "STATUS_WINDOW"
-          ? "The leaderboard is frozen. Use your campaign discount to buy this voucher before the window closes."
+          ? "The leaderboard is frozen. Use your discount to buy this voucher before the window closes."
           : "This campaign is archived.";
 
   const snapshot: Pwnit2SnapshotEx = {
-    title: ITEM_TITLE,
-    category: "Live campaign",
+    title: cfg.title,
+    category: cfg.category,
     statusLabel: statusLabel(round.state),
     statusTone: statusTone(round.state),
-    baseValueLabel: `R${BASE_VALUE_ZAR}`,
+    baseValueLabel: `R${cfg.baseValueZAR}`,
     currentValueLabel: `R${growth.currentValueZAR}`,
     activationPct: progress.pct,
     activationPoints: progress.current,
@@ -326,10 +350,10 @@ export async function getPwnit2CampaignSnapshot(options: { includeActor?: boolea
           : state === "STATUS_WINDOW" && round.purchaseGraceEndsAt
             ? `Buy window until ${new Date(round.purchaseGraceEndsAt).toLocaleString()}`
             : "Campaign archived",
-    gameTitle: GAME_TITLE,
-    gameHref: "/play/pwnit-2",
-    leaderboardHref: "/pwnit-2/leaderboard",
-    statusHref: "/pwnit-2/status",
+    gameTitle: cfg.gameTitle,
+    gameHref: `/play/pwnit-2${q}`,
+    leaderboardHref: `/pwnit-2/leaderboard${q}`,
+    statusHref: `/pwnit-2/status${q}`,
     helper,
     primaryMetricLabel: state === "FUNDING" ? "Activation" : "Voucher",
     primaryMetricValue: state === "FUNDING" ? `${progress.pct}%` : `R${growth.currentValueZAR}`,
@@ -343,8 +367,8 @@ export async function getPwnit2CampaignSnapshot(options: { includeActor?: boolea
     winnerAlias: state === "STATUS_WINDOW" || state === "ARCHIVED" ? winnerRow?.alias ?? top?.alias ?? null : null,
     topScore: top?.score ?? null,
 
-    // extended fields
-    baseValueZAR: BASE_VALUE_ZAR,
+    slug: cfg.slug,
+    baseValueZAR: cfg.baseValueZAR,
     currentValueZAR: growth.currentValueZAR,
     growthZAR: growth.growthZAR,
     playCostCredits: resolvePlayCostCredits(item),
@@ -355,22 +379,41 @@ export async function getPwnit2CampaignSnapshot(options: { includeActor?: boolea
     purchase,
   };
 
-  return { item, round, snapshot, leaderboard, actor };
+  return { cfg, item, round, snapshot, leaderboard, actor };
 }
 
-// ── Record a play (charges credits, accrues discount, feeds funding) ──────────
+// ── Public: one campaign ──────────────────────────────────────────────────────
+export async function getPwnit2CampaignSnapshot(options: { slug?: string; includeActor?: boolean } = {}) {
+  const actor = options.includeActor ? await getCurrentActor() : null;
+  return snapshotFor(options.slug ?? "hero", actor);
+}
+
+// ── Public: all campaigns for the board ───────────────────────────────────────
+export async function listPwnit2Campaigns(options: { includeActor?: boolean } = {}) {
+  const actor = options.includeActor ? await getCurrentActor() : null;
+  const campaigns = [];
+  for (const cfg of CAMPAIGNS) {
+    const res = await snapshotFor(cfg.slug, actor);
+    campaigns.push({ slug: cfg.slug, campaign: res.snapshot, leaderboard: res.leaderboard });
+  }
+  return { campaigns };
+}
+
+// ── Record a play ─────────────────────────────────────────────────────────────
 export async function submitPwnit2Score(input: {
+  slug?: string;
   score: number;
   elapsedSeconds: number;
   correct: number;
   total: number;
   rttMs?: number;
 }) {
+  const slug = input.slug ?? "hero";
   const actor = await getCurrentActor();
-  const { item, round } = await getContext();
+  const { cfg, item, round } = await getContext(slug);
 
   if (!["BUILDING", "ACTIVATED"].includes(String(round.state))) {
-    const current = await getPwnit2CampaignSnapshot({ includeActor: true });
+    const current = await snapshotFor(slug, actor);
     return { ok: false as const, status: 409, error: "This campaign is no longer accepting plays.", ...current };
   }
 
@@ -379,13 +422,12 @@ export async function submitPwnit2Score(input: {
   const scoreMs = scoreToScoreMs(score);
   const playCost = resolvePlayCostCredits(item);
 
-  // Spend credits (free daily credits first, then paid). Paid portion becomes discount.
   let spend: { freeUsed: number; paidUsed: number };
   try {
     const result = await spendCredits(actor.user.id, playCost, `pwnit2:${item.id}`, "ATTEMPT_SPEND");
     spend = { freeUsed: Number(result.freeUsed ?? 0), paidUsed: Number(result.paidUsed ?? 0) };
   } catch {
-    const current = await getPwnit2CampaignSnapshot({ includeActor: true });
+    const current = await snapshotFor(slug, actor);
     return {
       ok: false as const,
       status: 402,
@@ -431,16 +473,15 @@ export async function submitPwnit2Score(input: {
           roundId: round.id,
           kind: "PWNIT2_DISCOUNT_EARNED",
           credits: spend.paidUsed,
-          note: `R${spend.paidUsed} discount earned on ${ITEM_TITLE}`,
+          note: `R${spend.paidUsed} discount earned on ${cfg.title}`,
         },
       });
     }
   });
 
-  // Funding-based activation may trip immediately now that credits were collected.
   await syncRoundLifecycle(item.id);
 
-  const current = await getPwnit2CampaignSnapshot({ includeActor: true });
+  const current = await snapshotFor(slug, actor);
   const myRank = current.leaderboard.find((entry) => entry.isYou)?.rank ?? null;
   return {
     ok: true as const,
@@ -452,40 +493,30 @@ export async function submitPwnit2Score(input: {
 }
 
 // ── Purchase: quote + confirm ─────────────────────────────────────────────────
-export async function getPwnit2PurchaseView() {
-  const { snapshot } = await getPwnit2CampaignSnapshot({ includeActor: true });
+export async function getPwnit2PurchaseView(slug?: string) {
+  const { snapshot } = await getPwnit2CampaignSnapshot({ slug: slug ?? "hero", includeActor: true });
   return snapshot;
 }
 
-export async function confirmPwnit2Purchase() {
+export async function confirmPwnit2Purchase(slug?: string) {
+  const resolved = slug ?? "hero";
   const actor = await getCurrentActor();
-  const { item, round } = await getContext();
+  const { cfg, item, round } = await getContext(resolved);
 
   const activated = isActivatedState(round.state);
   const growth = computeVoucherValue(
     pwnit2GrowthConfigFromEnv({
-      baseValueZAR: BASE_VALUE_ZAR,
+      baseValueZAR: cfg.baseValueZAR,
       paidCollectedZAR: Number(round.paidCreditsCollected ?? 0),
       activated,
     }),
   );
 
-  const quote = await buildPurchaseQuote({
-    item,
-    round,
-    userId: actor.user.id,
-    currentValueZAR: growth.currentValueZAR,
-  });
+  const quote = await buildPurchaseQuote({ item, round, userId: actor.user.id, currentValueZAR: growth.currentValueZAR });
 
-  if (quote.isWinnerYou) {
-    return { ok: false as const, status: 400, error: "You won this voucher — no need to buy it." };
-  }
-  if (quote.alreadyPurchased) {
-    return { ok: false as const, status: 400, error: "You have already purchased this voucher." };
-  }
-  if (!quote.canBuy) {
-    return { ok: false as const, status: 409, error: "This voucher is not available to buy right now." };
-  }
+  if (quote.isWinnerYou) return { ok: false as const, status: 400, error: "You won this voucher — no need to buy it." };
+  if (quote.alreadyPurchased) return { ok: false as const, status: 400, error: "You have already purchased this voucher." };
+  if (!quote.canBuy) return { ok: false as const, status: 409, error: "This voucher is not available to buy right now." };
 
   const tierKey = tierKeyFromTierNumber(item.tier);
   const discountPct = discountPctForTierKey(tierKey);
@@ -494,7 +525,6 @@ export async function confirmPwnit2Purchase() {
   const dayKey = dayKeyZA();
 
   await prisma.$transaction(async (tx) => {
-    // Apply wallet credits toward the payable amount (dummy/test purchase).
     if (quote.walletAppliedZAR > 0) {
       await tx.user.update({
         where: { id: actor.user.id },
@@ -525,7 +555,7 @@ export async function confirmPwnit2Purchase() {
           roundId: round.id,
           kind: "PWNIT2_DISCOUNT_REDEEMED",
           credits: quote.yourDiscountZAR,
-          note: `R${quote.yourDiscountZAR} discount applied to ${ITEM_TITLE} purchase`,
+          note: `R${quote.yourDiscountZAR} discount applied to ${cfg.title} purchase`,
         },
       });
     }
@@ -537,7 +567,7 @@ export async function confirmPwnit2Purchase() {
         roundId: round.id,
         kind: "PWNIT2_PURCHASE",
         credits: quote.payableZAR,
-        note: `Purchased ${ITEM_TITLE} (voucher ${voucherCode})`,
+        note: `Purchased ${cfg.title} (voucher ${voucherCode})`,
       },
     });
   });

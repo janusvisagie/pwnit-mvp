@@ -8,7 +8,7 @@ const HIDE_FOREVER_KEY = "pwnit_welcome_hide_forever";
 const steps = [
   { n: "1", title: "Pick", body: "Choose a prize." },
   { n: "2", title: "Play", body: "Post your best score." },
-  { n: "3", title: "Win", body: "Top the leaderboard." },
+  { n: "3", title: "Win", body: "Top score wins — or buy it." },
 ] as const;
 
 export function WelcomeModal() {
@@ -53,10 +53,10 @@ export function WelcomeModal() {
             </p>
             <div className="leading-none">
               <span className="text-xl font-semibold text-slate-700 sm:text-2xl">Pick. Play.</span>{" "}
-              <span className="text-3xl font-black text-sky-600 sm:text-4xl">PwnIt.</span>
+              <span className="text-3xl font-black text-emerald-600 sm:text-4xl">PwnIt.</span>
             </div>
             <p className="text-sm text-slate-600 sm:text-base">
-              Choose a prize, play a quick skill game, and try to win it.
+              Pick a prize, play the memory game, and win it — or buy it at a fair price.
             </p>
           </div>
 

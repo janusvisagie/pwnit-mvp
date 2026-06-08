@@ -20,6 +20,7 @@ export type Pwnit2CampaignCardModel = {
   statusHref?: string;
 
   // extended (optional)
+  slug?: string;
   state?: "FUNDING" | "COUNTDOWN" | "STATUS_WINDOW" | "ARCHIVED";
   baseValueZAR?: number;
   currentValueZAR?: number;
@@ -39,6 +40,11 @@ export default function Pwnit2CampaignCard({ campaign }: { campaign: Pwnit2Campa
   const growth = campaign.growthZAR ?? 0;
   const yourDiscount = campaign.yourDiscountZAR ?? 0;
   const inBuyWindow = campaign.state === "STATUS_WINDOW";
+  const q = campaign.slug ? `?item=${campaign.slug}` : "";
+  const gameHref = campaign.gameHref ?? `/play/pwnit-2${q}`;
+  const leaderboardHref = campaign.leaderboardHref ?? `/pwnit-2/leaderboard${q}`;
+  const statusHref = campaign.statusHref ?? `/pwnit-2/status${q}`;
+  const purchaseHref = `/pwnit-2/purchase${q}`;
 
   return (
     <article className="overflow-hidden rounded-[2rem] border border-[#e6ded9] bg-white shadow-sm shadow-slate-200/70">
@@ -48,20 +54,14 @@ export default function Pwnit2CampaignCard({ campaign }: { campaign: Pwnit2Campa
             <p className="text-xs font-black uppercase tracking-[0.24em] text-emerald-200">{campaign.category}</p>
             <h2 className="mt-2 text-3xl font-black tracking-tight sm:text-4xl">{campaign.title}</h2>
           </div>
-          <span
-            className={`rounded-full border px-3 py-1 text-xs font-black uppercase tracking-[0.18em] ${toneClasses[campaign.statusTone]}`}
-          >
+          <span className={`rounded-full border px-3 py-1 text-xs font-black uppercase tracking-[0.18em] ${toneClasses[campaign.statusTone]}`}>
             {campaign.statusLabel}
           </span>
         </div>
 
         <div className="mt-5 grid gap-3 sm:grid-cols-3">
           <HeroMetric label="Base value" value={campaign.baseValueLabel} />
-          <HeroMetric
-            label="Current value"
-            value={campaign.currentValueLabel}
-            note={growth > 0 ? `+R${growth} grown` : undefined}
-          />
+          <HeroMetric label="Current value" value={campaign.currentValueLabel} note={growth > 0 ? `+R${growth} grown` : undefined} />
           <HeroMetric label="Activation" value={`${pct}%`} />
         </div>
       </div>
@@ -69,10 +69,7 @@ export default function Pwnit2CampaignCard({ campaign }: { campaign: Pwnit2Campa
       <div className="space-y-5 p-5 sm:p-6">
         <div>
           <div className="h-3 overflow-hidden rounded-full bg-[#e8efe9]">
-            <div
-              className="h-full rounded-full bg-gradient-to-r from-emerald-400 via-emerald-400 to-teal-400"
-              style={{ width: `${pct}%` }}
-            />
+            <div className="h-full rounded-full bg-gradient-to-r from-emerald-400 via-emerald-400 to-teal-400" style={{ width: `${pct}%` }} />
           </div>
           <p className="mt-3 text-sm font-semibold leading-6 text-slate-700">{campaign.helper}</p>
         </div>
@@ -84,31 +81,19 @@ export default function Pwnit2CampaignCard({ campaign }: { campaign: Pwnit2Campa
         </div>
 
         <div className="flex flex-wrap gap-3 pt-1">
-          <Link
-            href={campaign.gameHref ?? "/play/pwnit-2"}
-            className="rounded-full bg-[#0f172a] px-5 py-3 text-sm font-black text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-[#172554]"
-          >
-            Play skill game
+          <Link href={gameHref} className="rounded-full bg-[#0f172a] px-5 py-3 text-sm font-black text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-[#172554]">
+            Play memory game
           </Link>
           {inBuyWindow ? (
-            <Link
-              href="/pwnit-2/purchase"
-              className="rounded-full bg-emerald-600 px-5 py-3 text-sm font-black text-white transition hover:-translate-y-0.5 hover:bg-emerald-700"
-            >
+            <Link href={purchaseHref} className="rounded-full bg-emerald-600 px-5 py-3 text-sm font-black text-white transition hover:-translate-y-0.5 hover:bg-emerald-700">
               Buy the voucher
             </Link>
           ) : (
-            <Link
-              href={campaign.leaderboardHref ?? "/pwnit-2/leaderboard"}
-              className="rounded-full border border-emerald-200 bg-emerald-50 px-5 py-3 text-sm font-black text-emerald-800 transition hover:-translate-y-0.5 hover:bg-white"
-            >
+            <Link href={leaderboardHref} className="rounded-full border border-emerald-200 bg-emerald-50 px-5 py-3 text-sm font-black text-emerald-800 transition hover:-translate-y-0.5 hover:bg-white">
               View leaderboard
             </Link>
           )}
-          <Link
-            href={campaign.statusHref ?? "/pwnit-2/status"}
-            className="rounded-full border border-[#e6ded9] bg-[#fffaf8] px-5 py-3 text-sm font-black text-slate-700 transition hover:-translate-y-0.5 hover:bg-white"
-          >
+          <Link href={statusHref} className="rounded-full border border-[#e6ded9] bg-[#fffaf8] px-5 py-3 text-sm font-black text-slate-700 transition hover:-translate-y-0.5 hover:bg-white">
             Campaign status
           </Link>
         </div>
@@ -129,12 +114,7 @@ function HeroMetric({ label, value, note }: { label: string; value: string; note
 
 function Metric({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
   return (
-    <div
-      className={[
-        "rounded-2xl border p-4",
-        highlight ? "border-emerald-200 bg-emerald-50" : "border-[#e6ded9] bg-[#fffaf8]",
-      ].join(" ")}
-    >
+    <div className={["rounded-2xl border p-4", highlight ? "border-emerald-200 bg-emerald-50" : "border-[#e6ded9] bg-[#fffaf8]"].join(" ")}>
       <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">{label}</p>
       <p className={`mt-1 text-xl font-black ${highlight ? "text-emerald-700" : "text-slate-950"}`}>{value}</p>
     </div>

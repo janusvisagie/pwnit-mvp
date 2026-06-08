@@ -14,7 +14,9 @@ type CampaignPayload = {
   leaderboard?: Pwnit2LeaderboardEntry[];
 };
 
-export default function Pwnit2Status() {
+export default function Pwnit2Status({ slug = "hero" }: { slug?: string }) {
+  const campaignSlug = slug === "staple" ? "staple" : "hero";
+  const q = `?item=${campaignSlug}`;
   const [campaign, setCampaign] = useState<Pwnit2CampaignSnapshot>(pwnit2DemoCampaign);
   const [leaderboard, setLeaderboard] = useState<Pwnit2LeaderboardEntry[]>([]);
 
@@ -22,7 +24,7 @@ export default function Pwnit2Status() {
     let cancelled = false;
     async function loadStatus() {
       try {
-        const res = await fetch("/api/pwnit-2/campaign", { cache: "no-store" });
+        const res = await fetch(`/api/pwnit-2/campaign?item=${campaignSlug}`, { cache: "no-store" });
         const data = (await res.json()) as CampaignPayload;
         if (!cancelled && data.ok) {
           if (data.campaign) setCampaign(data.campaign);
@@ -38,7 +40,7 @@ export default function Pwnit2Status() {
       cancelled = true;
       window.clearInterval(timer);
     };
-  }, []);
+  }, [campaignSlug]);
 
   const leader = leaderboard[0] ?? null;
   const yourRank = useMemo(() => leaderboard.find((e) => e.isYou)?.rank ?? null, [leaderboard]);
@@ -76,14 +78,14 @@ export default function Pwnit2Status() {
               Back to campaign
             </Link>
             <Link
-              href="/pwnit-2/leaderboard"
+              href={`/pwnit-2/leaderboard${q}`}
               className="rounded-full border border-emerald-200 bg-emerald-50 px-5 py-3 text-sm font-black text-emerald-800 transition hover:-translate-y-0.5 hover:bg-white"
             >
               Leaderboard
             </Link>
             {canBuy ? (
               <Link
-                href="/pwnit-2/purchase"
+                href={`/pwnit-2/purchase${q}`}
                 className="rounded-full bg-emerald-600 px-5 py-3 text-sm font-black text-white transition hover:-translate-y-0.5 hover:bg-emerald-700"
               >
                 Buy the voucher

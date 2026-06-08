@@ -1,0 +1,83 @@
+PwnIt 2 — Patch 14: Two-campaign board + Memory Sprint game + brand/footer/modal
+================================================================================
+
+WHAT THIS PATCH DOES
+--------------------
+1. NEW GAME — "Memory Sprint" replaces the arithmetic ladder. Watch a growing
+   colour-pad sequence, tap it back in order; one wrong tap (or timeout) ends the
+   run. Difficulty = sequence length (memory), not speed. Fully server-validated:
+   the server re-derives the sequence from a signed seed and counts the correct
+   tap prefix — it never trusts a client score.
+
+2. TWO CAMPAIGNS — the home page is now a board with two live campaigns:
+     - hero   : "R1,000 Shopping Voucher"  (the acquisition draw)
+     - staple : "R100 Airtime Voucher"     (cheap, fast-activating daily item)
+   Every screen (game / leaderboard / status / purchase / result) is scoped by a
+   campaign slug passed via the URL (?item=hero | ?item=staple). Defaults to hero.
+
+3. VALUES — hero R1,000, staple R100, R5 per play (all env-overridable).
+
+4. BRAND — header top-left now reads "Pick. Play. PwnIt." with only the final
+   "PwnIt." carrying the home link (the dark badge is gone).
+
+5. WELCOME MODAL — returned and mounted on the home board (it existed but was not
+   rendered anywhere, which is why it had vanished). Shows once per session unless
+   "don't show again" is ticked.
+
+6. FOOTER — added a dummy WhatsApp number: +27 60 123 4567.
+
+NO DATABASE MIGRATION. The existing single voucher item (was "Checkers Voucher" /
+gameKey "pwnit-2-number-chain") is ADOPTED IN PLACE as the hero campaign — it is
+renamed and re-keyed to gameKey "pwnit2:hero". The staple item is created on first
+load. No duplicate items are created.
+
+ENV (all optional)
+------------------
+  PWNIT2_PLAY_SECRET           secret for signing play tokens
+                               (falls back to AUTH_SESSION_SECRET, then NEXTAUTH_SECRET)
+  PWNIT2_HERO_VALUE_ZAR        default 1000
+  PWNIT2_STAPLE_VALUE_ZAR      default 100
+  PWNIT2_PLAY_COST_CREDITS     default 5
+  PWNIT2_HERO_ACTIVATION_PLAYS default 20   (paid-play target to activate the hero)
+  PWNIT2_STAPLE_ACTIVATION_PLAYS default 5
+  PWNIT2_HERO_TITLE / PWNIT2_STAPLE_TITLE   override the display titles
+
+API CHANGES (already shipped with the matching client in this patch)
+--------------------------------------------------------------------
+  GET  /api/pwnit-2/campaign              -> { ok, campaigns:[{slug, campaign, leaderboard}] }
+  GET  /api/pwnit-2/campaign?item=hero    -> { ok, slug, campaign, leaderboard }
+  GET  /api/pwnit-2/play?item=hero        -> { ok, slug, seed, token, serverStartMs, config }
+  POST /api/pwnit-2/score                 body { token, slug, taps:number[], elapsedMs, rttMs }
+  GET  /api/pwnit-2/purchase?item=hero    -> { ok, campaign, purchase }
+  POST /api/pwnit-2/purchase              body { slug }
+
+FILES (22)
+----------
+  src/lib/pwnit2Puzzle.ts            (REPLACE) memory-sequence generator + validateRun
+  src/lib/pwnit2PlayToken.ts         (REPLACE) signed token now binds slug
+  src/lib/pwnit2CampaignServer.ts    (REPLACE) two-campaign, slug-parameterized + list
+  src/lib/pwnit2DemoCampaign.ts      (REPLACE) slug + R1000/Memory demo fallback
+  src/app/api/pwnit-2/campaign/route.ts (REPLACE)
+  src/app/api/pwnit-2/play/route.ts     (REPLACE)
+  src/app/api/pwnit-2/score/route.ts    (REPLACE)
+  src/app/api/pwnit-2/purchase/route.ts (REPLACE)
+  src/components/Pwnit2Game.tsx      (REPLACE) memory game client
+  src/components/Pwnit2Home.tsx      (REPLACE) two-campaign board + WelcomeModal
+  src/components/Pwnit2CampaignCard.tsx (REPLACE) slug-aware links
+  src/components/Pwnit2Leaderboard.tsx  (REPLACE) slug prop
+  src/components/Pwnit2Status.tsx       (REPLACE) slug prop
+  src/components/WelcomeModal.tsx    (REPLACE) copy + emerald accent
+  src/app/play/pwnit-2/page.tsx      (REPLACE) passes slug
+  src/app/pwnit-2/leaderboard/page.tsx  (REPLACE) passes slug
+  src/app/pwnit-2/status/page.tsx       (REPLACE) passes slug
+  src/app/pwnit-2/purchase/page.tsx + ui.tsx (REPLACE) slug
+  src/app/pwnit-2/result/page.tsx + ui.tsx   (REPLACE) slug
+  src/app/layout.tsx                 (REPLACE) header brand + footer WhatsApp
+
+CHEAT NOTE (unchanged stance)
+-----------------------------
+The client briefly knows the sequence (it has to, to show it), so a determined
+user could read it from memory. Guards remain: server re-derivation + signed
+seed bound to user+slug (15-min TTL), anti-cheat flags, and finalist review
+before any prize. A per-round server challenge is the future hardening step
+before real-money scale.

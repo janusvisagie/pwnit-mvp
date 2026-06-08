@@ -14,7 +14,9 @@ type CampaignPayload = {
   leaderboard?: Pwnit2LeaderboardEntry[];
 };
 
-export default function Pwnit2Leaderboard() {
+export default function Pwnit2Leaderboard({ slug = "hero" }: { slug?: string }) {
+  const campaignSlug = slug === "staple" ? "staple" : "hero";
+  const q = `?item=${campaignSlug}`;
   const [campaign, setCampaign] = useState<Pwnit2CampaignSnapshot>(pwnit2DemoCampaign);
   const [rows, setRows] = useState<Pwnit2LeaderboardEntry[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -23,7 +25,7 @@ export default function Pwnit2Leaderboard() {
     let cancelled = false;
     async function loadBoard() {
       try {
-        const res = await fetch("/api/pwnit-2/campaign", { cache: "no-store" });
+        const res = await fetch(`/api/pwnit-2/campaign?item=${campaignSlug}`, { cache: "no-store" });
         const data = (await res.json()) as CampaignPayload;
         if (!cancelled && data.ok) {
           if (data.campaign) setCampaign(data.campaign);
@@ -41,7 +43,7 @@ export default function Pwnit2Leaderboard() {
       cancelled = true;
       window.clearInterval(timer);
     };
-  }, []);
+  }, [campaignSlug]);
 
   return (
     <main className="min-h-screen bg-[#fffaf8] px-4 py-6 text-slate-950 sm:px-6 lg:px-8">
@@ -58,13 +60,13 @@ export default function Pwnit2Leaderboard() {
             </div>
             <div className="flex flex-wrap gap-3">
               <Link
-                href="/play/pwnit-2"
+                href={`/play/pwnit-2${q}`}
                 className="rounded-full bg-[#0f172a] px-5 py-3 text-sm font-black text-white transition hover:-translate-y-0.5 hover:bg-[#172554]"
               >
                 Play skill game
               </Link>
               <Link
-                href="/pwnit-2/status"
+                href={`/pwnit-2/status${q}`}
                 className="rounded-full border border-emerald-200 bg-emerald-50 px-5 py-3 text-sm font-black text-emerald-800 transition hover:-translate-y-0.5 hover:bg-white"
               >
                 Status

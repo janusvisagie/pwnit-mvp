@@ -8,41 +8,35 @@ import { verifyPlayToken } from "@/lib/pwnit2PlayToken";
 import { validateRun, scoreFromRun } from "@/lib/pwnit2Puzzle";
 
 // POST /api/pwnit-2/score
-// Body: { token, answers: (number|null)[], elapsedMs, rttMs }
-// The client never sends a trusted score. We verify the signed seed, re-derive
-// every round, count the correct prefix, and compute the score ourselves.
+// Body: { token, slug, taps: number[], elapsedMs, rttMs }
+// The client never sends a trusted score. We verify the signed seed (bound to user + slug),
+// re-derive the sequence, count the correct tap prefix, and compute the score ourselves.
 export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => ({} as any));
     const token = String(body?.token ?? "");
-    const answers = Array.isArray(body?.answers)
-      ? body.answers.map((x: any) => (x === null || x === undefined ? null : Number(x)))
+    const slug = body?.slug === "staple" ? "staple" : "hero";
+    const taps = Array.isArray(body?.taps)
+      ? body.taps.map((x: any) => (x === null || x === undefined ? null : Number(x)))
       : null;
     const elapsedMs = Math.max(0, Math.floor(Number(body?.elapsedMs ?? 0)));
     const rttMs = Math.max(0, Math.min(5000, Math.floor(Number(body?.rttMs ?? 0))));
 
-    if (!token || !answers) {
-      return NextResponse.json(
-        { ok: false, error: "Please refresh to start a new game." },
-        { status: 400 },
-      );
+    if (!token || !taps) {
+      return NextResponse.json({ ok: false, error: "Please refresh to start a new game." }, { status: 400 });
     }
 
     const actor = await getCurrentActor();
-    const verified = verifyPlayToken(token, actor.user.id);
+    const verified = verifyPlayToken(token, actor.user.id, slug);
     if (!verified.ok || verified.seed === undefined) {
-      return NextResponse.json(
-        { ok: false, error: "This game session has expired — start a new round." },
-        { status: 400 },
-      );
+      return NextResponse.json({ ok: false, error: "This game session has expired — start a new round." }, { status: 400 });
     }
 
-    const { roundsCleared } = validateRun(verified.seed, answers);
+    const { roundsCleared } = validateRun(verified.seed, taps);
     const score = scoreFromRun(roundsCleared, elapsedMs);
 
-    // Existing engine call: charges one play, writes the Attempt, accrues
-    // paid credits -> discount, and re-syncs the funding-based lifecycle.
     const result = await submitPwnit2Score({
+      slug,
       score,
       elapsedSeconds: Math.floor(elapsedMs / 1000),
       correct: roundsCleared,
@@ -74,9 +68,6 @@ export async function POST(req: Request) {
       creditsSpent: result.creditsSpent,
     });
   } catch (error: any) {
-    return NextResponse.json(
-      { ok: false, error: error?.message || "Unable to save score." },
-      { status: 500 },
-    );
+    return NextResponse.json({ ok: false, error: error?.message || "Unable to save score." }, { status: 500 });
   }
 }

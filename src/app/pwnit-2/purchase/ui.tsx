@@ -27,7 +27,9 @@ type Receipt = {
   paidZAR: number;
 };
 
-export default function Pwnit2Purchase() {
+export default function Pwnit2Purchase({ slug = "hero" }: { slug?: string }) {
+  const campaignSlug = slug === "staple" ? "staple" : "hero";
+  const q = `?item=${campaignSlug}`;
   const [campaign, setCampaign] = useState<Pwnit2CampaignSnapshot | null>(null);
   const [quote, setQuote] = useState<Pwnit2PurchaseQuote | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -37,7 +39,7 @@ export default function Pwnit2Purchase() {
 
   async function loadQuote() {
     try {
-      const res = await fetch("/api/pwnit-2/purchase", { cache: "no-store" });
+      const res = await fetch(`/api/pwnit-2/purchase?item=${campaignSlug}`, { cache: "no-store" });
       const data = (await res.json()) as PurchasePayload;
       if (data.ok) {
         setCampaign(data.campaign ?? null);
@@ -54,7 +56,8 @@ export default function Pwnit2Purchase() {
 
   useEffect(() => {
     loadQuote();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [campaignSlug]);
 
   async function confirm() {
     setPending(true);
@@ -63,7 +66,7 @@ export default function Pwnit2Purchase() {
       const res = await fetch("/api/pwnit-2/purchase", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: "{}",
+        body: JSON.stringify({ slug: campaignSlug }),
       });
       const data = (await res.json()) as ConfirmPayload;
       if (!res.ok || !data.ok) {
@@ -89,7 +92,7 @@ export default function Pwnit2Purchase() {
       <section className="mx-auto max-w-2xl space-y-5">
         <div className="rounded-[2rem] border border-[#e6ded9] bg-white p-6 shadow-sm sm:p-8">
           <p className="text-xs font-black uppercase tracking-[0.22em] text-emerald-700">
-            {campaign?.title ?? "Checkers Voucher"}
+            {campaign?.title ?? "R1,000 Shopping Voucher"}
           </p>
           <h1 className="mt-2 text-3xl font-black tracking-tight sm:text-4xl">Buy the voucher</h1>
           <p className="mt-3 text-sm font-semibold leading-6 text-slate-700">
@@ -188,13 +191,13 @@ export default function Pwnit2Purchase() {
 
             <div className="mt-6 flex flex-wrap gap-3">
               <Link
-                href="/pwnit-2/result"
+                href={`/pwnit-2/result${q}`}
                 className="rounded-full border border-[#e6ded9] bg-[#fffaf8] px-5 py-3 text-sm font-black text-slate-700 transition hover:-translate-y-0.5 hover:bg-white"
               >
                 View result
               </Link>
               <Link
-                href="/play/pwnit-2"
+                href={`/play/pwnit-2${q}`}
                 className="rounded-full border border-[#e6ded9] bg-[#fffaf8] px-5 py-3 text-sm font-black text-slate-700 transition hover:-translate-y-0.5 hover:bg-white"
               >
                 Back to game
