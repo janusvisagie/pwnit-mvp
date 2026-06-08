@@ -1,0 +1,19 @@
+PwnIt 2 — Patch 15: Welcome-modal copy to current model
+=======================================================
+Changes the welcome modal's free-allowance line from
+  "You receive 30 free credits per day."
+to
+  "You get 6 free plays a day — and every paid play (R5) builds your discount."
+
+Why: 30 free credits at R5/play = 6 free plays/day; the new wording is game-first
+and on-model (play / discount / win-or-buy). Accurate to DAILY_FREE_CREDITS=30 and
+PWNIT2_PLAY_COST_CREDITS=5.
+
+The credits page (/buy-credits) already uses generic "free daily credits" copy, so
+it needs no change. (A legacy PwnIt-1 page, /item/[id], still mentions "30 daily
+free credits" — that is the old registration flow, not part of PwnIt 2; left as-is.)
+
+FILES (1)
+  src/components/WelcomeModal.tsx   (REPLACE)
+
+No DB migration. No API change.

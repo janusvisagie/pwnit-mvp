@@ -73,7 +73,7 @@ export function WelcomeModal() {
           </div>
 
           <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800">
-            You receive 30 free credits per day.
+            You get 6 free plays a day — and every paid play (R5) builds your discount.
           </div>
 
           <label className="flex items-start gap-3 text-sm text-slate-600">
