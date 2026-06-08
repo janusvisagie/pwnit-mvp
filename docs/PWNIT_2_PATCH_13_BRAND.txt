@@ -1,0 +1,37 @@
+PWNIT — PATCH 13 (BRAND & TAGLINE)
+==================================
+Removes "PwnIt 2.0" from the visible surfaces and brings the tagline
+"Pick. Play. PwnIt." back to the nav, hero, and footer. Cosmetic only.
+
+  ==> No database migration. No new env vars.
+
+FILES
+-----
+  src/app/layout.tsx              REPLACE  tab title "PwnIt 2.0" -> "PwnIt"; nav "2.0" badge replaced with
+                                           the tagline; footer dev copy dropped, tagline added
+  src/components/Pwnit2Home.tsx   REPLACE  hero eyebrow "PwnIt 2.0" -> "Pick. Play. PwnIt."
+
+WHAT CHANGED
+------------
+  - "PwnIt 2.0" is gone from: the browser tab title, the small nav badge, and
+    the footer line.
+  - "Pick. Play. PwnIt." now appears next to the nav brand, as the hero eyebrow,
+    and in the footer. (It was already in the one-time welcome modal.)
+  - The footer no longer says "test branch · Single voucher campaign foundation".
+
+  Note: the buy-credits page already read "PwnIt" (Patch 10), so it's unchanged.
+  The two-campaign update (next patch) will rework the hero into a board and
+  carry this tagline forward.
+
+APPLY (Windows / PowerShell — same flow as before)
+--------------------------------------------------
+1. Extract over the repo (replaces 2 files):
+     tar -xf "$env:USERPROFILE\Downloads\pwnit2-patch-13-brand.zip"
+   (or)
+     Expand-Archive -Path "$env:USERPROFILE\Downloads\pwnit2-patch-13-brand.zip" -DestinationPath . -Force
+
+2. Build + push:
+     npm run build
+     git add -A
+     git commit -m "PwnIt Patch 13: drop 2.0 branding, restore Pick. Play. PwnIt. tagline"
+     git push origin pwnit-2

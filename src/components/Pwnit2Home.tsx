@@ -58,7 +58,7 @@ export default function Pwnit2Home() {
           <div className="grid gap-0 lg:grid-cols-[1.05fr_0.95fr]">
             <div className="space-y-6 bg-gradient-to-br from-[#0f172a] via-[#12324a] to-[#116466] p-6 text-white sm:p-8 lg:p-10">
               <p className="inline-flex rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-black uppercase tracking-[0.22em] text-emerald-200">
-                PwnIt 2.0
+                Pick. Play. PwnIt.
               </p>
               <div className="space-y-4">
                 <h1 className="max-w-3xl text-4xl font-black tracking-tight sm:text-5xl lg:text-6xl">
