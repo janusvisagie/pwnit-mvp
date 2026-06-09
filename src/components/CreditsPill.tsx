@@ -86,7 +86,8 @@ export function CreditsPill(props?: { free?: number; paid?: number }) {
 
   const freeCredits = Number.isFinite(free as number) ? (free as number) : null;
   const extraCredits = Number.isFinite(paid as number) ? (paid as number) : null;
-  const total = (freeCredits ?? 0) + (extraCredits ?? 0);
+  const FREE_PLAY_COST = 5; // one free play = R5
+  const freePlays = freeCredits == null ? null : Math.floor(freeCredits / FREE_PLAY_COST);
 
   const discountText = useMemo(() => {
     if (discount == null) return null;
@@ -98,13 +99,17 @@ export function CreditsPill(props?: { free?: number; paid?: number }) {
     <div className="inline-flex max-w-full items-center gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-left shadow-sm">
       <div className="min-w-0">
         <div className="flex items-center gap-2 leading-none">
-          <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Credits</span>
+          <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Today</span>
           <span className="text-sm font-black text-slate-900 sm:text-base">
-            {freeCredits == null && extraCredits == null ? "—" : total}
+            {freePlays == null ? "—" : `${freePlays} free play${freePlays === 1 ? "" : "s"}`}
           </span>
         </div>
         <div className="mt-1 text-[11px] leading-4 text-slate-600 sm:text-xs">
-          {freeCredits == null && extraCredits == null ? "Loading…" : `Free ${freeCredits ?? 0} • Extra ${extraCredits ?? 0}`}
+          {freeCredits == null && extraCredits == null
+            ? "Loading…"
+            : (extraCredits ?? 0) > 0
+              ? `Plus R${extraCredits} in credit · practice is free`
+              : "Practice is always free"}
         </div>
       </div>
       {discountText ? <div className="hidden max-w-[180px] text-[11px] leading-4 text-emerald-700 md:block">{discountText}</div> : null}

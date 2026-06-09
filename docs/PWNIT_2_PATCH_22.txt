@@ -1,0 +1,30 @@
+PwnIt 2 — Patch 22: "1 free play left" + discard old 30-credit balances + credits-page cleanup
+==============================================================================================
+
+This finishes the free-play model on the surface:
+
+1) "1 free play left" instead of "5 credits" (#1)
+   The credits pill now reads the free balance as PLAYS: it shows "Today: N free play(s)"
+   (free credits / R5), with paid credit and "practice is always free" underneath —
+   instead of a raw credit count.
+
+2) Discard previous 30-credit balances (#1)
+   Since we are still testing, the daily top-up now clamps any free balance above the
+   daily grant (DAILY_FREE_CREDITS = 5) down to the grant — on the very next request, in
+   both the demo and real top-up paths. So leftover 30-credit balances become "1 free
+   play" immediately instead of lingering until the next day. (Only FREE credits are
+   touched; purchased/paid credits are untouched.)
+
+3) Credits page cleanup (#1)
+   /buy-credits no longer references "Number Chain Sprint", "Checkers", or "30 credits".
+   It now states the real model: 1 free play/day, free unlimited practice, R5 extra plays
+   that build R1:R1 discount.
+
+FILES (4)
+  src/lib/auth.ts                   (REPLACE) clamp free balance to the daily grant (both paths)
+  src/components/CreditsPill.tsx    (REPLACE) show free PLAYS, not raw credits
+  src/app/buy-credits/page.tsx      (REPLACE) refreshed copy (no stale game/brand/30 refs)
+  src/app/buy-credits/ui.tsx        (REPLACE) button label "Buy 30 credits" -> "Buy credits"
+
+NO DB migration (the clamp is applied at runtime on the next request). auth.ts base is the
+Patch 18 version (DAILY_FREE_CREDITS already = 5). Apply on top of Patches 18/18.1/19/20/21.

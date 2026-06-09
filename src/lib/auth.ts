@@ -295,12 +295,22 @@ async function applyLocalDemoCredits(user: ActorUser): Promise<ActorUser> {
   const hasCredits = Number(user.freeCreditsBalance ?? 0) > 0;
   const lastKey = String(user.lastDailyCreditsDayKey ?? "");
 
-  if (lastKey === today && hasCredits) return user;
+  if (lastKey === today && hasCredits) {
+    if (Number(user.freeCreditsBalance ?? 0) > DAILY_FREE_CREDITS) {
+      const clamped = await prisma.user.update({
+        where: { id: user.id },
+        data: { freeCreditsBalance: DAILY_FREE_CREDITS } as any,
+        select: actorUserSelect,
+      });
+      return toActorUser(clamped)!;
+    }
+    return user;
+  }
 
   const updated = await prisma.user.update({
     where: { id: user.id },
     data: {
-      freeCreditsBalance: hasCredits ? Number(user.freeCreditsBalance ?? 0) : DAILY_FREE_CREDITS,
+      freeCreditsBalance: hasCredits ? Math.min(Number(user.freeCreditsBalance ?? 0), DAILY_FREE_CREDITS) : DAILY_FREE_CREDITS,
       lastDailyCreditsDayKey: today,
     } as any,
     select: actorUserSelect,
@@ -324,7 +334,17 @@ async function applyDailyCredits(user: ActorUser, bucketKey: string): Promise<Ac
   const today = dayKeyZA();
   const lastKey = String(user.lastDailyCreditsDayKey ?? "");
 
-  if (lastKey === today) return user;
+  if (lastKey === today) {
+    if (Number(user.freeCreditsBalance ?? 0) > DAILY_FREE_CREDITS) {
+      const clamped = await prisma.user.update({
+        where: { id: user.id },
+        data: { freeCreditsBalance: DAILY_FREE_CREDITS } as any,
+        select: actorUserSelect,
+      });
+      return toActorUser(clamped)!;
+    }
+    return user;
+  }
 
   const bucketGrant = await (prisma as any).dailyFreeBucketGrant.findUnique({
     where: {
