@@ -26,12 +26,12 @@ export function HeaderNav() {
     () =>
       ([
         { href: "/", label: "Home", mobileMode: "always", desktop: true, show: true },
-        { href: "/pwnit-2", label: "How it works", mobileMode: "always", desktop: true, show: true },
+        { href: "/pwnit-2/how-it-works", label: "How it works", mobileMode: "always", desktop: true, show: true },
         { href: "/buy-credits", label: "Credits", mobileMode: "always", desktop: true, show: true },
         { href: "/dashboard", label: "Profile", mobileMode: "hide-on-detail", desktop: true, show: true },
         { href: "/referrals", label: "Referrals", mobileMode: "hide-on-detail", desktop: true, show: true },
         { href: "/feedback", label: "Feedback", mobileMode: "hide-on-detail", desktop: true, show: true },
-        { href: "/terms", label: "Terms", mobileMode: "hide-on-detail", desktop: true, show: true },
+        { href: "/legal/terms", label: "Terms", mobileMode: "hide-on-detail", desktop: true, show: true },
         { href: "/admin", label: "Admin", mobileMode: "never", desktop: true, show: isLocalHost },
       ] satisfies NavItem[]).filter((item) => item.show !== false),
     [isLocalHost],

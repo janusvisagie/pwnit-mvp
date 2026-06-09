@@ -285,7 +285,8 @@ async function buildPurchaseQuote(params: {
     walletCredits: Number(wallet?.paidCreditsBalance ?? 0),
   });
 
-  const buyableState = ["ACTIVATED", "CLOSED", "PUBLISHED"].includes(round.state);
+  // Buying a voucher outright is always allowed (you simply cannot buy one you already won or bought).
+  const buyableState = true;
 
   return {
     voucherValueZAR: currentValueZAR,

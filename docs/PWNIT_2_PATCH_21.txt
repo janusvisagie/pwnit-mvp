@@ -1,0 +1,31 @@
+PwnIt 2 — Patch 21: Buying always allowed + dedicated How-It-Works page
+=======================================================================
+
+1) BUYING IS ALWAYS ALLOWED (#3)
+   The purchase quote no longer gates buying by campaign state — you can buy a
+   voucher outright at any time (funding, countdown, buy window, or after). The only
+   things that block a buy are: you already won it, or you already bought it.
+     • server: buildPurchaseQuote -> buyableState = true (canBuy = !won && !alreadyPurchased).
+       confirmPwnit2Purchase already enforces canBuy, so this covers the API too.
+     • Campaign card: now always shows Play / Buy the voucher / View leaderboard.
+     • Home hero: "Buy the voucher" is always shown.
+     • Status page: already reads canBuy from the server, so it follows automatically.
+   Price is always voucher value minus the discount you've earned.
+
+2) DEDICATED "HOW IT WORKS" PAGE (#2)
+   The nav link used to point at the home page (so it looked like a duplicate). There
+   is now a real page at /pwnit-2/how-it-works: the 4 steps, the five gauntlet games,
+   and a free-play / winning / buying summary. HeaderNav now points there.
+   (Also repointed the header "Terms" link to the new /legal/terms page from Patch 19.)
+
+   Stale copy cleaned up while here: card button "Play memory game" -> "Play the gauntlet";
+   home hero "memory game / Memory Sprint" -> "skill gauntlet / PwnIt Gauntlet".
+
+FILES (5)
+  src/lib/pwnit2CampaignServer.ts            (REPLACE) buyableState = true
+  src/components/Pwnit2CampaignCard.tsx      (REPLACE) always show Buy + Leaderboard; label
+  src/components/Pwnit2Home.tsx              (REPLACE) always show Buy; gauntlet copy
+  src/components/HeaderNav.tsx               (REPLACE) How it works -> /pwnit-2/how-it-works; Terms -> /legal/terms
+  src/app/pwnit-2/how-it-works/page.tsx      (NEW)     the real How-It-Works page
+
+NO DB migration. Apply on top of Patches 18/18.1/19/20.

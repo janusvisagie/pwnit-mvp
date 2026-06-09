@@ -39,7 +39,6 @@ export default function Pwnit2CampaignCard({ campaign }: { campaign: Pwnit2Campa
   const pct = Math.max(0, Math.min(100, Math.round(campaign.activationPct || 0)));
   const growth = campaign.growthZAR ?? 0;
   const yourDiscount = campaign.yourDiscountZAR ?? 0;
-  const inBuyWindow = campaign.state === "STATUS_WINDOW";
   const q = campaign.slug ? `?item=${campaign.slug}` : "";
   const gameHref = campaign.gameHref ?? `/play/pwnit-2${q}`;
   const leaderboardHref = campaign.leaderboardHref ?? `/pwnit-2/leaderboard${q}`;
@@ -82,17 +81,14 @@ export default function Pwnit2CampaignCard({ campaign }: { campaign: Pwnit2Campa
 
         <div className="flex flex-wrap gap-3 pt-1">
           <Link href={gameHref} className="rounded-full bg-[#0f172a] px-5 py-3 text-sm font-black text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-[#172554]">
-            Play memory game
+            Play the gauntlet
           </Link>
-          {inBuyWindow ? (
-            <Link href={purchaseHref} className="rounded-full bg-emerald-600 px-5 py-3 text-sm font-black text-white transition hover:-translate-y-0.5 hover:bg-emerald-700">
-              Buy the voucher
-            </Link>
-          ) : (
-            <Link href={leaderboardHref} className="rounded-full border border-emerald-200 bg-emerald-50 px-5 py-3 text-sm font-black text-emerald-800 transition hover:-translate-y-0.5 hover:bg-white">
-              View leaderboard
-            </Link>
-          )}
+          <Link href={purchaseHref} className="rounded-full bg-emerald-600 px-5 py-3 text-sm font-black text-white transition hover:-translate-y-0.5 hover:bg-emerald-700">
+            Buy the voucher
+          </Link>
+          <Link href={leaderboardHref} className="rounded-full border border-emerald-200 bg-emerald-50 px-5 py-3 text-sm font-black text-emerald-800 transition hover:-translate-y-0.5 hover:bg-white">
+            View leaderboard
+          </Link>
           <Link href={statusHref} className="rounded-full border border-[#e6ded9] bg-[#fffaf8] px-5 py-3 text-sm font-black text-slate-700 transition hover:-translate-y-0.5 hover:bg-white">
             Campaign status
           </Link>

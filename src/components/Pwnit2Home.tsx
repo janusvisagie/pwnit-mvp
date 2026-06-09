@@ -69,10 +69,10 @@ export default function Pwnit2Home() {
               </p>
               <div className="space-y-4">
                 <h1 className="max-w-3xl text-4xl font-black tracking-tight sm:text-5xl lg:text-6xl">
-                  Two prizes. One memory game. Win it or earn your discount.
+                  Two prizes. One skill gauntlet. Win it or earn your discount.
                 </h1>
                 <p className="max-w-2xl text-base font-semibold leading-7 text-white/82 sm:text-lg">
-                  Play Memory Sprint to fund a prize. Every rand you spend playing becomes a rand off the
+                  Play the PwnIt Gauntlet to fund a prize. Every rand you spend playing becomes a rand off the
                   voucher — and the top score wins it outright when the countdown ends.
                 </p>
               </div>
@@ -107,11 +107,9 @@ export default function Pwnit2Home() {
                   <span>{heroCampaign.countdownLabel}</span>
                   <span className="text-emerald-700">Your discount: R{heroCampaign.yourDiscountZAR ?? 0}</span>
                 </div>
-                {heroCampaign.state === "STATUS_WINDOW" ? (
-                  <Link href={`/pwnit-2/purchase${heroQ}`} className="mt-4 inline-flex rounded-full bg-emerald-600 px-5 py-2.5 text-sm font-black text-white transition hover:-translate-y-0.5 hover:bg-emerald-700">
-                    Buy the voucher
-                  </Link>
-                ) : null}
+                <Link href={`/pwnit-2/purchase${heroQ}`} className="mt-4 inline-flex rounded-full bg-emerald-600 px-5 py-2.5 text-sm font-black text-white transition hover:-translate-y-0.5 hover:bg-emerald-700">
+                  Buy the voucher
+                </Link>
                 {!loaded ? <p className="mt-2 text-xs font-bold text-slate-500">Refreshing…</p> : null}
               </div>
             </div>
