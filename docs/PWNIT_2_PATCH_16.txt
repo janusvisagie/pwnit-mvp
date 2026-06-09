@@ -1,0 +1,60 @@
+PwnIt 2 — Patch 16: Two-discipline "PwnIt Gauntlet"
+===================================================
+
+WHAT THIS PATCH DOES
+--------------------
+Replaces the single Memory Sprint game with a GAUNTLET that alternates two skill
+disciplines, round by round, in one run:
+
+  • even rounds  -> MEMORY: watch a growing colour-pad sequence, tap it back.
+  • odd rounds   -> FIND THE NUMBERS (Schulte): tap 1, 2, 3 … K in order on a grid.
+
+Each round is independent and fully server-validated: to clear a round the player
+must submit the exact correct inputs for it. roundsCleared = the number of LEADING
+rounds fully cleared (we stop at the first round not fully correct). Difficulty rises
+with depth (longer sequences / more numbers); time is only a tie-breaker. The server
+re-derives every round from a signed seed (bound to user + campaign) and computes the
+score itself — the client score is never trusted.
+
+Shared scoring across both disciplines: score = roundsCleared × 1000 + small time
+bonus. One leaderboard, one "rounds cleared" metric, regardless of which disciplines
+came up.
+
+WHY THIS SHAPE
+--------------
+A game testing several skills strengthens the "skill, not chance" story and is more
+engaging than a single mechanic, while the round-engine keeps each discipline isolated
+and re-validatable. Adding a third discipline later is incremental (add a generator +
+a branch in roundSolution + a small UI block).
+
+API CHANGE (ships with the matching client in this patch)
+---------------------------------------------------------
+  POST /api/pwnit-2/score  body { token, slug, rounds: number[][], elapsedMs, rttMs }
+    rounds[i] = the player's taps for round i (memory pad indices, or grid cell indices).
+  GET  /api/pwnit-2/play?item=hero  now returns the gauntlet config.
+
+The server's submit/score plumbing is unchanged; only the game title becomes
+"PwnIt Gauntlet" on the board and game header.
+
+FILES (6)
+---------
+  src/lib/pwnit2Gauntlet.ts          (NEW)     round engine + both disciplines + validate + score
+  src/app/api/pwnit-2/play/route.ts  (REPLACE) returns gauntlet config
+  src/app/api/pwnit-2/score/route.ts (REPLACE) body { rounds }, validateGauntletRun
+  src/components/Pwnit2Game.tsx      (REPLACE) gauntlet client (pads + numbers grid)
+  src/lib/pwnit2CampaignServer.ts    (REPLACE) gameTitle -> "PwnIt Gauntlet" (both campaigns)
+  src/lib/pwnit2DemoCampaign.ts      (REPLACE) demo fallback gameTitle -> "PwnIt Gauntlet"
+
+NO DB migration. No env changes. The old pwnit2Puzzle.ts is left in place but is no
+longer imported (safe to delete later if you like).
+
+TUNING (in src/lib/pwnit2Gauntlet.ts -> PWNIT2_GAUNTLET_CONFIG)
+  memBase 3, searchBase 5, 5×5 grid, maxRounds 40, per-discipline timers.
+  Want the hero longer and the staple a quick sprint? That split is the natural next
+  step (per-slug config) — easy to add on top of this.
+
+CHEAT NOTE (unchanged stance)
+The client must know each round to render it, so a determined user could read it.
+Guards remain: server re-derivation + signed seed (15-min TTL, bound to user+slug),
+anti-cheat flags, and finalist review before any prize. A per-round server challenge
+is the future hardening step before real-money scale.

@@ -78,7 +78,7 @@ export const pwnit2DemoCampaign: Pwnit2CampaignSnapshot = {
   participants: 0,
   attempts: 0,
   countdownLabel: "Unlocks after activation",
-  gameTitle: "Memory Sprint",
+  gameTitle: "PwnIt Gauntlet",
   gameHref: "/play/pwnit-2",
   leaderboardHref: "/pwnit-2/leaderboard",
   statusHref: "/pwnit-2/status",

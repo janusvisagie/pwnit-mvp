@@ -3,18 +3,20 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import {
-  sequenceForRound,
-  sequenceLengthForRound,
+  disciplineForRound,
+  memorySequence,
+  searchTargets,
+  searchCount,
   inputTimeMsForRound,
-  PWNIT2_PUZZLE_CONFIG,
-  type Pwnit2PuzzleConfig,
-} from "@/lib/pwnit2Puzzle";
+  PWNIT2_GAUNTLET_CONFIG,
+  type Pwnit2GauntletConfig,
+} from "@/lib/pwnit2Gauntlet";
 import { pwnit2DemoCampaign, type Pwnit2CampaignSnapshot } from "@/lib/pwnit2DemoCampaign";
 
-type Phase = "idle" | "loading" | "showing" | "input" | "finished";
+type Phase = "idle" | "loading" | "memShow" | "memInput" | "searchInput" | "finished";
 type SaveState = "idle" | "saving" | "saved" | "error";
 
-const STORAGE_PREFIX = "pwnit2-memory-best:";
+const STORAGE_PREFIX = "pwnit2-gauntlet-best:";
 
 const PADS = [
   { base: "bg-emerald-200", active: "bg-emerald-500", ring: "ring-emerald-300" },
@@ -41,11 +43,12 @@ export default function Pwnit2Game({ slug = "hero" }: { slug?: string }) {
   const [bestRounds, setBestRounds] = useState<number | null>(null);
 
   const [phase, setPhase] = useState<Phase>("idle");
-  const [config, setConfig] = useState<Pwnit2PuzzleConfig>(PWNIT2_PUZZLE_CONFIG);
+  const [config, setConfig] = useState<Pwnit2GauntletConfig>(PWNIT2_GAUNTLET_CONFIG);
   const [roundIndex, setRoundIndex] = useState(0);
   const [activePad, setActivePad] = useState<number | null>(null);
   const [tapFlash, setTapFlash] = useState<number | null>(null);
   const [inputCount, setInputCount] = useState(0);
+  const [searchTick, setSearchTick] = useState(0);
   const [timeLeftMs, setTimeLeftMs] = useState(0);
 
   const [saveState, setSaveState] = useState<SaveState>("idle");
@@ -57,9 +60,11 @@ export default function Pwnit2Game({ slug = "hero" }: { slug?: string }) {
 
   const tokenRef = useRef<string | null>(null);
   const seedRef = useRef<number | null>(null);
-  const configRef = useRef<Pwnit2PuzzleConfig>(PWNIT2_PUZZLE_CONFIG);
+  const configRef = useRef<Pwnit2GauntletConfig>(PWNIT2_GAUNTLET_CONFIG);
+  const roundsRef = useRef<number[][]>([]);
   const currentTapsRef = useRef<number[]>([]);
-  const bestTapsRef = useRef<number[]>([]);
+  const roundSeqRef = useRef<number[]>([]); // memory: the sequence to flash/repeat
+  const roundTargetsRef = useRef<number[]>([]); // search: cells in label order (idx 0 = "1")
   const gameStartedRef = useRef<number | null>(null);
   const inputDeadlineRef = useRef<number>(0);
   const finishedRef = useRef(false);
@@ -93,16 +98,16 @@ export default function Pwnit2Game({ slug = "hero" }: { slug?: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [campaignSlug]);
 
-  // Showing phase: flash the round's sequence, then hand over to input.
+  // Memory show phase: flash the sequence, then hand to input.
   useEffect(() => {
-    if (phase !== "showing" || seedRef.current === null) return;
-    const seq = sequenceForRound(seedRef.current, roundIndex, configRef.current);
+    if (phase !== "memShow") return;
+    const seq = roundSeqRef.current;
     const timers: number[] = [];
     let i = 0;
     setActivePad(null);
     const step = () => {
       if (i >= seq.length) {
-        const done = window.setTimeout(() => startInput(), 350);
+        const done = window.setTimeout(() => startMemInput(), 350);
         timers.push(done);
         return;
       }
@@ -112,9 +117,9 @@ export default function Pwnit2Game({ slug = "hero" }: { slug?: string }) {
         const off = window.setTimeout(() => {
           i += 1;
           step();
-        }, configRef.current.gapMs);
+        }, configRef.current.memGapMs);
         timers.push(off);
-      }, configRef.current.flashMs);
+      }, configRef.current.memFlashMs);
       timers.push(on);
     };
     const kickoff = window.setTimeout(step, 500);
@@ -123,9 +128,9 @@ export default function Pwnit2Game({ slug = "hero" }: { slug?: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, roundIndex]);
 
-  // Input phase: run the per-round countdown.
+  // Input countdown for both disciplines.
   useEffect(() => {
-    if (phase !== "input") return;
+    if (phase !== "memInput" && phase !== "searchInput") return;
     const deadline = inputDeadlineRef.current;
     setTimeLeftMs(Math.max(0, deadline - Date.now()));
     const id = window.setInterval(() => {
@@ -140,56 +145,75 @@ export default function Pwnit2Game({ slug = "hero" }: { slug?: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, roundIndex]);
 
-  function startInput() {
+  function beginRound(i: number) {
     currentTapsRef.current = [];
     resolvingRef.current = false;
     setInputCount(0);
     setActivePad(null);
-    inputDeadlineRef.current = Date.now() + inputTimeMsForRound(roundIndex, configRef.current);
-    setPhase("input");
+    const seed = seedRef.current as number;
+    if (disciplineForRound(i) === "memory") {
+      roundSeqRef.current = memorySequence(seed, i, configRef.current);
+      roundTargetsRef.current = [];
+      setPhase("memShow");
+    } else {
+      roundTargetsRef.current = searchTargets(seed, i, configRef.current);
+      roundSeqRef.current = [];
+      inputDeadlineRef.current = Date.now() + inputTimeMsForRound(i, configRef.current);
+      setSearchTick((t) => t + 1);
+      setPhase("searchInput");
+    }
   }
 
-  function updateBest(correctTaps: number[]) {
-    if (correctTaps.length > bestTapsRef.current.length) bestTapsRef.current = correctTaps.slice();
+  function startMemInput() {
+    resolvingRef.current = false;
+    inputDeadlineRef.current = Date.now() + inputTimeMsForRound(roundIndex, configRef.current);
+    setPhase("memInput");
   }
 
   function endRound(cleared: boolean) {
     if (resolvingRef.current || finishedRef.current) return;
     resolvingRef.current = true;
+    roundsRef.current[roundIndex] = currentTapsRef.current.slice();
     if (cleared) {
       const next = roundIndex + 1;
       if (next >= configRef.current.maxRounds) {
         finishGame();
       } else {
         setRoundIndex(next);
-        setPhase("showing");
+        beginRound(next);
       }
     } else {
       finishGame();
     }
   }
 
-  function chooseTap(pad: number) {
-    if (phase !== "input" || resolvingRef.current || finishedRef.current || seedRef.current === null) return;
-    const seq = sequenceForRound(seedRef.current, roundIndex, configRef.current);
-    const j = currentTapsRef.current.length;
-    const expected = seq[j];
-
+  function chooseMemPad(pad: number) {
+    if (phase !== "memInput" || resolvingRef.current || finishedRef.current) return;
+    const seq = roundSeqRef.current;
+    const expected = seq[currentTapsRef.current.length];
     setTapFlash(pad);
-    window.setTimeout(() => setTapFlash(null), 180);
-
+    window.setTimeout(() => setTapFlash(null), 170);
     currentTapsRef.current.push(pad);
     setInputCount(currentTapsRef.current.length);
-
     if (pad !== expected) {
-      updateBest(currentTapsRef.current.slice(0, -1)); // drop the wrong tap
       endRound(false);
       return;
     }
-    if (currentTapsRef.current.length >= seq.length) {
-      updateBest(currentTapsRef.current.slice());
-      endRound(true);
+    if (currentTapsRef.current.length >= seq.length) endRound(true);
+  }
+
+  function chooseSearchCell(cell: number) {
+    if (phase !== "searchInput" || resolvingRef.current || finishedRef.current) return;
+    const targets = roundTargetsRef.current;
+    const expected = targets[currentTapsRef.current.length];
+    currentTapsRef.current.push(cell);
+    setInputCount(currentTapsRef.current.length);
+    setSearchTick((t) => t + 1);
+    if (cell !== expected) {
+      endRound(false);
+      return;
     }
+    if (currentTapsRef.current.length >= targets.length) endRound(true);
   }
 
   async function finishGame() {
@@ -208,7 +232,7 @@ export default function Pwnit2Game({ slug = "hero" }: { slug?: string }) {
       const res = await fetch("/api/pwnit-2/score", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token: tokenRef.current, slug: campaignSlug, taps: bestTapsRef.current, elapsedMs, rttMs }),
+        body: JSON.stringify({ token: tokenRef.current, slug: campaignSlug, rounds: roundsRef.current, elapsedMs, rttMs }),
       });
       const data = await res.json();
       if (!res.ok || !data.ok) {
@@ -248,7 +272,7 @@ export default function Pwnit2Game({ slug = "hero" }: { slug?: string }) {
     setRank(null);
     finishedRef.current = false;
     resolvingRef.current = false;
-    bestTapsRef.current = [];
+    roundsRef.current = [];
     currentTapsRef.current = [];
     try {
       const res = await fetch(`/api/pwnit-2/play?item=${campaignSlug}`, { cache: "no-store" });
@@ -260,13 +284,12 @@ export default function Pwnit2Game({ slug = "hero" }: { slug?: string }) {
       }
       tokenRef.current = String(data.token);
       seedRef.current = Number(data.seed);
-      const cfg = (data.config as Pwnit2PuzzleConfig) ?? PWNIT2_PUZZLE_CONFIG;
+      const cfg = (data.config as Pwnit2GauntletConfig) ?? PWNIT2_GAUNTLET_CONFIG;
       configRef.current = cfg;
       setConfig(cfg);
       setRoundIndex(0);
-      setInputCount(0);
       gameStartedRef.current = Date.now();
-      setPhase("showing");
+      beginRound(0);
     } catch {
       setPhase("idle");
       setError("Could not start a game. Please try again.");
@@ -276,10 +299,21 @@ export default function Pwnit2Game({ slug = "hero" }: { slug?: string }) {
   const playClosed = campaign.state === "STATUS_WINDOW" || campaign.state === "ARCHIVED";
   const playCost = campaign.playCostCredits ?? 5;
   const currentValue = campaign.currentValueZAR ?? 0;
-  const requiredLen = sequenceLengthForRound(roundIndex, config);
-  const inputPct =
-    phase === "input" ? Math.max(0, Math.min(100, Math.round((timeLeftMs / inputTimeMsForRound(roundIndex, config)) * 100))) : 100;
   const q = `?item=${campaignSlug}`;
+  const discipline = disciplineForRound(roundIndex);
+  const inputPct =
+    phase === "memInput" || phase === "searchInput"
+      ? Math.max(0, Math.min(100, Math.round((timeLeftMs / inputTimeMsForRound(roundIndex, config)) * 100)))
+      : 100;
+
+  // search render helpers
+  const targets = roundTargetsRef.current;
+  const labelByCell: Record<number, number> = {};
+  targets.forEach((cellIdx, p) => {
+    labelByCell[cellIdx] = p + 1;
+  });
+  const totalCells = config.gridCols * config.gridRows;
+  const tappedSet = new Set(currentTapsRef.current);
 
   return (
     <main className="min-h-screen bg-[#fffaf8] px-4 py-6 text-slate-950 sm:px-6 lg:px-8">
@@ -288,17 +322,14 @@ export default function Pwnit2Game({ slug = "hero" }: { slug?: string }) {
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <p className="text-xs font-black uppercase tracking-[0.22em] text-emerald-700">{campaign.title}</p>
-              <h1 className="mt-2 text-3xl font-black tracking-tight sm:text-5xl">Memory Sprint</h1>
+              <h1 className="mt-2 text-3xl font-black tracking-tight sm:text-5xl">PwnIt Gauntlet</h1>
               <p className="mt-3 max-w-2xl text-sm font-semibold leading-6 text-slate-700">
-                Watch the colour sequence, then tap it back in order. It grows each round — one wrong tap ends
-                the run. Each game costs R{playCost}, and every R1 you spend becomes R1 off this voucher
-                {currentValue ? ` (now R${currentValue})` : ""}.
+                Two games, one run: memorise the colour pattern, then race to tap the numbers in order. Clear as
+                many rounds as you can. Each run costs R{playCost}, and every R1 you spend becomes R1 off this
+                voucher{currentValue ? ` (now R${currentValue})` : ""}.
               </p>
             </div>
-            <Link
-              href={`/pwnit-2/leaderboard${q}`}
-              className="rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-black text-emerald-800"
-            >
+            <Link href={`/pwnit-2/leaderboard${q}`} className="rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-black text-emerald-800">
               Leaderboard
             </Link>
           </div>
@@ -334,72 +365,36 @@ export default function Pwnit2Game({ slug = "hero" }: { slug?: string }) {
             </div>
           ) : phase === "idle" ? (
             <div className="space-y-5 text-center">
-              <div className="mx-auto grid w-44 grid-cols-2 gap-2">
-                {PADS.map((p, i) => (
-                  <div key={i} className={`h-20 rounded-2xl ${p.base}`} />
-                ))}
+              <div className="mx-auto flex max-w-md items-stretch justify-center gap-3">
+                <div className="grid flex-1 grid-cols-2 gap-1.5 rounded-2xl border border-[#e6ded9] p-2">
+                  {PADS.map((p, i) => (
+                    <div key={i} className={`h-10 rounded-xl ${p.base}`} />
+                  ))}
+                </div>
+                <div className="grid flex-1 grid-cols-3 gap-1.5 rounded-2xl border border-[#e6ded9] p-2">
+                  {[3, 1, 5, 2, 4, 6, 7, 9, 8].map((n) => (
+                    <div key={n} className="flex h-7 items-center justify-center rounded-md bg-emerald-50 text-xs font-black text-emerald-700">
+                      {n}
+                    </div>
+                  ))}
+                </div>
               </div>
               <div>
-                <h2 className="text-2xl font-black">Watch, then repeat</h2>
+                <h2 className="text-2xl font-black">Memory + numbers, alternating</h2>
                 <p className="mt-2 text-sm font-semibold leading-6 text-slate-700">
-                  A sequence of pads lights up — tap them back in the same order. Each round adds one. How far
-                  can your memory go?
+                  Odd rounds: watch a colour sequence and tap it back. Even rounds: find and tap 1, 2, 3… in order.
+                  Each round adds difficulty — how far can you get?
                 </p>
                 {bestRounds ? <p className="mt-2 text-xs font-bold text-slate-500">Your best on this device: {bestRounds} rounds</p> : null}
               </div>
               {error ? <p className="text-sm font-bold text-red-600">{error}</p> : null}
               <button onClick={startGame} className="rounded-full bg-[#0f172a] px-6 py-3 text-sm font-black text-white transition hover:-translate-y-0.5 hover:bg-[#172554]">
-                Start round · R{playCost}
+                Start run · R{playCost}
               </button>
             </div>
           ) : phase === "loading" ? (
-            <div className="py-10 text-center text-sm font-bold text-slate-500">Starting your round…</div>
-          ) : phase === "showing" || phase === "input" ? (
-            <div className="space-y-5">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">Round {roundIndex + 1}</p>
-                  <h2 className="mt-1 text-2xl font-black">{phase === "showing" ? "Watch the sequence" : "Repeat the sequence"}</h2>
-                  {phase === "input" ? (
-                    <p className="mt-1 text-sm font-bold text-slate-600">{inputCount} / {requiredLen} tapped</p>
-                  ) : (
-                    <p className="mt-1 text-sm font-bold text-slate-600">{requiredLen} in the sequence</p>
-                  )}
-                </div>
-                <div className="rounded-2xl bg-emerald-50 px-4 py-3 text-right">
-                  <p className="text-xs font-black uppercase tracking-[0.16em] text-emerald-700">Cleared</p>
-                  <p className="text-2xl font-black text-emerald-700">{roundIndex}</p>
-                </div>
-              </div>
-
-              <div className="h-2.5 overflow-hidden rounded-full bg-[#e8efe9]">
-                <div
-                  className={`h-full rounded-full transition-[width] duration-100 ${inputPct > 33 ? "bg-gradient-to-r from-emerald-400 to-teal-400" : "bg-amber-400"}`}
-                  style={{ width: phase === "input" ? `${inputPct}%` : "100%" }}
-                />
-              </div>
-
-              <div className="mx-auto grid max-w-sm grid-cols-2 gap-3">
-                {PADS.map((p, i) => {
-                  const lit = (phase === "showing" && activePad === i) || tapFlash === i;
-                  return (
-                    <button
-                      key={i}
-                      onClick={() => chooseTap(i)}
-                      disabled={phase !== "input"}
-                      aria-label={`Pad ${i + 1}`}
-                      className={`h-28 rounded-3xl ring-2 transition-all duration-150 sm:h-32 ${
-                        lit ? `${p.active} scale-[1.03] ${p.ring}` : `${p.base} ring-transparent`
-                      } ${phase === "input" ? "cursor-pointer hover:scale-[1.02]" : "cursor-default"}`}
-                    />
-                  );
-                })}
-              </div>
-              <p className="text-center text-xs font-semibold text-slate-500">
-                {phase === "showing" ? "Memorise the order…" : "Tap the pads in the order they lit up."}
-              </p>
-            </div>
-          ) : (
+            <div className="py-10 text-center text-sm font-bold text-slate-500">Starting your run…</div>
+          ) : phase === "finished" ? (
             <div className="space-y-5 text-center">
               <p className="text-xs font-black uppercase tracking-[0.22em] text-emerald-700">Run complete</p>
               <h2 className="text-4xl font-black">
@@ -434,6 +429,97 @@ export default function Pwnit2Game({ slug = "hero" }: { slug?: string }) {
                   View leaderboard
                 </Link>
               </div>
+            </div>
+          ) : (
+            <div className="space-y-5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">
+                    Round {roundIndex + 1} · {discipline === "memory" ? "Memory" : "Find the numbers"}
+                  </p>
+                  <h2 className="mt-1 text-2xl font-black">
+                    {phase === "memShow"
+                      ? "Watch the sequence"
+                      : phase === "memInput"
+                        ? "Repeat the sequence"
+                        : `Tap 1 → ${searchCount(roundIndex, config)} in order`}
+                  </h2>
+                  <p className="mt-1 text-sm font-bold text-slate-600">
+                    {phase === "memInput"
+                      ? `${inputCount} / ${roundSeqRef.current.length} tapped`
+                      : phase === "searchInput"
+                        ? `${inputCount} / ${targets.length} found`
+                        : `${roundSeqRef.current.length} in the sequence`}
+                  </p>
+                </div>
+                <div className="rounded-2xl bg-emerald-50 px-4 py-3 text-right">
+                  <p className="text-xs font-black uppercase tracking-[0.16em] text-emerald-700">Cleared</p>
+                  <p className="text-2xl font-black text-emerald-700">{roundIndex}</p>
+                </div>
+              </div>
+
+              <div className="h-2.5 overflow-hidden rounded-full bg-[#e8efe9]">
+                <div
+                  className={`h-full rounded-full transition-[width] duration-100 ${inputPct > 33 ? "bg-gradient-to-r from-emerald-400 to-teal-400" : "bg-amber-400"}`}
+                  style={{ width: phase === "memInput" || phase === "searchInput" ? `${inputPct}%` : "100%" }}
+                />
+              </div>
+
+              {discipline === "memory" ? (
+                <div className="mx-auto grid max-w-sm grid-cols-2 gap-3">
+                  {PADS.map((p, i) => {
+                    const lit = (phase === "memShow" && activePad === i) || tapFlash === i;
+                    return (
+                      <button
+                        key={i}
+                        onClick={() => chooseMemPad(i)}
+                        disabled={phase !== "memInput"}
+                        aria-label={`Pad ${i + 1}`}
+                        className={`h-28 rounded-3xl ring-2 transition-all duration-150 sm:h-32 ${
+                          lit ? `${p.active} scale-[1.03] ${p.ring}` : `${p.base} ring-transparent`
+                        } ${phase === "memInput" ? "cursor-pointer hover:scale-[1.02]" : "cursor-default"}`}
+                      />
+                    );
+                  })}
+                </div>
+              ) : (
+                <div
+                  data-tick={searchTick}
+                  className="mx-auto grid max-w-md gap-2"
+                  style={{ gridTemplateColumns: `repeat(${config.gridCols}, minmax(0, 1fr))` }}
+                >
+                  {Array.from({ length: totalCells }, (_, c) => {
+                    const label = labelByCell[c];
+                    const done = tappedSet.has(c);
+                    if (!label) {
+                      return <div key={c} className="aspect-square rounded-xl border border-dashed border-[#ece4de] bg-[#fcf8f5]" />;
+                    }
+                    return (
+                      <button
+                        key={c}
+                        onClick={() => chooseSearchCell(c)}
+                        disabled={done}
+                        aria-label={`Number ${label}`}
+                        className={`aspect-square rounded-xl text-lg font-black transition-all duration-100 sm:text-xl ${
+                          done
+                            ? "bg-emerald-500 text-white"
+                            : "border border-emerald-200 bg-white text-emerald-800 hover:-translate-y-0.5 hover:bg-emerald-50"
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              <p className="text-center text-xs font-semibold text-slate-500">
+                {phase === "memShow"
+                  ? "Memorise the order…"
+                  : phase === "memInput"
+                    ? "Tap the pads in the order they lit up."
+                    : "Tap the numbers in ascending order. One wrong tap ends the run."}
+              </p>
             </div>
           )}
         </div>
