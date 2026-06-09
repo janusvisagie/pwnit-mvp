@@ -1,0 +1,28 @@
+PwnIt 2 — Patch 20: Two more gauntlet disciplines (Stroop + "What comes next")
+=============================================================================
+
+The PwnIt Gauntlet now cycles through FIVE skill disciplines (% 5):
+  0 memory   watch a growing colour sequence, tap it back
+  1 search   Schulte grid: tap the numbers 1..K in order
+  2 math      tap the correct answer to a chain of problems
+  3 stroop    tap the INK COLOUR of a colour-word (not the word) — attention/inhibition
+  4 pattern   "what comes next": tap the next term in a short logical sequence
+
+math/stroop/pattern share one interaction (a chain of multiple-choice items), so the
+client renders them through a single "choice" path. Difficulty still rises once per full
+cycle (every 5 rounds). Everything stays server-validated: the server re-derives each
+round — including the Stroop ink colour and the pattern's next term — from the signed
+seed and never trusts a client score.
+
+API: unchanged. Score body is still { token, slug, rounds: number[][], … }; for math,
+stroop and pattern, rounds[i] is the array of chosen OPTION INDICES.
+
+FILES (2)
+  src/lib/pwnit2Gauntlet.ts      (REPLACE) 5-discipline engine, % 5 cycle, Stroop + pattern builders
+  src/components/Pwnit2Game.tsx  (REPLACE) generalized choice UI + Stroop swatches + sequence prompt
+
+NO DB migration. No env / route / server changes.
+
+TUNING (PWNIT2_GAUNTLET_CONFIG): stroopBase 4 / stroopOptions 4; patternBase 3 /
+patternOptions 4 / patternShown 4; per-discipline input timers. To drop a discipline,
+change disciplineForRound's modulus and mapping (keep client + engine in sync).

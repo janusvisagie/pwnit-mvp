@@ -1,24 +1,52 @@
-// Deterministic THREE-DISCIPLINE GAUNTLET engine for PwnIt 2, shared by client + server.
+// Deterministic FIVE-DISCIPLINE GAUNTLET engine for PwnIt 2, shared by client + server.
 // PURE — no Node-only imports — so both sides derive identical rounds from one seed.
 //
-// Rounds cycle by index (% 3):
-//   index % 3 === 0 -> "memory"  (watch a growing colour-pad sequence, tap it back)
-//   index % 3 === 1 -> "search"  (Schulte: tap the numbers 1..K in order on a grid)
-//   index % 3 === 2 -> "math"    (tap the correct answer to a short chain of problems)
+// Rounds cycle by index (% 5):
+//   0 -> "memory"   watch a growing colour-pad sequence, tap it back
+//   1 -> "search"   Schulte grid: tap the numbers 1..K in order
+//   2 -> "math"     tap the correct answer to a short chain of problems
+//   3 -> "stroop"   tap the INK COLOUR of a colour-word (not the word) — attention/inhibition
+//   4 -> "pattern"  "what comes next": tap the next term in a short logical sequence
 //
-// Each round is independent and validated on its own: to clear round i the player must
-// submit the exact correct inputs for it (pad indices / cell indices / chosen option
-// indices). roundsCleared = the number of LEADING rounds fully cleared. The server
-// re-derives every round and never trusts a client score. Difficulty rises once per full
-// cycle (every 3 rounds); time is only a tie-breaker.
+// math, stroop and pattern share one interaction: a chain of multiple-choice "items",
+// each with `options` and a `correct` index. Memory/search keep their bespoke inputs.
+// A round is cleared only if its submitted inputs exactly equal that round's solution.
+// roundsCleared = leading rounds fully cleared. The server re-derives every round
+// (including the maths answers, the Stroop ink, and the pattern's next term) from the
+// signed seed and never trusts a client score. Difficulty rises once per full cycle
+// (every 5 rounds); time is only a tie-breaker.
 
-export type Discipline = "memory" | "search" | "math";
+export type Discipline = "memory" | "search" | "math" | "stroop" | "pattern";
+export type Pwnit2ChoiceKind = "math" | "stroop" | "pattern";
 
-export type Pwnit2MathProblem = { text: string; options: number[]; correct: number };
+// One multiple-choice item. `options` are numeric payloads:
+//   math/pattern -> the numbers shown on the option buttons
+//   stroop       -> colour indices into PWNIT2_STROOP_COLORS (rendered as swatches)
+// `correct` is the index into `options` of the right answer.
+export type Pwnit2ChoiceItem = {
+  kind: Pwnit2ChoiceKind;
+  options: number[];
+  correct: number;
+  text?: string; // math: the equation
+  sequence?: number[]; // pattern: the shown terms
+  wordColorIndex?: number; // stroop: palette index for the WORD label
+  inkColorIndex?: number; // stroop: palette index for the INK (the answer)
+};
+// Back-compat alias (older imports).
+export type Pwnit2MathProblem = Pwnit2ChoiceItem;
+
+export const PWNIT2_STROOP_COLORS: { name: string; hex: string }[] = [
+  { name: "RED", hex: "#ef4444" },
+  { name: "BLUE", hex: "#3b82f6" },
+  { name: "GREEN", hex: "#22c55e" },
+  { name: "YELLOW", hex: "#eab308" },
+  { name: "PURPLE", hex: "#a855f7" },
+  { name: "ORANGE", hex: "#f97316" },
+];
 
 export type Pwnit2GauntletConfig = {
   maxRounds: number;
-  // memory discipline
+  // memory
   memBase: number;
   memSymbols: number;
   memFlashMs: number;
@@ -26,19 +54,32 @@ export type Pwnit2GauntletConfig = {
   memInputBaseMs: number;
   memInputPerSymbolMs: number;
   memInputMinMs: number;
-  // search discipline (Schulte grid)
+  // search
   searchBase: number;
   gridCols: number;
   gridRows: number;
   searchInputBaseMs: number;
   searchInputPerTargetMs: number;
   searchInputMinMs: number;
-  // math discipline
+  // math
   mathBase: number;
   mathOptions: number;
   mathInputBaseMs: number;
   mathInputPerProblemMs: number;
   mathInputMinMs: number;
+  // stroop
+  stroopBase: number;
+  stroopOptions: number;
+  stroopInputBaseMs: number;
+  stroopInputPerItemMs: number;
+  stroopInputMinMs: number;
+  // pattern
+  patternBase: number;
+  patternOptions: number;
+  patternShown: number;
+  patternInputBaseMs: number;
+  patternInputPerItemMs: number;
+  patternInputMinMs: number;
 };
 
 export const PWNIT2_GAUNTLET_CONFIG: Pwnit2GauntletConfig = {
@@ -61,6 +102,17 @@ export const PWNIT2_GAUNTLET_CONFIG: Pwnit2GauntletConfig = {
   mathInputBaseMs: 4000,
   mathInputPerProblemMs: 3200,
   mathInputMinMs: 8000,
+  stroopBase: 4,
+  stroopOptions: 4,
+  stroopInputBaseMs: 3000,
+  stroopInputPerItemMs: 1500,
+  stroopInputMinMs: 7000,
+  patternBase: 3,
+  patternOptions: 4,
+  patternShown: 4,
+  patternInputBaseMs: 4000,
+  patternInputPerItemMs: 3200,
+  patternInputMinMs: 8000,
 };
 
 function mulberry32(a: number) {
@@ -84,20 +136,46 @@ function rngFor(seed: number, roundIndex: number, salt: number) {
 }
 
 export function disciplineForRound(roundIndex: number): Discipline {
-  const m = Math.max(0, roundIndex) % 3;
-  return m === 0 ? "memory" : m === 1 ? "search" : "math";
+  const m = Math.max(0, roundIndex) % 5;
+  return m === 0 ? "memory" : m === 1 ? "search" : m === 2 ? "math" : m === 3 ? "stroop" : "pattern";
 }
 
-// How many full cycles have completed by this round — drives difficulty growth.
+// Full cycles completed by this round — drives difficulty growth.
 function cycle(roundIndex: number): number {
-  return Math.floor(Math.max(0, roundIndex) / 3);
+  return Math.floor(Math.max(0, roundIndex) / 5);
+}
+
+// Build N distinct, non-negative integer options that include `answer`, then shuffle.
+function buildNumberOptions(rnd: () => number, answer: number, optionCount: number): { options: number[]; correct: number } {
+  const opts: number[] = [answer];
+  const deltas = [1, -1, 2, -2, 3, -3, 5, -5, 4, -4, 10, -10];
+  let di = 0;
+  while (opts.length < optionCount && di < deltas.length * 4) {
+    const base = deltas[di % deltas.length];
+    const jitter = di >= deltas.length ? Math.floor(rnd() * 5) - 2 : 0;
+    const cand = answer + base + jitter;
+    if (cand >= 0 && !opts.includes(cand)) opts.push(cand);
+    di += 1;
+  }
+  let pad = 11;
+  while (opts.length < optionCount) {
+    const cand = answer + pad;
+    if (!opts.includes(cand)) opts.push(cand);
+    pad += 1;
+  }
+  for (let i = opts.length - 1; i > 0; i--) {
+    const j = Math.floor(rnd() * (i + 1));
+    const t = opts[i];
+    opts[i] = opts[j];
+    opts[j] = t;
+  }
+  return { options: opts, correct: opts.indexOf(answer) };
 }
 
 // ── Memory discipline ─────────────────────────────────────────────────────────
 export function memoryLength(roundIndex: number, cfg: Pwnit2GauntletConfig = PWNIT2_GAUNTLET_CONFIG): number {
   return cfg.memBase + cycle(roundIndex);
 }
-
 export function memorySequence(
   seed: number,
   roundIndex: number,
@@ -108,13 +186,11 @@ export function memorySequence(
   return Array.from({ length: len }, () => Math.floor(rnd() * cfg.memSymbols));
 }
 
-// ── Search discipline (tap 1..K in order on a grid) ─────────────────────────────
+// ── Search discipline ───────────────────────────────────────────────────────────
 export function searchCount(roundIndex: number, cfg: Pwnit2GauntletConfig = PWNIT2_GAUNTLET_CONFIG): number {
   const cells = cfg.gridCols * cfg.gridRows;
   return Math.min(cells, cfg.searchBase + cycle(roundIndex));
 }
-
-// Returns ordered cell indices: result[0] holds number 1, result[1] holds number 2, ...
 export function searchTargets(
   seed: number,
   roundIndex: number,
@@ -133,12 +209,11 @@ export function searchTargets(
   return pool.slice(0, k);
 }
 
-// ── Math discipline (tap the correct answer) ────────────────────────────────────
+// ── Math discipline ──────────────────────────────────────────────────────────────
 export function mathCount(roundIndex: number, cfg: Pwnit2GauntletConfig = PWNIT2_GAUNTLET_CONFIG): number {
   return cfg.mathBase + cycle(roundIndex);
 }
-
-function buildProblem(rnd: () => number, tier: number, optionCount: number): Pwnit2MathProblem {
+function buildMathItem(rnd: () => number, tier: number, optionCount: number): Pwnit2ChoiceItem {
   const ops = tier < 1 ? ["+", "-"] : ["+", "-", "x"];
   const op = ops[Math.floor(rnd() * ops.length)];
   let a: number;
@@ -160,45 +235,105 @@ function buildProblem(rnd: () => number, tier: number, optionCount: number): Pwn
     ans = op === "+" ? a + b : a - b;
   }
   const text = `${a} ${op === "x" ? "\u00d7" : op} ${b}`;
-
-  // distinct, non-negative options including the answer
-  const opts: number[] = [ans];
-  const deltas = [1, -1, 2, -2, 3, -3, 5, -5, 4, -4, 10, -10];
-  let di = 0;
-  while (opts.length < optionCount && di < deltas.length * 4) {
-    const base = deltas[di % deltas.length];
-    const jitter = di >= deltas.length ? Math.floor(rnd() * 5) - 2 : 0;
-    const cand = ans + base + jitter;
-    if (cand >= 0 && !opts.includes(cand)) opts.push(cand);
-    di += 1;
-  }
-  let pad = 11;
-  while (opts.length < optionCount) {
-    const cand = ans + pad;
-    if (!opts.includes(cand)) opts.push(cand);
-    pad += 1;
-  }
-  // deterministic shuffle
-  for (let i = opts.length - 1; i > 0; i--) {
-    const j = Math.floor(rnd() * (i + 1));
-    const t = opts[i];
-    opts[i] = opts[j];
-    opts[j] = t;
-  }
-  return { text, options: opts, correct: opts.indexOf(ans) };
+  const { options, correct } = buildNumberOptions(rnd, ans, optionCount);
+  return { kind: "math", text, options, correct };
 }
 
+// ── Stroop discipline ─────────────────────────────────────────────────────────────
+export function stroopCount(roundIndex: number, cfg: Pwnit2GauntletConfig = PWNIT2_GAUNTLET_CONFIG): number {
+  return cfg.stroopBase + cycle(roundIndex);
+}
+function buildStroopItem(rnd: () => number, optionCount: number): Pwnit2ChoiceItem {
+  const n = PWNIT2_STROOP_COLORS.length;
+  const wordColorIndex = Math.floor(rnd() * n);
+  // ink differs from the word (that is the interference)
+  const inkColorIndex = (wordColorIndex + 1 + Math.floor(rnd() * (n - 1))) % n;
+  const want = Math.min(optionCount, n);
+  // distractor pool = all colours except the ink, shuffled
+  const pool: number[] = [];
+  for (let i = 0; i < n; i++) if (i !== inkColorIndex) pool.push(i);
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(rnd() * (i + 1));
+    const t = pool[i];
+    pool[i] = pool[j];
+    pool[j] = t;
+  }
+  const options = [inkColorIndex, ...pool.slice(0, want - 1)];
+  for (let i = options.length - 1; i > 0; i--) {
+    const j = Math.floor(rnd() * (i + 1));
+    const t = options[i];
+    options[i] = options[j];
+    options[j] = t;
+  }
+  return { kind: "stroop", wordColorIndex, inkColorIndex, options, correct: options.indexOf(inkColorIndex) };
+}
+
+// ── Pattern discipline ("what comes next") ─────────────────────────────────────────
+export function patternCount(roundIndex: number, cfg: Pwnit2GauntletConfig = PWNIT2_GAUNTLET_CONFIG): number {
+  return cfg.patternBase + cycle(roundIndex);
+}
+function buildPatternItem(rnd: () => number, tier: number, shown: number, optionCount: number): Pwnit2ChoiceItem {
+  const ruleType = Math.floor(rnd() * 2);
+  const sequence: number[] = [];
+  let next: number;
+  if (ruleType === 0) {
+    // constant difference
+    const a = Math.floor(rnd() * (5 + tier * 3));
+    const d = 1 + Math.floor(rnd() * (3 + tier * 2));
+    for (let k = 0; k < shown; k++) sequence.push(a + k * d);
+    next = a + shown * d;
+  } else {
+    // increasing difference: steps s, s+1, s+2, ...
+    const a = Math.floor(rnd() * (4 + tier * 2));
+    let step = 1 + Math.floor(rnd() * (2 + tier));
+    let cur = a;
+    sequence.push(cur);
+    for (let k = 1; k < shown; k++) {
+      cur += step;
+      sequence.push(cur);
+      step += 1;
+    }
+    next = cur + step;
+  }
+  const { options, correct } = buildNumberOptions(rnd, next, optionCount);
+  return { kind: "pattern", sequence, options, correct };
+}
+
+// ── Unified choice-item access (math / stroop / pattern) ───────────────────────────
+export function choiceItemsForRound(
+  seed: number,
+  roundIndex: number,
+  cfg: Pwnit2GauntletConfig = PWNIT2_GAUNTLET_CONFIG,
+): Pwnit2ChoiceItem[] {
+  const d = disciplineForRound(roundIndex);
+  const tier = cycle(roundIndex);
+  if (d === "math") {
+    return Array.from({ length: mathCount(roundIndex, cfg) }, (_, p) =>
+      buildMathItem(rngFor(seed, roundIndex, 3 + p), tier, cfg.mathOptions),
+    );
+  }
+  if (d === "stroop") {
+    return Array.from({ length: stroopCount(roundIndex, cfg) }, (_, p) =>
+      buildStroopItem(rngFor(seed, roundIndex, 40 + p), cfg.stroopOptions),
+    );
+  }
+  if (d === "pattern") {
+    return Array.from({ length: patternCount(roundIndex, cfg) }, (_, p) =>
+      buildPatternItem(rngFor(seed, roundIndex, 80 + p), tier, cfg.patternShown, cfg.patternOptions),
+    );
+  }
+  return [];
+}
+// Back-compat: old name returned the maths items.
 export function mathProblems(
   seed: number,
   roundIndex: number,
   cfg: Pwnit2GauntletConfig = PWNIT2_GAUNTLET_CONFIG,
-): Pwnit2MathProblem[] {
-  const count = mathCount(roundIndex, cfg);
-  const tier = cycle(roundIndex);
-  return Array.from({ length: count }, (_, p) => buildProblem(rngFor(seed, roundIndex, 3 + p), tier, cfg.mathOptions));
+): Pwnit2ChoiceItem[] {
+  return choiceItemsForRound(seed, roundIndex, cfg);
 }
 
-// ── Per-round solution + timing ─────────────────────────────────────────────────
+// ── Per-round solution + timing ─────────────────────────────────────────────────────
 export function roundSolution(
   seed: number,
   roundIndex: number,
@@ -207,26 +342,27 @@ export function roundSolution(
   const d = disciplineForRound(roundIndex);
   if (d === "memory") return memorySequence(seed, roundIndex, cfg);
   if (d === "search") return searchTargets(seed, roundIndex, cfg);
-  return mathProblems(seed, roundIndex, cfg).map((p) => p.correct);
+  return choiceItemsForRound(seed, roundIndex, cfg).map((it) => it.correct);
 }
 
 export function inputTimeMsForRound(roundIndex: number, cfg: Pwnit2GauntletConfig = PWNIT2_GAUNTLET_CONFIG): number {
   const d = disciplineForRound(roundIndex);
   if (d === "memory") {
-    const len = memoryLength(roundIndex, cfg);
-    return Math.max(cfg.memInputMinMs, cfg.memInputBaseMs + cfg.memInputPerSymbolMs * len);
+    return Math.max(cfg.memInputMinMs, cfg.memInputBaseMs + cfg.memInputPerSymbolMs * memoryLength(roundIndex, cfg));
   }
   if (d === "search") {
-    const k = searchCount(roundIndex, cfg);
-    return Math.max(cfg.searchInputMinMs, cfg.searchInputBaseMs + cfg.searchInputPerTargetMs * k);
+    return Math.max(cfg.searchInputMinMs, cfg.searchInputBaseMs + cfg.searchInputPerTargetMs * searchCount(roundIndex, cfg));
   }
-  const m = mathCount(roundIndex, cfg);
-  return Math.max(cfg.mathInputMinMs, cfg.mathInputBaseMs + cfg.mathInputPerProblemMs * m);
+  if (d === "math") {
+    return Math.max(cfg.mathInputMinMs, cfg.mathInputBaseMs + cfg.mathInputPerProblemMs * mathCount(roundIndex, cfg));
+  }
+  if (d === "stroop") {
+    return Math.max(cfg.stroopInputMinMs, cfg.stroopInputBaseMs + cfg.stroopInputPerItemMs * stroopCount(roundIndex, cfg));
+  }
+  return Math.max(cfg.patternInputMinMs, cfg.patternInputBaseMs + cfg.patternInputPerItemMs * patternCount(roundIndex, cfg));
 }
 
-// ── Validation ──────────────────────────────────────────────────────────────────
-// rounds[i] = the player's taps for round i. A round is cleared only if its taps exactly
-// equal that round's solution. roundsCleared = number of leading rounds fully cleared.
+// ── Validation ──────────────────────────────────────────────────────────────────────
 export function validateGauntletRun(
   seed: number,
   rounds: Array<Array<number | null | undefined>>,
