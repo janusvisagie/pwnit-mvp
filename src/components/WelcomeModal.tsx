@@ -8,7 +8,7 @@ const HIDE_FOREVER_KEY = "pwnit_welcome_hide_forever";
 const steps = [
   { n: "1", title: "Pick", body: "Choose a prize." },
   { n: "2", title: "Play", body: "Post your best score." },
-  { n: "3", title: "Win", body: "Top score wins — or buy it." },
+  { n: "3", title: "Win", body: "Top score wins; 2nd & 3rd get bonus discount." },
 ] as const;
 
 export function WelcomeModal() {
@@ -73,7 +73,7 @@ export function WelcomeModal() {
           </div>
 
           <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800">
-            You get 6 free plays a day — and every paid play (R5) builds your discount.
+            One free play a day counts toward the leaderboard. Practice free anytime; paid plays (R5) build your discount.
           </div>
 
           <label className="flex items-start gap-3 text-sm text-slate-600">

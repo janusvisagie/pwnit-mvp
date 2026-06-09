@@ -54,6 +54,7 @@ export default function Pwnit2Game({ slug = "hero" }: { slug?: string }) {
   const [subIndex, setSubIndex] = useState(0);
   const [timeLeftMs, setTimeLeftMs] = useState(0);
 
+  const [mode, setMode] = useState<"compete" | "practice">("compete");
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [serverCleared, setServerCleared] = useState<number | null>(null);
   const [discountEarned, setDiscountEarned] = useState<number | null>(null);
@@ -73,6 +74,8 @@ export default function Pwnit2Game({ slug = "hero" }: { slug?: string }) {
   const inputDeadlineRef = useRef<number>(0);
   const finishedRef = useRef(false);
   const resolvingRef = useRef(false);
+  const practiceRef = useRef(false);
+  const clearedRef = useRef(0);
 
   const storageKey = `${STORAGE_PREFIX}${campaignSlug}`;
 
@@ -189,6 +192,7 @@ export default function Pwnit2Game({ slug = "hero" }: { slug?: string }) {
     resolvingRef.current = true;
     roundsRef.current[roundIndex] = currentTapsRef.current.slice();
     if (cleared) {
+      clearedRef.current += 1;
       const next = roundIndex + 1;
       if (next >= configRef.current.maxRounds) {
         finishGame();
@@ -249,6 +253,15 @@ export default function Pwnit2Game({ slug = "hero" }: { slug?: string }) {
     resolvingRef.current = true;
     setActivePad(null);
     setPhase("finished");
+
+    if (practiceRef.current) {
+      setSaveState("idle");
+      setServerCleared(clearedRef.current);
+      setDiscountEarned(null);
+      setRank(null);
+      return;
+    }
+
     setSaveState("saving");
     setNeedCredits(false);
     setError(null);
@@ -289,7 +302,7 @@ export default function Pwnit2Game({ slug = "hero" }: { slug?: string }) {
     }
   }
 
-  async function startGame() {
+  async function startGame(practice = false) {
     setPhase("loading");
     setError(null);
     setNeedCredits(false);
@@ -299,8 +312,22 @@ export default function Pwnit2Game({ slug = "hero" }: { slug?: string }) {
     setRank(null);
     finishedRef.current = false;
     resolvingRef.current = false;
+    practiceRef.current = practice;
+    clearedRef.current = 0;
     roundsRef.current = [];
     currentTapsRef.current = [];
+
+    if (practice) {
+      tokenRef.current = null;
+      seedRef.current = Math.floor(Math.random() * 0xffffffff);
+      configRef.current = PWNIT2_GAUNTLET_CONFIG;
+      setConfig(PWNIT2_GAUNTLET_CONFIG);
+      setRoundIndex(0);
+      gameStartedRef.current = Date.now();
+      beginRound(0);
+      return;
+    }
+
     try {
       const res = await fetch(`/api/pwnit-2/play?item=${campaignSlug}`, { cache: "no-store" });
       const data = await res.json();
@@ -424,22 +451,48 @@ export default function Pwnit2Game({ slug = "hero" }: { slug?: string }) {
                 </p>
                 {bestRounds ? <p className="mt-2 text-xs font-bold text-slate-500">Your best on this device: {bestRounds} rounds</p> : null}
               </div>
+              <div className="mx-auto flex max-w-xs items-center rounded-full border border-[#e6ded9] bg-[#fffaf8] p-1 text-sm font-black">
+                <button
+                  onClick={() => setMode("compete")}
+                  className={`flex-1 rounded-full px-4 py-2 transition ${mode === "compete" ? "bg-[#0f172a] text-white" : "text-slate-600"}`}
+                >
+                  Compete · R{playCost}
+                </button>
+                <button
+                  onClick={() => setMode("practice")}
+                  className={`flex-1 rounded-full px-4 py-2 transition ${mode === "practice" ? "bg-emerald-600 text-white" : "text-slate-600"}`}
+                >
+                  Practice · free
+                </button>
+              </div>
+              <p className="text-xs font-semibold leading-5 text-slate-500">
+                {mode === "compete"
+                  ? `Counts toward the leaderboard. Your first play each day is free; extra plays are R${playCost} and build your discount.`
+                  : "Free and unlimited — for getting good. Practice runs don't count and earn no discount."}
+              </p>
               {error ? <p className="text-sm font-bold text-red-600">{error}</p> : null}
-              <button onClick={startGame} className="rounded-full bg-[#0f172a] px-6 py-3 text-sm font-black text-white transition hover:-translate-y-0.5 hover:bg-[#172554]">
-                Start run · R{playCost}
+              <button
+                onClick={() => startGame(mode === "practice")}
+                className={`rounded-full px-6 py-3 text-sm font-black text-white transition hover:-translate-y-0.5 ${mode === "practice" ? "bg-emerald-600 hover:bg-emerald-700" : "bg-[#0f172a] hover:bg-[#172554]"}`}
+              >
+                {mode === "practice" ? "Start practice · free" : `Start run · R${playCost}`}
               </button>
             </div>
           ) : phase === "loading" ? (
             <div className="py-10 text-center text-sm font-bold text-slate-500">Starting your run…</div>
           ) : phase === "finished" ? (
             <div className="space-y-5 text-center">
-              <p className="text-xs font-black uppercase tracking-[0.22em] text-emerald-700">Run complete</p>
+              <p className="text-xs font-black uppercase tracking-[0.22em] text-emerald-700">{mode === "practice" ? "Practice complete" : "Run complete"}</p>
               <h2 className="text-4xl font-black">
                 {serverCleared ?? roundIndex} {(serverCleared ?? roundIndex) === 1 ? "round" : "rounds"} cleared
               </h2>
-              <p className="text-sm font-semibold text-slate-700">Your best on this device: {bestRounds ?? serverCleared ?? roundIndex} rounds</p>
+              {mode === "practice" ? null : <p className="text-sm font-semibold text-slate-700">Your best on this device: {bestRounds ?? serverCleared ?? roundIndex} rounds</p>}
 
-              {needCredits ? (
+              {mode === "practice" ? (
+                <div className="rounded-2xl bg-[#f3faf7] p-4 text-sm font-bold leading-6 text-slate-700">
+                  Practice run — this doesn&apos;t count toward the leaderboard and earns no discount.
+                </div>
+              ) : needCredits ? (
                 <div className="space-y-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
                   <p className="text-sm font-bold leading-6 text-emerald-900">{error} Add credits to record this run and earn discount.</p>
                   <Link href="/buy-credits" className="inline-flex rounded-full bg-emerald-600 px-6 py-3 text-sm font-black text-white transition hover:-translate-y-0.5 hover:bg-emerald-700">
@@ -459,9 +512,20 @@ export default function Pwnit2Game({ slug = "hero" }: { slug?: string }) {
               )}
 
               <div className="flex flex-wrap justify-center gap-3">
-                <button onClick={startGame} className="rounded-full bg-[#0f172a] px-6 py-3 text-sm font-black text-white transition hover:-translate-y-0.5 hover:bg-[#172554]">
-                  Play again · R{playCost}
-                </button>
+                {mode === "practice" ? (
+                  <>
+                    <button onClick={() => startGame(true)} className="rounded-full bg-emerald-600 px-6 py-3 text-sm font-black text-white transition hover:-translate-y-0.5 hover:bg-emerald-700">
+                      Practice again · free
+                    </button>
+                    <button onClick={() => startGame(false)} className="rounded-full bg-[#0f172a] px-6 py-3 text-sm font-black text-white transition hover:-translate-y-0.5 hover:bg-[#172554]">
+                      Compete · R{playCost}
+                    </button>
+                  </>
+                ) : (
+                  <button onClick={() => startGame(false)} className="rounded-full bg-[#0f172a] px-6 py-3 text-sm font-black text-white transition hover:-translate-y-0.5 hover:bg-[#172554]">
+                    Play again · R{playCost}
+                  </button>
+                )}
                 <Link href={`/pwnit-2/leaderboard${q}`} className="rounded-full border border-emerald-200 bg-emerald-50 px-6 py-3 text-sm font-black text-emerald-800 transition hover:-translate-y-0.5 hover:bg-white">
                   View leaderboard
                 </Link>

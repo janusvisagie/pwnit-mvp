@@ -5,7 +5,7 @@ import { cookies, headers } from "next/headers";
 import { prisma } from "@/lib/db";
 import { dayKeyZA } from "@/lib/time";
 
-export const DAILY_FREE_CREDITS = 30;
+export const DAILY_FREE_CREDITS = 5;
 export const SESSION_COOKIE = "pwnit_session";
 export const GUEST_COOKIE = "pwnit_guest";
 export const BUCKET_COOKIE = "pwnit_bucket";

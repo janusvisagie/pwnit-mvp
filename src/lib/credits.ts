@@ -75,7 +75,7 @@ export async function spendCredits(userId: string, amount: number, _memo?: strin
  * DAILY GRANT (idempotent):
  * Gives the user a fixed number of free credits once per day.
  */
-export async function ensureDailyCredits(userId: string, dayKey: string, amount = 30) {
+export async function ensureDailyCredits(userId: string, dayKey: string, amount = 5) {
   const grant = Math.floor(amount);
   if (!Number.isFinite(grant) || grant <= 0) {
     throw new Error("ensureDailyCredits: amount must be > 0");

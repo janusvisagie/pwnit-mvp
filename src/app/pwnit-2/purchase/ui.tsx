@@ -146,7 +146,10 @@ export default function Pwnit2Purchase({ slug = "hero" }: { slug?: string }) {
               <div className="space-y-5">
                 <div className="space-y-2 text-sm font-bold text-slate-800">
                   <Row label="Voucher value" value={`R${quote.voucherValueZAR}`} />
-                  <Row label="Your discount" value={`−R${quote.yourDiscountZAR}`} />
+                  <Row label="Your discount" value={`−R${quote.yourDiscountZAR - (quote.podiumBonusZAR ?? 0)}`} />
+                  {quote.podiumBonusZAR ? (
+                    <Row label={`Podium bonus (rank ${quote.podiumRank})`} value={`−R${quote.podiumBonusZAR}`} />
+                  ) : null}
                   <div className="my-2 h-px bg-[#e6ded9]" />
                   <Row label="Payable" value={`R${quote.payableZAR}`} strong />
                   <p className="pt-1 text-xs font-semibold text-slate-500">

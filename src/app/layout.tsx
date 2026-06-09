@@ -44,7 +44,21 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <div className="flex-1">{children}</div>
 
           <footer className="mt-3 rounded-[1.5rem] border border-[#ded0c0] bg-[#fffaf3]/95 px-4 py-3 text-center text-xs font-bold text-[#75695f] shadow-sm backdrop-blur sm:text-sm">
-            Pick. Play. PwnIt. · WhatsApp: +27 60 123 4567 · hello@pwnit.co.za
+            <div>Pick. Play. PwnIt. · WhatsApp: +27 60 123 4567 · hello@pwnit.co.za</div>
+            <div className="mt-1.5 flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
+              <Link href="/legal/terms" className="underline-offset-2 transition hover:text-[#3f4d43] hover:underline">
+                Terms
+              </Link>
+              <span aria-hidden>·</span>
+              <Link href="/legal/refund" className="underline-offset-2 transition hover:text-[#3f4d43] hover:underline">
+                Refunds
+              </Link>
+              <span aria-hidden>·</span>
+              <Link href="/legal/privacy" className="underline-offset-2 transition hover:text-[#3f4d43] hover:underline">
+                Privacy
+              </Link>
+              <span className="text-[#a89a8c]">· Draft, under review</span>
+            </div>
           </footer>
         </div>
       </body>

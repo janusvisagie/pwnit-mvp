@@ -1,0 +1,14 @@
+PwnIt 2 — Patch 18.1 (hotfix): purchase-quote type
+===================================================
+Fixes the Patch 18 build error:
+  "Property 'podiumBonusZAR' does not exist on type 'Pwnit2PurchaseQuote'."
+
+Patch 18 added podiumRank/podiumBonusZAR to the SERVER copy of Pwnit2PurchaseQuote
+(pwnit2CampaignServer.ts), but the purchase page imports the CLIENT-SAFE copy from
+pwnit2DemoCampaign.ts, which still had the old 8-field shape. This adds the two
+podium fields to that copy so the definitions match.
+
+FILE (1)
+  src/lib/pwnit2DemoCampaign.ts  (REPLACE)
+
+Type-only. No DB / route / runtime change. Apply on top of Patch 18.

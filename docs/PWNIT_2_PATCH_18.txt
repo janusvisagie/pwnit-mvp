@@ -1,0 +1,40 @@
+PwnIt 2 — Patch 18: Free-play model + practice toggle + podium bonus discount
+=============================================================================
+
+1) FREE-PLAY MODEL
+   • One free COMPETITIVE play per day (counts toward the leaderboard, earns no
+     discount — your free entry route). Implemented by setting the daily free grant
+     to exactly one play: DAILY_FREE_CREDITS 30 -> 5 (1 credit = R1, play = R5).
+   • Unlimited free PRACTICE: a toggle on the game screen. Practice runs the gauntlet
+     entirely client-side (local seed, no token, no score POST) — no credit spent, no
+     leaderboard entry, no discount. Reinstates the old practice-toggle idea.
+   • Paid plays (R5) still count, build R1:R1 discount, and fund activation.
+
+   Note: existing users keep whatever free balance they have today; the new 5/day
+   grant applies from their next daily top-up. The "Buy 30 credits" top-up bundle is
+   a PURCHASE pack (unrelated to the free grant) and is unchanged.
+
+2) PODIUM BONUS (percentage of paid spend)
+   • Rank 1 still WINS the voucher.
+   • Once standings are final (status window), rank 2 gets +10% and rank 3 gets +5%
+     of THEIR OWN paid spend as extra discount, stacked on the R1:R1 they earned.
+   • Applied at purchase only (it reduces what a runner-up pays to buy the voucher);
+     surfaced as its own line in the purchase breakdown, and recorded in the ledger.
+   • Easy to tweak/remove: edit the two percentages in buildPurchaseQuote
+     (pwnit2CampaignServer.ts). Set both to 0 to disable.
+
+3) "HOW IT WORKS" + MODAL COPY updated to describe free play, practice, and the
+   runner-up bonus.
+
+FILES (8)
+---------
+  src/lib/auth.ts                       (REPLACE) DAILY_FREE_CREDITS 30 -> 5
+  src/lib/playCost.ts                   (REPLACE) DAILY_FREE_CREDITS 30 -> 5 (kept in sync)
+  src/lib/credits.ts                    (REPLACE) ensureDailyCredits default 30 -> 5
+  src/lib/pwnit2CampaignServer.ts       (REPLACE) podium bonus in quote + confirm
+  src/lib/pwnit2DemoCampaign.ts         (REPLACE) how-it-works copy
+  src/components/WelcomeModal.tsx       (REPLACE) free-play + podium copy
+  src/components/Pwnit2Game.tsx         (REPLACE) compete/practice toggle + client-side practice
+  src/app/pwnit-2/purchase/ui.tsx       (REPLACE) podium bonus line in the breakdown
+
+NO DB migration. No API shape change (score body is still { token, slug, rounds, … }).

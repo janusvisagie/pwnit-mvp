@@ -1,0 +1,36 @@
+PwnIt 2 — Patch 19: Draft legal pages (Terms / Refunds / Privacy)
+=================================================================
+
+WHAT THIS PATCH DOES
+--------------------
+Publishes the three legal drafts as web pages, linked from the site footer, each
+with a prominent amber "Draft — under legal review and not yet binding" banner.
+These pages are informational only and do NOT gate signup, login or play — they are
+there for transparency while a qualified SA attorney reviews and finalises them.
+Replace every [bracketed placeholder] (and have the docs reviewed) before any
+real-money launch.
+
+  /legal/terms    Customer Terms & Conditions
+  /legal/refund   Refund Policy
+  /legal/privacy  Privacy Notice (POPIA)
+
+The page content mirrors the draft legal pack docx, condensed for the web. The
+copy reflects the current product: skill-not-chance, one free competitive play/day
+plus unlimited free practice, R1:R1 discount on paid plays, single winner, and the
+2nd/3rd runner-up bonus discount (+10% / +5% of paid spend).
+
+FILES (6)
+---------
+  src/lib/legalContent.ts            (NEW)     structured content for the 3 docs
+  src/components/LegalDoc.tsx        (NEW)     server component that renders a doc + draft banner + tabs
+  src/app/legal/terms/page.tsx       (NEW)
+  src/app/legal/refund/page.tsx      (NEW)
+  src/app/legal/privacy/page.tsx     (NEW)
+  src/app/layout.tsx                 (REPLACE) adds Terms · Refunds · Privacy links to the footer
+
+NO DB migration. No env, route, server, or game changes. Static, server-rendered pages.
+
+EDITING THE TEXT
+----------------
+All copy lives in src/lib/legalContent.ts (one object per doc). To update wording or
+fill in a placeholder, edit that file — the pages and footer need no other changes.

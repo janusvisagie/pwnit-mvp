@@ -1,5 +1,5 @@
 export const TARGET_PAID_PLAYS = 100;
-export const DAILY_FREE_CREDITS = 30;
+export const DAILY_FREE_CREDITS = 5;
 
 export function playCostForPrize(prizeValueZAR: number) {
   const value = Math.max(0, Number(prizeValueZAR || 0));

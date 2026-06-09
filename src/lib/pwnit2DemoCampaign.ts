@@ -20,6 +20,8 @@ export type Pwnit2PurchaseQuote = {
   canBuy: boolean;
   isWinnerYou: boolean;
   alreadyPurchased: boolean;
+  podiumRank: number | null;
+  podiumBonusZAR: number;
 };
 
 export type Pwnit2CampaignSnapshot = {
@@ -112,19 +114,19 @@ export const pwnit2Leaderboard: Pwnit2LeaderboardEntry[] = [];
 
 export const pwnit2HowItWorks = [
   {
-    title: "Play the campaign game",
-    body: "Each run of Number Chain Sprint costs a few credits. You get free credits daily, and you can top up any time.",
+    title: "Play free or for R5",
+    body: "Get one free competitive play a day, and practice as much as you like for free. Extra competitive plays are R5 each.",
   },
   {
     title: "Build the voucher — and your discount",
-    body: "Paid plays fund the campaign toward activation, and every R1 you spend becomes R1 of discount on this voucher.",
+    body: "Paid plays fund the campaign toward activation, and every R1 you spend becomes R1 of discount on this voucher. Practice and your free daily play don't earn discount.",
   },
   {
     title: "Activation starts the countdown",
     body: "Once the campaign is funded, the countdown begins and the voucher value starts to grow.",
   },
   {
-    title: "Win it, or buy it with your discount",
-    body: "When the countdown ends, the top score wins the voucher. Everyone else can buy it during the window, minus the discount they earned.",
+    title: "Win it, or earn extra as a runner-up",
+    body: "When the countdown ends, the top score wins the voucher. 2nd and 3rd place get a bonus discount — an extra 10% and 5% of their paid spend — and everyone can buy the voucher minus the discount they earned.",
   },
 ];

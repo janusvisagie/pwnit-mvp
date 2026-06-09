@@ -136,6 +136,8 @@ export type Pwnit2PurchaseQuote = {
   canBuy: boolean;
   isWinnerYou: boolean;
   alreadyPurchased: boolean;
+  podiumRank: number | null;
+  podiumBonusZAR: number;
 };
 
 export type Pwnit2SnapshotEx = Pwnit2CampaignSnapshot & {
@@ -255,8 +257,9 @@ async function buildPurchaseQuote(params: {
   round: any;
   userId: string;
   currentValueZAR: number;
+  finalRank?: number | null;
 }): Promise<Pwnit2PurchaseQuote> {
-  const { item, round, userId, currentValueZAR } = params;
+  const { item, round, userId, currentValueZAR, finalRank } = params;
 
   const won = await prisma.winner.findFirst({
     where: { roundId: round.id, userId, rank: 1, rewardType: "ITEM" },
@@ -268,10 +271,17 @@ async function buildPurchaseQuote(params: {
   const yourPaidUsed = await getUserPaidUsed(item.id, round.id, userId);
   const wallet = await prisma.user.findUnique({ where: { id: userId }, select: { paidCreditsBalance: true } });
 
+  // Podium bonus: once standings are final (status window), runner-up finishers get an extra
+  // discount as a PERCENTAGE of their own paid spend (rank 2 -> +10%, rank 3 -> +5%).
+  const standingsFinal = ["CLOSED", "PUBLISHED"].includes(round.state);
+  const podiumRank = standingsFinal && (finalRank === 2 || finalRank === 3) ? finalRank : null;
+  const podiumPct = podiumRank === 2 ? 0.1 : podiumRank === 3 ? 0.05 : 0;
+  const podiumBonusZAR = Math.round(podiumPct * yourPaidUsed);
+
   const price = buyPriceAfterSpend({
     prizeValueZAR: currentValueZAR,
     tierNumber: item.tier,
-    spentCredits: yourPaidUsed,
+    spentCredits: yourPaidUsed + podiumBonusZAR, // bonus acts as extra 1:1 discount credits
     walletCredits: Number(wallet?.paidCreditsBalance ?? 0),
   });
 
@@ -286,6 +296,8 @@ async function buildPurchaseQuote(params: {
     canBuy: buyableState && !won && !alreadyPurchased,
     isWinnerYou: Boolean(won),
     alreadyPurchased: Boolean(alreadyPurchased),
+    podiumRank,
+    podiumBonusZAR,
   };
 }
 
@@ -315,15 +327,16 @@ async function snapshotFor(slug: string, actor: Awaited<ReturnType<typeof getCur
 
   const yourPaidUsed = userId ? await getUserPaidUsed(item.id, round.id, userId) : 0;
   const counts = userId ? await getUserPlayCounts(item.id, round.id, userId) : { total: 0, paid: 0 };
+  const myRankNow = userId ? leaderboard.find((e) => e.isYou)?.rank ?? null : null;
   const purchase = userId
-    ? await buildPurchaseQuote({ item, round, userId, currentValueZAR: growth.currentValueZAR })
+    ? await buildPurchaseQuote({ item, round, userId, currentValueZAR: growth.currentValueZAR, finalRank: myRankNow })
     : null;
 
   const state = publicState(round.state);
   const q = `?item=${cfg.slug}`;
   const helper =
     state === "FUNDING"
-      ? "Play the memory game to help unlock the countdown. Paid plays also build your discount on this voucher."
+      ? "Play the gauntlet to help unlock the countdown. Paid plays also build your discount on this voucher."
       : state === "COUNTDOWN"
         ? "The countdown is live. Keep playing to climb the leaderboard and watch the voucher grow."
         : state === "STATUS_WINDOW"
@@ -512,7 +525,9 @@ export async function confirmPwnit2Purchase(slug?: string) {
     }),
   );
 
-  const quote = await buildPurchaseQuote({ item, round, userId: actor.user.id, currentValueZAR: growth.currentValueZAR });
+  const lb = await getLeaderboard(item.id, round.id, actor.user.id);
+  const finalRank = lb.find((e) => e.isYou)?.rank ?? null;
+  const quote = await buildPurchaseQuote({ item, round, userId: actor.user.id, currentValueZAR: growth.currentValueZAR, finalRank });
 
   if (quote.isWinnerYou) return { ok: false as const, status: 400, error: "You won this voucher — no need to buy it." };
   if (quote.alreadyPurchased) return { ok: false as const, status: 400, error: "You have already purchased this voucher." };
@@ -555,7 +570,7 @@ export async function confirmPwnit2Purchase(slug?: string) {
           roundId: round.id,
           kind: "PWNIT2_DISCOUNT_REDEEMED",
           credits: quote.yourDiscountZAR,
-          note: `R${quote.yourDiscountZAR} discount applied to ${cfg.title} purchase`,
+          note: `R${quote.yourDiscountZAR} discount applied to ${cfg.title} purchase${quote.podiumBonusZAR > 0 ? ` (incl. R${quote.podiumBonusZAR} podium bonus, rank ${quote.podiumRank})` : ""}`,
         },
       });
     }
