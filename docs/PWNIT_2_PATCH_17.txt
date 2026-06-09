@@ -1,0 +1,42 @@
+PwnIt 2 — Patch 17: Third gauntlet discipline ("Quick Maths")
+=============================================================
+
+WHAT THIS PATCH DOES
+--------------------
+Adds a third skill discipline to the PwnIt Gauntlet. Rounds now cycle (% 3):
+
+  index % 3 == 0 -> MEMORY        watch a growing colour-pad sequence, tap it back
+  index % 3 == 1 -> FIND NUMBERS  Schulte grid: tap 1, 2, 3 … K in order
+  index % 3 == 2 -> QUICK MATHS   tap the correct answer to a short chain of problems
+
+Difficulty now steps up once per FULL CYCLE (every 3 rounds): each discipline grows
+its size/length each time it recurs (memory sequence length, number count, and number
+of maths problems all = base + cycles-completed). Operators in maths are +, -, and ×
+(× from the second cycle on); options are integer, non-negative and distinct, with the
+correct slot placed deterministically.
+
+Everything stays server-validated and uniform across both campaigns (no per-item
+difficulty — confirmed: play is R5 flat and activation is volume-driven, so difficulty
+is not a value lever). The server re-derives each round (incl. the maths problems and
+which option is correct) from the signed seed and never trusts a client score.
+
+API: unchanged. The score endpoint still takes { token, slug, rounds: number[][], … };
+for maths rounds, rounds[i] is the array of chosen OPTION INDICES. The play endpoint
+returns the (now extended) gauntlet config automatically.
+
+FILES (2)
+---------
+  src/lib/pwnit2Gauntlet.ts      (REPLACE) adds maths discipline, % 3 cycle, per-cycle growth
+  src/components/Pwnit2Game.tsx  (REPLACE) adds the maths round UI (problem + 4 options)
+
+NO DB migration. No env changes. No route or server changes (game title stays
+"PwnIt Gauntlet" from Patch 16).
+
+TUNING (src/lib/pwnit2Gauntlet.ts -> PWNIT2_GAUNTLET_CONFIG)
+  maxRounds 45; memBase 3; searchBase 5 on a 5×5 grid; mathBase 3 with 4 options;
+  per-discipline input timers. Maths gets ~3.2s per problem (min 8s/round).
+
+NOT IN THIS PATCH (pending your go-ahead — see chat)
+  • 1 free competitive play/day + unlimited free practice (and the matching modal copy)
+  • optional podium bonus-discount for ranks 2–3
+  These are Patch 18 once you confirm the numbers.
