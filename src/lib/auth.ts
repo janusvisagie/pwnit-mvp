@@ -296,36 +296,73 @@ async function applyLocalDemoCredits(user: ActorUser): Promise<ActorUser> {
   const lastKey = String(user.lastDailyCreditsDayKey ?? "");
 
   if (lastKey === today && hasCredits) {
-    if (Number(user.freeCreditsBalance ?? 0) > DAILY_FREE_CREDITS) {
-      const clamped = await prisma.user.update({
-        where: { id: user.id },
-        data: { freeCreditsBalance: DAILY_FREE_CREDITS } as any,
-        select: actorUserSelect,
+    const overBy = Number(user.freeCreditsBalance ?? 0) - DAILY_FREE_CREDITS;
+    if (overBy > 0) {
+      const clamped = await prisma.$transaction(async (tx) => {
+        const u = await tx.user.update({
+          where: { id: user.id },
+          data: { freeCreditsBalance: DAILY_FREE_CREDITS } as any,
+          select: actorUserSelect,
+        });
+        await tx.creditLedger.create({
+          data: {
+            userId: user.id,
+            kind: "EXPIRY",
+            credits: -overBy,
+            balanceAfter: Number(u.freeCreditsBalance ?? 0) + Number(u.paidCreditsBalance ?? 0),
+            source: "TEST_BALANCE_CLAMP",
+            note: `Free balance clamped to daily grant (${DAILY_FREE_CREDITS})`,
+          } as any,
+        });
+        return u;
       });
       return toActorUser(clamped)!;
     }
     return user;
   }
 
-  const updated = await prisma.user.update({
-    where: { id: user.id },
-    data: {
-      freeCreditsBalance: hasCredits ? Math.min(Number(user.freeCreditsBalance ?? 0), DAILY_FREE_CREDITS) : DAILY_FREE_CREDITS,
-      lastDailyCreditsDayKey: today,
-    } as any,
-    select: actorUserSelect,
-  });
+  const prevFree = Number(user.freeCreditsBalance ?? 0);
+  const clampBy = hasCredits ? Math.max(0, prevFree - DAILY_FREE_CREDITS) : 0;
 
-  if (!hasCredits) {
-    await prisma.creditLedger.create({
+  const updated = await prisma.$transaction(async (tx) => {
+    const u = await tx.user.update({
+      where: { id: user.id },
       data: {
-        userId: user.id,
-        kind: "DAILY_FREE",
-        credits: DAILY_FREE_CREDITS,
-        note: `Local demo credits for ${today}`,
-      },
+        freeCreditsBalance: hasCredits ? Math.min(prevFree, DAILY_FREE_CREDITS) : DAILY_FREE_CREDITS,
+        lastDailyCreditsDayKey: today,
+      } as any,
+      select: actorUserSelect,
     });
-  }
+    const balanceAfter = Number(u.freeCreditsBalance ?? 0) + Number(u.paidCreditsBalance ?? 0);
+
+    if (clampBy > 0) {
+      await tx.creditLedger.create({
+        data: {
+          userId: user.id,
+          kind: "EXPIRY",
+          credits: -clampBy,
+          balanceAfter,
+          source: "TEST_BALANCE_CLAMP",
+          note: `Free balance clamped to daily grant (${DAILY_FREE_CREDITS})`,
+        } as any,
+      });
+    }
+
+    if (!hasCredits) {
+      await tx.creditLedger.create({
+        data: {
+          userId: user.id,
+          kind: "DAILY_FREE",
+          credits: DAILY_FREE_CREDITS,
+          balanceAfter,
+          source: "LOCAL_DEMO_TOPUP",
+          note: `Local demo credits for ${today}`,
+        } as any,
+      });
+    }
+
+    return u;
+  });
 
   return toActorUser(updated)!;
 }
@@ -335,11 +372,25 @@ async function applyDailyCredits(user: ActorUser, bucketKey: string): Promise<Ac
   const lastKey = String(user.lastDailyCreditsDayKey ?? "");
 
   if (lastKey === today) {
-    if (Number(user.freeCreditsBalance ?? 0) > DAILY_FREE_CREDITS) {
-      const clamped = await prisma.user.update({
-        where: { id: user.id },
-        data: { freeCreditsBalance: DAILY_FREE_CREDITS } as any,
-        select: actorUserSelect,
+    const overBy = Number(user.freeCreditsBalance ?? 0) - DAILY_FREE_CREDITS;
+    if (overBy > 0) {
+      const clamped = await prisma.$transaction(async (tx) => {
+        const u = await tx.user.update({
+          where: { id: user.id },
+          data: { freeCreditsBalance: DAILY_FREE_CREDITS } as any,
+          select: actorUserSelect,
+        });
+        await tx.creditLedger.create({
+          data: {
+            userId: user.id,
+            kind: "EXPIRY",
+            credits: -overBy,
+            balanceAfter: Number(u.freeCreditsBalance ?? 0) + Number(u.paidCreditsBalance ?? 0),
+            source: "TEST_BALANCE_CLAMP",
+            note: `Free balance clamped to daily grant (${DAILY_FREE_CREDITS})`,
+          } as any,
+        });
+        return u;
       });
       return toActorUser(clamped)!;
     }
@@ -388,6 +439,12 @@ async function applyDailyCredits(user: ActorUser, bucketKey: string): Promise<Ac
       return alreadyUsed;
     }
 
+    const before = await tx.user.findUnique({
+      where: { id: user.id },
+      select: { freeCreditsBalance: true },
+    });
+    const prevFree = Number(before?.freeCreditsBalance ?? 0);
+
     const refreshed = await tx.user.update({
       where: { id: user.id },
       data: {
@@ -396,14 +453,30 @@ async function applyDailyCredits(user: ActorUser, bucketKey: string): Promise<Ac
       } as any,
       select: actorUserSelect,
     });
+    const balanceAfter = Number(refreshed.freeCreditsBalance ?? 0) + Number(refreshed.paidCreditsBalance ?? 0);
+
+    if (prevFree > 0) {
+      await tx.creditLedger.create({
+        data: {
+          userId: user.id,
+          kind: "EXPIRY",
+          credits: -prevFree,
+          balanceAfter,
+          source: "DAILY_TOPUP",
+          note: "Unused daily free credits expired (no roll-over)",
+        } as any,
+      });
+    }
 
     await tx.creditLedger.create({
       data: {
         userId: user.id,
         kind: "DAILY_FREE",
         credits: DAILY_FREE_CREDITS,
+        balanceAfter,
+        source: "DAILY_TOPUP",
         note: `Daily free credits for ${today}`,
-      },
+      } as any,
     });
 
     return refreshed;

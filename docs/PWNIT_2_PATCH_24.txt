@@ -1,0 +1,65 @@
+PwnIt 2 — Patch 24: Schema (lifecycle + audit tables) & ledger wiring  [REQUIRES DB PUSH]
+=========================================================================================
+
+Phase B of the lifecycle/ledger/admin work. ONE additive schema change lands everything;
+Phases C (lifecycle guards/expiry) and D (admin area + archive) become code-only on top.
+
+SCHEMA (prisma/schema.prisma — all ADDITIVE: new nullable columns + new tables)
+  ItemRound   + winningScore, closedAt, expiredAt, archivedAt, cancelledAt, statusReason
+                (activatedAt/closesAt/purchaseGraceEndsAt/winnerUserId already existed)
+  CreditLedger + balanceAfter, source, attemptId, paymentId, adminUserId, reference
+  NEW DiscountLedger          campaign-specific discount movements (signed amounts)
+  NEW AdminAuditLog           admin action audit (used by Phase D)
+  NEW CampaignArchiveSnapshot frozen end-of-campaign record (used by Phase D)
+
+LEDGER WIRING (no pricing/behaviour change — discount maths still reads Attempt sums)
+  src/lib/ledger.ts (NEW)     logCreditTx / logDiscountTx (+ balance reconstruction helpers)
+                              and the sign conventions / movement-vs-record kind lists.
+  src/lib/credits.ts          spendCredits now writes a CreditLedger row IN THE SAME
+                              transaction (kind CREDIT_SPEND_ATTEMPT, negative credits,
+                              balanceAfter). New spendCreditsInTx for composition.
+                              grantCredits + ensureDailyCredits also ledgered.
+  src/lib/auth.ts             Daily top-ups write enriched rows (balanceAfter, source).
+                              The Patch-22 clamps now write EXPIRY rows (no silent change).
+                              Unused yesterday-free that gets replaced by today's grant is
+                              ledgered as EXPIRY ("no roll-over" — matches the T&Cs).
+  src/lib/pwnit2CampaignServer.ts
+        submitPwnit2Score     now ONE atomic transaction: spend (+credit ledger) + attempt
+                              + round counters + DiscountLedger DISCOUNT_EARNED (attemptId).
+                              Fixes a pre-existing gap where spend and attempt were two
+                              separate transactions (a failure could charge without a score).
+        confirmPwnit2Purchase purchase row created first (id captured), wallet credit applied
+                              is ledgered (CREDIT_SPEND_PURCHASE, reference=purchase id),
+                              podium bonus -> DISCOUNT_EARNED, discount applied ->
+                              DISCOUNT_REDEEMED (both with purchaseId).
+  src/app/api/credits/buy/route.ts
+                              Dummy purchases ledgered: kind PAID_CREDIT_PURCHASE,
+                              source "DUMMY_BUY_CREDITS", reference "local-test-…".
+                              ALSO FIXES A REAL BUG: the button posts bundleKey "medium",
+                              which the route didn't know -> 400 -> "Buy credits" silently
+                              did nothing. "medium" now maps to the 30-credit starter pack.
+
+LEGACY LEDGER KINDS: PWNIT2_DISCOUNT_EARNED / PWNIT2_DISCOUNT_REDEEMED are no longer
+written (replaced by DiscountLedger); old rows remain, harmless (record-only kinds are
+excluded from balance reconstruction). PWNIT2_PURCHASE record rows still written.
+
+FILES (7)
+  prisma/schema.prisma                    (REPLACE)
+  src/lib/ledger.ts                       (NEW)
+  src/lib/credits.ts                      (REPLACE)
+  src/lib/auth.ts                         (REPLACE)
+  src/lib/pwnit2CampaignServer.ts         (REPLACE)
+  src/app/api/credits/buy/route.ts        (REPLACE)
+  docs/PWNIT_2_PATCH_24.txt
+
+HOW TO APPLY — ORDER MATTERS (backup -> db push -> build -> git push)
+  This repo has no prisma/migrations history (it was shipped with `db push`), so
+  `prisma migrate dev` would detect drift and may offer a DESTRUCTIVE reset. Stay on the
+  repo's own mechanism: `npm run db:push` applies the additive changes cleanly and
+  regenerates the Prisma client. Run it BEFORE `git push` so the deployed code never runs
+  against an un-migrated database. (If you later want versioned migrations, we can
+  baseline properly — see docs/DB_MIGRATION_AND_BACKUP.md from Patch 23.)
+
+ACCEPTANCE COVERAGE: #8 (credit purchases ledgered), #9 (spend ledgered), #10 (paid-play
+discount -> DiscountLedger), #11 (redemption -> DiscountLedger), #18 (schema applies
+cleanly — additive), #19 (no behaviour change to pricing/flow). #12-15 arrive in C/D.

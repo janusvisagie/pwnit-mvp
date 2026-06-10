@@ -11,29 +11,121 @@
 // is not installed. This script only READS the database.
 
 import { spawnSync } from "node:child_process";
-import { mkdirSync, existsSync, statSync } from "node:fs";
+import { mkdirSync, existsSync, statSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const args = process.argv.slice(2);
 const useProd = args.includes("--prod");
 const customFormat = args.includes("--dump");
 const envVar = useProd ? "PROD_DATABASE_URL" : "DATABASE_URL";
-const url = process.env[envVar];
 
 function die(msg) {
   console.error(`\n[backup-db] ERROR: ${msg}\n`);
   process.exit(1);
 }
 
-if (!url) {
+// Plain `node` does not load Next.js env files. Resolve the URL like the app does:
+// shell env first, then .env.local, then .env, then prisma/.env (first hit wins).
+const ENV_FILES = [".env.local", ".env", "prisma/.env"];
+
+function readEnvFile(path) {
+  let text;
+  try {
+    text = readFileSync(path, "utf8");
+  } catch {
+    return null;
+  }
+  const out = {};
+  for (const rawLine of text.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("#")) continue;
+    const eq = line.indexOf("=");
+    if (eq <= 0) continue;
+    const key = line.slice(0, eq).trim();
+    let value = line.slice(eq + 1).trim();
+    if (
+      (value.startsWith('"') && value.endsWith('"') && value.length >= 2) ||
+      (value.startsWith("'") && value.endsWith("'") && value.length >= 2)
+    ) {
+      value = value.slice(1, -1);
+    }
+    if (key) out[key] = value;
+  }
+  return out;
+}
+
+function resolveEnv(name) {
+  if (process.env[name]) return { value: process.env[name], from: "shell environment" };
+  for (const file of ENV_FILES) {
+    const vars = readEnvFile(resolve(process.cwd(), file));
+    if (vars && vars[name]) return { value: vars[name], from: file };
+  }
+  return null;
+}
+
+const resolved = resolveEnv(envVar);
+
+if (!resolved) {
   die(
-    `${envVar} is not set. Set it for this shell and retry, e.g.\n` +
+    `${envVar} is not set (checked the shell environment and ${ENV_FILES.join(", ")}).\n` +
+      `Add it to .env.local, or set it for this shell and retry, e.g.\n` +
       (useProd
         ? `  PowerShell:  $env:PROD_DATABASE_URL="postgresql://USER:***@HOST:5432/DB"; npm run db:backup:prod`
         : `  PowerShell:  $env:DATABASE_URL="postgresql://USER:***@HOST:5432/DB"; npm run db:backup`) +
       `\n(Never paste a production URL into a committed file.)`,
   );
 }
+
+const url = resolved.value;
+
+// pg_dump speaks libpq URIs. Prisma URLs often carry Prisma-only query params
+// (?schema=, connection_limit=, pgbouncer=, pool_timeout=, ...) which pg_dump rejects.
+// Strip anything libpq doesn't understand; honour ?schema= via pg_dump's --schema flag.
+const LIBPQ_PARAMS = new Set([
+  "sslmode",
+  "sslcert",
+  "sslkey",
+  "sslrootcert",
+  "sslpassword",
+  "connect_timeout",
+  "application_name",
+  "options",
+  "channel_binding",
+  "target_session_attrs",
+  "gssencmode",
+  "hostaddr",
+  "keepalives",
+  "keepalives_idle",
+  "keepalives_interval",
+  "keepalives_count",
+  "service",
+  "passfile",
+]);
+
+function sanitizeForPgDump(rawUrl) {
+  let u;
+  try {
+    u = new URL(rawUrl);
+  } catch {
+    return { url: rawUrl, schema: null, dropped: [] };
+  }
+  const dropped = [];
+  let schema = null;
+  for (const key of [...u.searchParams.keys()]) {
+    const k = key.toLowerCase();
+    if (k === "schema") {
+      schema = u.searchParams.get(key);
+      u.searchParams.delete(key);
+      dropped.push(key);
+    } else if (!LIBPQ_PARAMS.has(k)) {
+      u.searchParams.delete(key);
+      dropped.push(key);
+    }
+  }
+  return { url: u.toString(), schema, dropped };
+}
+
+const sanitized = sanitizeForPgDump(url);
 
 // Redact credentials for logging — only ever show host + database name.
 let safeTarget = "(unparseable url)";
@@ -56,7 +148,17 @@ if (!existsSync(outDir)) mkdirSync(outDir, { recursive: true });
 const ext = customFormat ? "dump" : "sql";
 const outFile = resolve(outDir, `pwnit-db-backup-${stamp}.${ext}`);
 
+console.log(`[backup-db] Env    : ${envVar} from ${resolved.from}`);
 console.log(`[backup-db] Source : ${safeTarget}${useProd ? "  (PROD)" : ""}`);
+if (sanitized.dropped.length) {
+  console.log(`[backup-db] Params : dropped Prisma-only URL params for pg_dump: ${sanitized.dropped.join(", ")}`);
+}
+if (sanitized.schema) {
+  console.log(`[backup-db] Schema : limiting dump to "${sanitized.schema}" (from ?schema=)`);
+}
+if (sanitized.dropped.some((k) => k.toLowerCase() === "pgbouncer")) {
+  console.log(`[backup-db] NOTE   : this URL goes through a connection pooler; if the dump fails, use the DIRECT (non-pooler) database URL for backups.`);
+}
 console.log(`[backup-db] Output : ${outFile}`);
 console.log(`[backup-db] Running pg_dump…`);
 
@@ -64,9 +166,10 @@ console.log(`[backup-db] Running pg_dump…`);
 const pgDump = process.env.PG_DUMP_PATH || "pg_dump";
 
 const dumpArgs = [
-  `--dbname=${url}`,
+  `--dbname=${sanitized.url}`,
   "--no-owner",
   "--no-privileges",
+  ...(sanitized.schema ? [`--schema=${sanitized.schema}`] : []),
   ...(customFormat ? ["--format=custom"] : ["--format=plain"]),
   `--file=${outFile}`,
 ];

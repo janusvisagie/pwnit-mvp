@@ -33,6 +33,7 @@ model User {
   referralsReceived     Referral[]             @relation("ReferralReferred")
   surveyResponses       SurveyResponse[]
   attemptSessions       AttemptSession[]
+  discountLedgers       DiscountLedger[]
 }
 
 model Item {
@@ -65,6 +66,8 @@ model Item {
   rounds                ItemRound[]
   ledgers               CreditLedger[]
   attemptSessions       AttemptSession[]
+  discountLedgers       DiscountLedger[]
+  archiveSnapshots      CampaignArchiveSnapshot[]
 }
 
 model ItemRound {
@@ -85,12 +88,20 @@ model ItemRound {
   freeCreditsCollected    Int              @default(0)
   attemptCount            Int              @default(0)
   winnerUserId            String?
+  winningScore            Int?
+  closedAt                DateTime?
+  expiredAt               DateTime?
+  archivedAt              DateTime?
+  cancelledAt             DateTime?
+  statusReason            String?
   item                    Item             @relation(fields: [itemId], references: [id])
   attempts                Attempt[]
   winners                 Winner[]
   purchases               ItemPurchase[]
   ledgers                 CreditLedger[]
   attemptSessions         AttemptSession[]
+  discountLedgers         DiscountLedger[]
+  archiveSnapshots        CampaignArchiveSnapshot[]
 
   @@index([itemId, state])
   @@unique([itemId, sequence])
@@ -198,6 +209,12 @@ model CreditLedger {
   kind      String
   credits   Int
   note      String?
+  balanceAfter Int?
+  source       String?
+  attemptId    String?
+  paymentId    String?
+  adminUserId  String?
+  reference    String?
   user      User       @relation(fields: [userId], references: [id])
   item      Item?      @relation(fields: [itemId], references: [id])
   round     ItemRound? @relation(fields: [roundId], references: [id])
@@ -289,4 +306,72 @@ model ApiRateLimit {
 
   @@index([scope, subjectKey, windowStart])
   @@index([expiresAt])
+}
+
+model DiscountLedger {
+  id           String   @id @default(cuid())
+  createdAt    DateTime @default(now())
+  userId       String
+  itemId       String
+  roundId      String?
+  type         String   // DISCOUNT_EARNED | DISCOUNT_REDEEMED | DISCOUNT_EXPIRED | DISCOUNT_REFUNDED | ADMIN_ADJUSTMENT | MIGRATION_INITIAL_BALANCE
+  amount       Int      // ZAR (1 credit = R1); positive = earned/added, negative = redeemed/expired
+  balanceAfter Int?
+  source       String?
+  attemptId    String?
+  purchaseId   String?
+  adminUserId  String?
+  reference    String?
+  note         String?
+  user         User       @relation(fields: [userId], references: [id])
+  item         Item       @relation(fields: [itemId], references: [id])
+  round        ItemRound? @relation(fields: [roundId], references: [id])
+
+  @@index([userId, itemId, roundId])
+  @@index([itemId, type])
+  @@index([roundId, type])
+}
+
+model AdminAuditLog {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+  adminUserId String
+  action      String   // CAMPAIGN_CREATED | CAMPAIGN_STATUS_CHANGED | WINNER_LOCKED | DISCOUNTS_EXPIRED | CAMPAIGN_ARCHIVED | CAMPAIGN_CANCELLED | CREDIT_ADJUSTED | DISCOUNT_ADJUSTED | ...
+  entityType  String   // "ItemRound" | "Item" | "User" | ...
+  entityId    String
+  beforeJson  String?
+  afterJson   String?
+  reason      String?
+  ipAddress   String?
+  userAgent   String?
+
+  @@index([adminUserId, createdAt])
+  @@index([entityType, entityId])
+  @@index([action, createdAt])
+}
+
+model CampaignArchiveSnapshot {
+  id                    String   @id @default(cuid())
+  createdAt             DateTime @default(now())
+  itemId                String
+  roundId               String?
+  archivedAt            DateTime
+  finalStatus           String
+  finalVoucherValueZAR  Int      @default(0)
+  winnerUserId          String?
+  winningScore          Int?
+  finalLeaderboardJson  String   // JSON array of final leaderboard rows (MVP)
+  totalPaidCreditsSpent Int      @default(0)
+  totalFreeCreditsSpent Int      @default(0)
+  totalDiscountEarned   Int      @default(0)
+  totalDiscountRedeemed Int      @default(0)
+  totalDiscountExpired  Int      @default(0)
+  totalPurchases        Int      @default(0)
+  archivedByUserId      String
+  notes                 String?
+  item                  Item       @relation(fields: [itemId], references: [id])
+  round                 ItemRound? @relation(fields: [roundId], references: [id])
+
+  @@index([itemId])
+  @@index([roundId])
 }

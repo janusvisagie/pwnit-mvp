@@ -13,7 +13,8 @@ import { prisma } from "@/lib/db";
 import { getCurrentActor } from "@/lib/auth";
 import { dayKeyZA } from "@/lib/time";
 import { flagAttempt, flagsToString } from "@/lib/antiCheat";
-import { spendCredits } from "@/lib/credits";
+import { spendCreditsInTx } from "@/lib/credits";
+import { logCreditTx, logDiscountTx } from "@/lib/ledger";
 import { resolvePlayCostCredits } from "@/lib/playCost";
 import { buyPriceAfterSpend, tierKeyFromTierNumber, discountPctForTierKey } from "@/lib/pricing";
 import { ensureCurrentRound, syncRoundLifecycle, activationTargetForItem, publicProgress } from "@/lib/rounds";
@@ -436,62 +437,74 @@ export async function submitPwnit2Score(input: {
   const scoreMs = scoreToScoreMs(score);
   const playCost = resolvePlayCostCredits(item);
 
-  let spend: { freeUsed: number; paidUsed: number };
-  try {
-    const result = await spendCredits(actor.user.id, playCost, `pwnit2:${item.id}`, "ATTEMPT_SPEND");
-    spend = { freeUsed: Number(result.freeUsed ?? 0), paidUsed: Number(result.paidUsed ?? 0) };
-  } catch {
-    const current = await snapshotFor(slug, actor);
-    return {
-      ok: false as const,
-      status: 402,
-      error: "Not enough credits to play.",
-      needCredits: true,
-      playCostCredits: playCost,
-      ...current,
-    };
-  }
-
   const flags = flagsToString(flagAttempt({ scoreMs, rttMs }));
 
-  await prisma.$transaction(async (tx) => {
-    await tx.attempt.create({
-      data: {
-        userId: actor.user.id,
+  // ONE atomic transaction: spend credits (+ credit ledger), create the attempt, bump the
+  // round counters, and record earned discount in the discount ledger. If anything fails,
+  // nothing is charged.
+  let spend: { freeUsed: number; paidUsed: number };
+  try {
+    spend = await prisma.$transaction(async (tx) => {
+      const spent = await spendCreditsInTx(tx, actor.user.id, playCost, {
         itemId: item.id,
         roundId: round.id,
-        dayKey: dayKeyZA(),
-        costCredits: playCost,
-        freeUsed: spend.freeUsed,
-        paidUsed: spend.paidUsed,
-        isPaid: spend.paidUsed > 0,
-        scoreMs,
-        flags,
-      } as any,
-    });
+        source: "PWNIT2_PLAY",
+        note: `Play: ${cfg.title}`,
+      });
 
-    await tx.itemRound.update({
-      where: { id: round.id },
-      data: {
-        attemptCount: { increment: 1 },
-        paidCreditsCollected: { increment: spend.paidUsed },
-        freeCreditsCollected: { increment: spend.freeUsed },
-      },
-    });
-
-    if (spend.paidUsed > 0) {
-      await tx.creditLedger.create({
+      const attempt = await tx.attempt.create({
         data: {
           userId: actor.user.id,
           itemId: item.id,
           roundId: round.id,
-          kind: "PWNIT2_DISCOUNT_EARNED",
-          credits: spend.paidUsed,
-          note: `R${spend.paidUsed} discount earned on ${cfg.title}`,
+          dayKey: dayKeyZA(),
+          costCredits: playCost,
+          freeUsed: spent.freeUsed,
+          paidUsed: spent.paidUsed,
+          isPaid: spent.paidUsed > 0,
+          scoreMs,
+          flags,
+        } as any,
+      });
+
+      await tx.itemRound.update({
+        where: { id: round.id },
+        data: {
+          attemptCount: { increment: 1 },
+          paidCreditsCollected: { increment: spent.paidUsed },
+          freeCreditsCollected: { increment: spent.freeUsed },
         },
       });
+
+      if (spent.paidUsed > 0) {
+        await logDiscountTx(tx, {
+          userId: actor.user.id,
+          itemId: item.id,
+          roundId: round.id,
+          type: "DISCOUNT_EARNED",
+          amount: spent.paidUsed,
+          source: "PWNIT2_PLAY",
+          attemptId: attempt.id,
+          note: `R${spent.paidUsed} discount earned on ${cfg.title}`,
+        });
+      }
+
+      return { freeUsed: spent.freeUsed, paidUsed: spent.paidUsed };
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message === "insufficient_credits") {
+      const current = await snapshotFor(slug, actor);
+      return {
+        ok: false as const,
+        status: 402,
+        error: "Not enough credits to play.",
+        needCredits: true,
+        playCostCredits: playCost,
+        ...current,
+      };
     }
-  });
+    throw error;
+  }
 
   await syncRoundLifecycle(item.id);
 
@@ -541,14 +554,7 @@ export async function confirmPwnit2Purchase(slug?: string) {
   const dayKey = dayKeyZA();
 
   await prisma.$transaction(async (tx) => {
-    if (quote.walletAppliedZAR > 0) {
-      await tx.user.update({
-        where: { id: actor.user.id },
-        data: { paidCreditsBalance: { decrement: quote.walletAppliedZAR } },
-      });
-    }
-
-    await tx.itemPurchase.create({
+    const purchase = await tx.itemPurchase.create({
       data: {
         itemId: item.id,
         roundId: round.id,
@@ -563,16 +569,46 @@ export async function confirmPwnit2Purchase(slug?: string) {
       } as any,
     });
 
+    if (quote.walletAppliedZAR > 0) {
+      await tx.user.update({
+        where: { id: actor.user.id },
+        data: { paidCreditsBalance: { decrement: quote.walletAppliedZAR } },
+      });
+      await logCreditTx(tx, {
+        userId: actor.user.id,
+        kind: "CREDIT_SPEND_PURCHASE",
+        credits: -quote.walletAppliedZAR,
+        itemId: item.id,
+        roundId: round.id,
+        source: "VOUCHER_PURCHASE",
+        reference: purchase.id,
+        note: `R${quote.walletAppliedZAR} wallet credit applied to ${cfg.title} purchase`,
+      });
+    }
+
+    if (quote.podiumBonusZAR > 0) {
+      await logDiscountTx(tx, {
+        userId: actor.user.id,
+        itemId: item.id,
+        roundId: round.id,
+        type: "DISCOUNT_EARNED",
+        amount: quote.podiumBonusZAR,
+        source: "PODIUM_BONUS",
+        purchaseId: purchase.id,
+        note: `Podium bonus (rank ${quote.podiumRank}): +R${quote.podiumBonusZAR}`,
+      });
+    }
+
     if (quote.yourDiscountZAR > 0) {
-      await tx.creditLedger.create({
-        data: {
-          userId: actor.user.id,
-          itemId: item.id,
-          roundId: round.id,
-          kind: "PWNIT2_DISCOUNT_REDEEMED",
-          credits: quote.yourDiscountZAR,
-          note: `R${quote.yourDiscountZAR} discount applied to ${cfg.title} purchase${quote.podiumBonusZAR > 0 ? ` (incl. R${quote.podiumBonusZAR} podium bonus, rank ${quote.podiumRank})` : ""}`,
-        },
+      await logDiscountTx(tx, {
+        userId: actor.user.id,
+        itemId: item.id,
+        roundId: round.id,
+        type: "DISCOUNT_REDEEMED",
+        amount: -quote.yourDiscountZAR,
+        source: "VOUCHER_PURCHASE",
+        purchaseId: purchase.id,
+        note: `R${quote.yourDiscountZAR} discount applied to ${cfg.title} purchase`,
       });
     }
 
@@ -584,7 +620,9 @@ export async function confirmPwnit2Purchase(slug?: string) {
         kind: "PWNIT2_PURCHASE",
         credits: quote.payableZAR,
         note: `Purchased ${cfg.title} (voucher ${voucherCode})`,
-      },
+        reference: purchase.id,
+        source: "VOUCHER_PURCHASE",
+      } as any,
     });
   });
 

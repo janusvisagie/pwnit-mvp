@@ -1,0 +1,19 @@
+PwnIt 2 — Patch 24.2 (hotfix): backup script handles Prisma-style URLs
+======================================================================
+Fixes: pg_dump: error: invalid URI query parameter: "schema"
+
+Why: Prisma DATABASE_URLs carry Prisma-only query params (?schema=, connection_limit=,
+pgbouncer=, pool_timeout=, ...). pg_dump speaks plain libpq and rejects them.
+
+The script now sanitizes the URL before calling pg_dump:
+  - strips anything libpq does not understand (and prints WHICH params were dropped)
+  - keeps legitimate libpq params (sslmode, connect_timeout, sslcert, ...)
+  - honours ?schema=NAME properly by passing pg_dump --schema=NAME
+  - warns if the URL goes through a connection pooler (pgbouncer): if a dump fails on a
+    pooled URL, use the provider's DIRECT (non-pooler) URL for backups
+Credentials are still never printed.
+
+FILE (1)
+  scripts/backup-db.mjs  (REPLACE)
+
+No DB / app change. Apply on top of 24.1.

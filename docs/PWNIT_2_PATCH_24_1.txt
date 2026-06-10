@@ -1,0 +1,18 @@
+PwnIt 2 — Patch 24.1 (hotfix): backup script reads .env.local
+=============================================================
+Fixes: `npm run db:backup` failed with "DATABASE_URL is not set".
+
+Why: DATABASE_URL lives in .env.local. Next.js loads that file automatically; a plain
+`node` script does not. The backup script now resolves the URL the same way the app
+does — shell environment first, then .env.local, then .env, then prisma/.env — and
+prints WHICH source it used (filename only; credentials are still never printed).
+
+NOTE FOR `npm run db:push`: the Prisma CLI reads .env (and prisma/.env) but NOT
+.env.local. If your URL is only in .env.local, load it into the PowerShell session
+before pushing (one-liner in the apply instructions). Do NOT copy the URL into a
+committed file.
+
+FILE (1)
+  scripts/backup-db.mjs  (REPLACE)
+
+No DB / app change. Apply on top of Patch 23/24.
