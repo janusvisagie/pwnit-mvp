@@ -1,0 +1,36 @@
+PwnIt 2 — Patch 23: Ops & admin-gate foundation (NO migration)
+==============================================================
+
+This is the SAFE, no-database-change foundation for the bigger lifecycle/ledger/admin work.
+It changes no schema and runs no migration, so it can go in immediately.
+
+WHAT'S INCLUDED
+  scripts/backup-db.mjs            Production-safe Postgres export (pg_dump). Timestamped file in
+                                   ./backups, prints the path, NEVER prints credentials, fails
+                                   safely if DATABASE_URL/pg_dump are missing.
+  backups/.gitignore               Makes the backups folder self-ignoring (won't touch your root .gitignore).
+  package.json                     Adds scripts: db:backup, db:backup:prod.
+  src/lib/admin.ts                 Server-side admin gate (ADMIN_EMAILS): isAdmin / requireAdmin /
+                                   assertAdmin. Everything admin will sit behind this.
+  docs/DB_MIGRATION_AND_BACKUP.md  Backup + migration + restore runbook.
+  docs/PROPOSED_SCHEMA_CHANGES.md  The proposed schema (lifecycle fields, DiscountLedger,
+                                   AdminAuditLog, CampaignArchiveSnapshot, CreditLedger additions).
+                                   REVIEW ONLY — not applied.
+
+AFTER APPLYING
+  1. Add to your root .gitignore (belt-and-suspenders; backups/ already self-ignores):
+        backups/
+        tmp/backups/
+        *.sql
+        *.dump
+  2. Set ADMIN_EMAILS in .env.local AND in Vercel (Project → Settings → Environment Variables):
+        ADMIN_EMAILS=you@example.com,teammate@example.com
+  3. Try a backup against the pwnit-2 DB:
+        npm run db:backup
+     (Install PostgreSQL client tools if pg_dump isn't found, or set PG_DUMP_PATH.)
+
+NOT IN THIS PATCH (needs a migration + two decisions — see chat):
+  - ItemRound lifecycle fields + DRAFT/WAITING/EXPIRED/CANCELLED states
+  - DiscountLedger + CreditLedger enrichment, wired into earn/spend/redeem/expire
+  - AdminAuditLog + CampaignArchiveSnapshot + archive action
+  - Admin pages (status controls, ledger search, adjustments) and the read-only archived view
