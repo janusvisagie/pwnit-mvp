@@ -1,0 +1,45 @@
+PwnIt 2 — Patch 26 (Phase D): Admin console, archive + snapshot, expiry, audit log
+==================================================================================
+NO database change (schema landed in Patch 24). Code-only. Requires ADMIN_EMAILS to be
+set in .env.local AND on Vercel (comma-separated admin login emails).
+
+WHAT YOU GET
+  /admin/pwnit-2 — the campaign admin console (server-gated, 403 for non-admins):
+   * Campaigns tab: every Item with its rounds, state chips, counters, and only the
+     legal actions for each state: publish draft -> activate -> close (locks winner +
+     winningScore) -> publish results (resolves REVIEW; pays the settle-parity podium
+     credit bonuses) -> open/extend buy window -> expire -> archive; cancel (with a
+     REQUIRED reason). Create-draft form included; drafts are invisible to players.
+   * Ledgers tab: search the credit + discount ledgers (by user email / kind), and make
+     admin adjustments — reason REQUIRED, ledgered as ADMIN_ADJUSTMENT, audit-logged.
+   * Audit tab: AdminAuditLog rows with before/after JSON.
+   * Archived tab: CampaignArchiveSnapshot records (final leaderboard, totals, winner);
+     only the internal notes are editable after archive.
+
+  Lifecycle actions write the Patch-24 timestamps (closedAt/expiredAt/archivedAt/
+  cancelledAt, statusReason) and AdminAuditLog rows (CAMPAIGN_STATUS_CHANGED,
+  CAMPAIGN_CLOSED, WINNER_LOCKED, PURCHASE_WINDOW_OPENED, DISCOUNTS_EXPIRED,
+  CAMPAIGN_ARCHIVED, CAMPAIGN_CANCELLED, CREDIT_ADJUSTED, DISCOUNT_ADJUSTED).
+   * EXPIRE writes DISCOUNT_EXPIRED ledger rows for every user's remaining discount.
+   * ARCHIVE verifies the state is archivable, freezes the round, and creates the
+     CampaignArchiveSnapshot (final leaderboard JSON + paid/free/discount totals).
+   * CANCEL refunds each user's paid spend as credits (CREDIT_REFUND, idempotent) and
+     reverses remaining discount (DISCOUNT_REFUNDED) — all ledger-backed, in one tx.
+
+  SAFETY: no delete operation exists at all; archived rounds expose no actions except
+  snapshot notes; winners cannot be changed after archive; transitions are validated
+  against the Patch-25 state machine server-side. The OLD /admin page (which had NO
+  auth at all) is now gated behind the same admin check.
+
+FILES (10)
+  src/lib/adminCampaign.ts                       (NEW)
+  src/lib/ledger.ts                              (REPLACE: adds RUNNER_UP_BONUS +
+                                                  FAILED_ROUND_REFUND to movement kinds)
+  src/app/api/admin/campaigns/route.ts           (NEW)
+  src/app/api/admin/campaigns/action/route.ts    (NEW)
+  src/app/api/admin/ledger/route.ts              (NEW)
+  src/app/api/admin/adjust/route.ts              (NEW)
+  src/app/api/admin/audit/route.ts               (NEW)
+  src/app/admin/pwnit-2/page.tsx                 (NEW)
+  src/components/AdminPwnit2Board.tsx            (NEW)
+  src/app/admin/page.tsx                         (REPLACE: adds the missing admin gate)

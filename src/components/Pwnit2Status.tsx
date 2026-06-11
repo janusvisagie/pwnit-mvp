@@ -51,7 +51,7 @@ export default function Pwnit2Status({ slug = "hero" }: { slug?: string }) {
     campaign.state === "FUNDING"
       ? "The campaign is still building toward activation. Paid plays fund it and build your discount."
       : campaign.state === "COUNTDOWN"
-        ? "The countdown is live and the voucher is growing. Keep playing to climb — and to earn more discount."
+        ? "The countdown is live. Keep playing to climb the leaderboard — and to earn more discount."
         : campaign.state === "STATUS_WINDOW"
           ? "The countdown has ended and the board is frozen. The top score wins the voucher; everyone else can buy it with their discount before the window closes."
           : "This campaign has been archived. The buy window has closed.";

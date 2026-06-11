@@ -64,7 +64,7 @@ export const legalTerms: LegalDocData = {
     {
       heading: "6. The voucher",
       bullets: [
-        "The voucher’s value is shown in the app, including any increase during a live campaign; the amount you can actually redeem is always displayed.",
+        "The voucher’s value is fixed for the campaign and shown in the app; the amount you can redeem is always displayed before you buy.",
         "The voucher may be redeemed for [goods/services / at supplier(s) •••] and is valid for [validity period] from issue. We do not shorten validity to cause forfeiture; any expiry exists only to [cap liability / comply with applicable rules] and will meet the minimum periods required by law.",
         "The voucher is not exchangeable for cash unless the law requires it, and we are not responsible for lost or shared voucher codes once issued.",
       ],

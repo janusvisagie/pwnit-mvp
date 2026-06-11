@@ -6,9 +6,20 @@ import { unstable_noStore as noStore } from "next/cache";
 
 import { parseAttemptFlags } from "@/lib/botRisk";
 import { prisma } from "@/lib/db";
+import { isCurrentUserAdmin } from "@/lib/admin";
 
 export default async function Admin() {
   noStore();
+  if (!(await isCurrentUserAdmin())) {
+    return (
+      <div className="mx-auto max-w-xl px-4 py-16 text-center">
+        <h1 className="text-2xl font-black text-slate-950">403 — admin only</h1>
+        <p className="mt-2 text-sm font-semibold text-slate-600">
+          Sign in with an admin account. Admins are configured via the ADMIN_EMAILS environment variable.
+        </p>
+      </div>
+    );
+  }
   try {
     const [items, reviewRounds] = await Promise.all([
       prisma.item.findMany({ orderBy: [{ tier: "asc" }, { createdAt: "asc" }] }),

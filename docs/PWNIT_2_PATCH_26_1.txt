@@ -1,0 +1,11 @@
+PwnIt 2 — Patch 26.1 (hotfix): admin action route type error
+============================================================
+Fixes: "Type error: 'ok' is specified more than once" in
+src/app/api/admin/campaigns/action/route.ts.
+
+updateDraftCampaign / updateSnapshotNotes already return { ok: true }, so spreading
+them after an explicit ok literal made TS flag the overwritten key. The route now
+returns their results directly. (create_draft keeps the literal — its function
+returns ids without ok.)
+
+FILE (1): src/app/api/admin/campaigns/action/route.ts (REPLACE)

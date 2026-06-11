@@ -16,9 +16,10 @@
 //   growth           = min(growth, maxGrowthZAR?)               (optional safety cap)
 //   currentValue     = baseValueZAR + floor(growth)
 //
-// Defaults (0.6 * 0.3 = 0.18) release ~18% of paid spend into the voucher,
-// which stays well under expected breakage. Tune via env as real redemption
-// data arrives.
+// FIXED-VALUE MODE (current default): growthReleasePercent defaults to 0, so the
+// voucher value is pinned at its base value and growthZAR is always 0. To re-enable
+// growth later, set PWNIT2_GROWTH_RELEASE_PERCENT (e.g. 0.3 restores the old
+// 0.6 * 0.3 = ~18%-of-paid-spend behaviour) — no code change needed.
 
 export type Pwnit2GrowthConfig = {
   baseValueZAR: number;
@@ -75,7 +76,7 @@ export function pwnit2GrowthConfigFromEnv(params: {
     paidCollectedZAR: params.paidCollectedZAR,
     activated: params.activated,
     expectedBreakagePct: Number(process.env.PWNIT2_EXPECTED_BREAKAGE_PERCENT ?? "0.6"),
-    growthReleasePercent: Number(process.env.PWNIT2_GROWTH_RELEASE_PERCENT ?? "0.3"),
+    growthReleasePercent: Number(process.env.PWNIT2_GROWTH_RELEASE_PERCENT ?? "0"),
     maxGrowthZAR: maxGrowthRaw != null && maxGrowthRaw !== "" ? Number(maxGrowthRaw) : null,
   };
 }

@@ -1,0 +1,24 @@
+PwnIt 2 — Patch 27: Fixed voucher value (growth pinned to 0 by default)
+=======================================================================
+DECISION: the voucher value no longer grows during the countdown — it is fixed at the
+base value (hero R1000, staple R100) for the whole campaign. Post-activation paid plays
+now read as pure revenue-pool contribution; prize cost is known the day a campaign opens.
+
+HOW: growth was already config-driven (src/lib/pwnit2Growth.ts). This patch changes the
+DEFAULT of PWNIT2_GROWTH_RELEASE_PERCENT from 0.3 to 0, so growthZAR is always 0 and
+currentValue == baseValue everywhere (the "+R grown" badge auto-hides; purchase quotes,
+podium bonuses, and discounts are untouched — they never depended on growth).
+
+REVERSIBLE: to restore the old behaviour, set PWNIT2_GROWTH_RELEASE_PERCENT=0.3
+(locally and on Vercel). No code change needed. See pwnit2-value-model.xlsx for the
+economics of both models.
+
+COPY: how-it-works step, status-page line, and the draft Terms clause no longer promise
+a growing value.
+
+FILES (4)
+  src/lib/pwnit2Growth.ts          (REPLACE) default release 0.3 -> 0 + docs
+  src/lib/pwnit2DemoCampaign.ts    (REPLACE) step copy
+  src/components/Pwnit2Status.tsx  (REPLACE) countdown copy
+  src/lib/legalContent.ts          (REPLACE) Terms §6 voucher-value clause
+NO DB change.

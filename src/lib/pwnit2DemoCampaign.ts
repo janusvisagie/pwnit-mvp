@@ -123,7 +123,7 @@ export const pwnit2HowItWorks = [
   },
   {
     title: "Activation starts the countdown",
-    body: "Once the campaign is funded, the countdown begins and the voucher value starts to grow.",
+    body: "Once the campaign is funded, the countdown begins — the leaderboard is live and the clock is running on the full voucher.",
   },
   {
     title: "Win it, or earn extra as a runner-up",

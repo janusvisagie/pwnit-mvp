@@ -1,0 +1,25 @@
+PwnIt 2 — Patch 25 (Phase C): Campaign lifecycle + server-side guards
+=====================================================================
+NO database change (schema landed in Patch 24). Code-only.
+
+NEW src/lib/campaignLifecycle.ts — the canonical state machine (unit-tested):
+  DRAFT -> BUILDING (waiting/funding) -> ACTIVATED (live) -> CLOSED -> REVIEW/PUBLISHED
+  (purchase window) -> EXPIRED -> ARCHIVED, plus CANCELLED and legacy FAILED/REFUNDED.
+  Exports: canPlayState, canBuyState, canRedeemDiscountState, isEndState,
+  ALLOWED_TRANSITIONS, canTransition/assertTransition, ARCHIVABLE/CANCELLABLE sets.
+  Mapping to your requested names: WAITING_FOR_ACTIVATION=BUILDING, ACTIVE=ACTIVATED,
+  PURCHASE_WINDOW=REVIEW/PUBLISHED (+purchaseGraceEndsAt).
+
+REPLACE src/lib/pwnit2CampaignServer.ts (base: Patch 24):
+  * Play guard now uses canPlayState — attempts only in BUILDING/ACTIVATED; everything
+    else (DRAFT, CLOSED, REVIEW, PUBLISHED, EXPIRED, ARCHIVED, CANCELLED, FAILED,
+    REFUNDED) is rejected server-side.
+  * Purchase quote uses canBuyState — buying stays always-available through a campaign's
+    normal life, but is blocked in DRAFT and all end states; this also blocks discount
+    redemption there (redemption happens inside purchase, and confirm enforces canBuy).
+  * Public labels extended for EXPIRED ("Expired") and CANCELLED ("Cancelled"); both map
+    to the ARCHIVED public state for the UI.
+
+FILES (2): src/lib/campaignLifecycle.ts (NEW), src/lib/pwnit2CampaignServer.ts (REPLACE)
+Acceptance: #4 (no play on archived), #5 (no redemption on archived), and the safety rule
+"no attempts after CLOSED/PURCHASE_WINDOW/EXPIRED/ARCHIVED/CANCELLED".

@@ -15,6 +15,7 @@ import { dayKeyZA } from "@/lib/time";
 import { flagAttempt, flagsToString } from "@/lib/antiCheat";
 import { spendCreditsInTx } from "@/lib/credits";
 import { logCreditTx, logDiscountTx } from "@/lib/ledger";
+import { canBuyState, canPlayState } from "@/lib/campaignLifecycle";
 import { resolvePlayCostCredits } from "@/lib/playCost";
 import { buyPriceAfterSpend, tierKeyFromTierNumber, discountPctForTierKey } from "@/lib/pricing";
 import { ensureCurrentRound, syncRoundLifecycle, activationTargetForItem, publicProgress } from "@/lib/rounds";
@@ -109,7 +110,8 @@ function aliasForUser(
 function publicState(state: string): Pwnit2CampaignSnapshot["state"] {
   if (state === "ACTIVATED") return "COUNTDOWN";
   if (state === "CLOSED" || state === "REVIEW" || state === "PUBLISHED") return "STATUS_WINDOW";
-  if (state === "ARCHIVED" || state === "FAILED" || state === "REFUNDED") return "ARCHIVED";
+  if (state === "ARCHIVED" || state === "FAILED" || state === "REFUNDED" || state === "EXPIRED" || state === "CANCELLED")
+    return "ARCHIVED";
   return "FUNDING";
 }
 function isActivatedState(state: string) {
@@ -119,6 +121,8 @@ function statusLabel(state: string) {
   if (state === "ACTIVATED") return "Countdown";
   if (state === "CLOSED" || state === "REVIEW") return "Final status";
   if (state === "PUBLISHED") return "Winner announced";
+  if (state === "EXPIRED") return "Expired";
+  if (state === "CANCELLED") return "Cancelled";
   if (state === "ARCHIVED" || state === "FAILED" || state === "REFUNDED") return "Archived";
   return "Funding";
 }
@@ -286,8 +290,9 @@ async function buildPurchaseQuote(params: {
     walletCredits: Number(wallet?.paidCreditsBalance ?? 0),
   });
 
-  // Buying a voucher outright is always allowed (you simply cannot buy one you already won or bought).
-  const buyableState = true;
+  // Buying outright is allowed throughout a campaign's normal life (Patch 21), but never in
+  // DRAFT and never after EXPIRED / ARCHIVED / CANCELLED / FAILED / REFUNDED (Patch 25).
+  const buyableState = canBuyState(String(round.state));
 
   return {
     voucherValueZAR: currentValueZAR,
@@ -427,7 +432,7 @@ export async function submitPwnit2Score(input: {
   const actor = await getCurrentActor();
   const { cfg, item, round } = await getContext(slug);
 
-  if (!["BUILDING", "ACTIVATED"].includes(String(round.state))) {
+  if (!canPlayState(String(round.state))) {
     const current = await snapshotFor(slug, actor);
     return { ok: false as const, status: 409, error: "This campaign is no longer accepting plays.", ...current };
   }
