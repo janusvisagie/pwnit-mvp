@@ -1,4 +1,7 @@
 import Link from "next/link";
+import { BuyCreditsBundles } from "./ui";
+
+export const metadata = { title: "Credits · PwnIt" };
 
 export default function BuyCreditsPage() {
   return (
@@ -17,6 +20,14 @@ export default function BuyCreditsPage() {
             <Link href="/play/pwnit-2" className="rounded-full border border-[#8bd7d0] bg-[#effdfb] px-5 py-3 text-sm font-black text-[#10645c] transition hover:-translate-y-0.5 hover:bg-white">
               Play game
             </Link>
+          </div>
+        </div>
+
+        <div className="rounded-[2rem] border border-[#ecd8d0] bg-white p-6 shadow-sm sm:p-8">
+          <h2 className="text-xl font-black tracking-tight">Top up</h2>
+          <p className="mt-1 text-sm font-semibold text-slate-600">Pick a bundle — credits land instantly.</p>
+          <div className="mt-4">
+            <BuyCreditsBundles />
           </div>
         </div>
 

@@ -1,0 +1,21 @@
+PwnIt 2 — Patch 28: Buying credits restored (it was never mounted)
+==================================================================
+ROOT CAUSE: /buy-credits has been an informational stub since the test phase — the page
+never imported the buy button, so BuyCreditsButton in ui.tsx was orphaned code. The
+earlier "Buy 30 credits" fixes (22/24) polished a button no page rendered. The header
+"Credits" nav link still pointed here, so buying appeared to have vanished.
+
+NOW:
+  * /buy-credits has a real "Top up" section with three bundles — R30 / R80 / R150
+    (starter / value / max) — posting to the ledgered /api/credits/buy route from
+    Patch 24. Success updates the header pill live (pwnit:credits event), errors show
+    inline. Test-mode note included (no real payment yet).
+  * The legacy /api/buy-credits endpoint (no UI callers, but live) now writes a proper
+    CreditLedger row in the same transaction — closing the last un-audited
+    balance-mutation path (kind PAID_CREDIT_PURCHASE, source LEGACY_BUY_CREDITS).
+
+FILES (3)
+  src/app/buy-credits/page.tsx        (REPLACE) renders the bundles
+  src/app/buy-credits/ui.tsx          (REPLACE) BuyCreditsBundles (alias kept)
+  src/app/api/buy-credits/route.ts    (REPLACE) ledger-compliant legacy route
+NO DB change.
