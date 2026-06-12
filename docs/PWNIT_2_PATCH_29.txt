@@ -1,0 +1,41 @@
+PwnIt 2 — Patch 29: Voucher artwork + winners strip + referrals/feedback + brand tokens
+=======================================================================================
+NO database change. Code + assets only.
+
+1) VOUCHER IMAGES (generated)
+   Two original PwnIt-branded SVG vouchers ship in public/vouchers/ (hero.svg navy +
+   brand red; staple.svg cream + emerald). No third-party brand marks (deliberate —
+   "Checkers" is a trademark) and no hardcoded values (the UI shows the live value).
+   Rendered on: campaign card header, home hero prize card, and the purchase page.
+   Source of truth: Item.imageUrl (DB) overrides the per-campaign config default, so
+   swapping art later = paste a URL in the admin draft form (new Image URL field) or
+   replace the SVG files. Demo/fallback snapshot includes the hero image too.
+
+2) RECENT WINNERS STRIP (social proof)
+   New public GET /api/pwnit-2/winners (rank-1 winners, alias + display score + title)
+   + Pwnit2WinnersStrip on the home page. Renders nothing until there is a winner.
+
+3) REFERRALS + FEEDBACK SURFACED
+   Footer now links Referrals and Feedback (both pages already existed from PwnIt 1);
+   home gains an "Invite a friend" card linking /referrals.
+
+4) BRAND PALETTE TOKENS
+   Tailwind v4 @theme tokens in globals.css: brand #ff0033, canvas #fffaf8, card
+   #fffaf3, ink #0f172a, line #e6ded9, go #059669 — usable as text-brand / bg-canvas /
+   border-line etc. First use: the "PwnIt." wordmark in the header is now brand red.
+   Convention: brand red = identity + hype moments only; rose stays for danger.
+
+FILES (13)
+  public/vouchers/hero.svg                  (NEW)
+  public/vouchers/staple.svg                (NEW)
+  src/lib/pwnit2CampaignServer.ts           (REPLACE, base P25) cfg+snapshot imageUrl
+  src/lib/pwnit2DemoCampaign.ts             (REPLACE, base P27) type+demo imageUrl
+  src/components/Pwnit2CampaignCard.tsx     (REPLACE, base P21) card image
+  src/components/Pwnit2Home.tsx             (REPLACE, base P21) hero image + winners strip + invite card
+  src/components/Pwnit2WinnersStrip.tsx     (NEW)
+  src/app/api/pwnit-2/winners/route.ts      (NEW)
+  src/app/pwnit-2/purchase/ui.tsx           (REPLACE, base P18) purchase image
+  src/app/layout.tsx                        (REPLACE, base P19) footer links + brand wordmark
+  src/app/globals.css                       (REPLACE) + @theme tokens
+  src/lib/adminCampaign.ts                  (REPLACE, base P26) draft imageUrl support
+  src/components/AdminPwnit2Board.tsx       (REPLACE, base P26) Image URL field

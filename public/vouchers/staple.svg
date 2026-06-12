@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" role="img" aria-label="PwnIt voucher">
+  <defs>
+    <linearGradient id="chip2" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#a7f3d0"/>
+      <stop offset="1" stop-color="#34d399"/>
+    </linearGradient>
+    <clipPath id="round2"><rect x="0" y="0" width="800" height="500" rx="32"/></clipPath>
+  </defs>
+
+  <g clip-path="url(#round2)">
+    <rect width="800" height="500" fill="#fffaf3"/>
+    <circle cx="710" cy="50" r="180" fill="#059669" opacity="0.08"/>
+    <circle cx="70" cy="480" r="210" fill="#ff0033" opacity="0.05"/>
+    <rect x="-80" y="330" width="980" height="2.5" fill="#0f172a" opacity="0.04" transform="rotate(-8 400 330)"/>
+    <rect x="-80" y="372" width="980" height="2.5" fill="#0f172a" opacity="0.04" transform="rotate(-8 400 372)"/>
+
+    <!-- bottom brand bar -->
+    <rect x="0" y="478" width="800" height="22" fill="#059669"/>
+
+    <!-- perforation + stub -->
+    <line x1="572" y1="26" x2="572" y2="474" stroke="#b9a99a" stroke-width="2.5" stroke-dasharray="2 11"/>
+    <text x="744" y="252" fill="#8a7c6f" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif" font-size="30" font-weight="900" letter-spacing="14" transform="rotate(-90 744 252)" text-anchor="middle">PWNIT</text>
+    <g fill="#0f172a">
+      <rect x="606" y="330" width="6" height="96"/><rect x="617" y="330" width="3" height="96"/>
+      <rect x="626" y="330" width="9" height="96"/><rect x="641" y="330" width="3" height="96"/>
+      <rect x="650" y="330" width="5" height="96"/><rect x="661" y="330" width="11" height="96"/>
+      <rect x="678" y="330" width="3" height="96"/><rect x="687" y="330" width="7" height="96"/>
+      <rect x="700" y="330" width="4" height="96"/><rect x="710" y="330" width="9" height="96"/>
+    </g>
+    <text x="663" y="452" fill="#8a7c6f" font-family="ui-monospace, 'Cascadia Mono', Consolas, monospace" font-size="15" letter-spacing="3" text-anchor="middle">PWN-0002</text>
+
+    <!-- wordmark -->
+    <text x="44" y="74" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif" font-size="30" font-weight="900">
+      <tspan fill="#0f172a">Pick. Play. </tspan><tspan fill="#ff0033">PwnIt.</tspan>
+    </text>
+
+    <!-- chip -->
+    <rect x="452" y="44" width="78" height="56" rx="10" fill="url(#chip2)"/>
+    <g stroke="#047857" stroke-width="2.5" opacity="0.9">
+      <line x1="452" y1="63" x2="530" y2="63"/>
+      <line x1="452" y1="81" x2="530" y2="81"/>
+      <line x1="478" y1="44" x2="478" y2="100"/>
+    </g>
+
+    <!-- headline -->
+    <text x="44" y="240" fill="#0f172a" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif" font-size="96" font-weight="900" letter-spacing="2">EVERYDAY</text>
+    <text x="44" y="330" fill="#059669" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif" font-size="74" font-weight="900" letter-spacing="6">VOUCHER</text>
+
+    <!-- footer line -->
+    <text x="44" y="412" fill="#7c6f63" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif" font-size="21" font-weight="700" letter-spacing="1">Quick wins · Daily free play · Earn your discount</text>
+    <rect x="44" y="430" width="120" height="6" rx="3" fill="#059669"/>
+  </g>
+
+  <rect x="1.5" y="1.5" width="797" height="497" rx="31" fill="none" stroke="#e6ded9" stroke-width="3"/>
+</svg>

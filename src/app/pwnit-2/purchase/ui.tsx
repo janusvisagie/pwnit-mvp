@@ -95,6 +95,14 @@ export default function Pwnit2Purchase({ slug = "hero" }: { slug?: string }) {
             {campaign?.title ?? "R1,000 Shopping Voucher"}
           </p>
           <h1 className="mt-2 text-3xl font-black tracking-tight sm:text-4xl">Buy the voucher</h1>
+          {campaign?.imageUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={campaign.imageUrl}
+              alt={`${campaign.title} voucher`}
+              className="mt-4 w-full max-w-sm rounded-2xl border border-[#e6ded9] shadow-sm"
+            />
+          ) : null}
           <p className="mt-3 text-sm font-semibold leading-6 text-slate-700">
             Your paid plays became discount on this voucher. Apply it here to buy at the final value minus
             your discount.

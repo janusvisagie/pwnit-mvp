@@ -23,7 +23,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <span className="flex items-baseline gap-1.5 text-lg font-black tracking-tight text-[#2f3a32]">
                   <span>Pick. Play.</span>
-                  <Link href="/" aria-label="PwnIt home" className="transition hover:text-[#3f4d43]">
+                  <Link href="/" aria-label="PwnIt home" className="text-brand transition hover:opacity-80">
                     PwnIt.
                   </Link>
                 </span>
@@ -56,6 +56,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <span aria-hidden>·</span>
               <Link href="/legal/privacy" className="underline-offset-2 transition hover:text-[#3f4d43] hover:underline">
                 Privacy
+              </Link>
+              <span aria-hidden>·</span>
+              <Link href="/referrals" className="underline-offset-2 transition hover:text-[#3f4d43] hover:underline">
+                Referrals
+              </Link>
+              <span aria-hidden>·</span>
+              <Link href="/feedback" className="underline-offset-2 transition hover:text-[#3f4d43] hover:underline">
+                Feedback
               </Link>
               <span className="text-[#a89a8c]">· Draft, under review</span>
             </div>

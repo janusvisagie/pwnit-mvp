@@ -37,6 +37,7 @@ type CampaignConfig = {
   statusWindowHours: number;
   sortOrder: number;
   shortDesc: string;
+  imageUrl?: string;
   legacyTitles: string[]; // existing titles/keys to adopt as this campaign (avoid duplicates)
   legacyGameKeys: string[];
 };
@@ -58,6 +59,7 @@ const CAMPAIGNS: CampaignConfig[] = [
     countdownMinutes: COUNTDOWN_MINUTES,
     statusWindowHours: STATUS_WINDOW_HOURS,
     sortOrder: 1,
+    imageUrl: "/vouchers/hero.svg",
     shortDesc: "PwnIt hero voucher campaign",
     legacyTitles: ["Checkers Voucher"],
     legacyGameKeys: ["pwnit-2-number-chain"],
@@ -74,6 +76,7 @@ const CAMPAIGNS: CampaignConfig[] = [
     countdownMinutes: COUNTDOWN_MINUTES,
     statusWindowHours: STATUS_WINDOW_HOURS,
     sortOrder: 2,
+    imageUrl: "/vouchers/staple.svg",
     shortDesc: "PwnIt daily staple campaign",
     legacyTitles: [],
     legacyGameKeys: [],
@@ -357,6 +360,7 @@ async function snapshotFor(slug: string, actor: Awaited<ReturnType<typeof getCur
     statusTone: statusTone(round.state),
     baseValueLabel: `R${cfg.baseValueZAR}`,
     currentValueLabel: `R${growth.currentValueZAR}`,
+    imageUrl: (item as any).imageUrl ?? cfg.imageUrl ?? null,
     activationPct: progress.pct,
     activationPoints: progress.current,
     activationTargetPoints: progress.target,

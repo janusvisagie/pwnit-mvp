@@ -27,6 +27,7 @@ export type Pwnit2CampaignCardModel = {
   growthZAR?: number;
   yourDiscountZAR?: number;
   isWinnerYou?: boolean;
+  imageUrl?: string | null;
 };
 
 const toneClasses: Record<Pwnit2CampaignCardModel["statusTone"], string> = {
@@ -53,6 +54,14 @@ export default function Pwnit2CampaignCard({ campaign }: { campaign: Pwnit2Campa
             <p className="text-xs font-black uppercase tracking-[0.24em] text-emerald-200">{campaign.category}</p>
             <h2 className="mt-2 text-3xl font-black tracking-tight sm:text-4xl">{campaign.title}</h2>
           </div>
+          {campaign.imageUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={campaign.imageUrl}
+              alt={`${campaign.title} voucher`}
+              className="w-28 shrink-0 rounded-xl border border-white/20 shadow-lg sm:w-36"
+            />
+          ) : null}
           <span className={`rounded-full border px-3 py-1 text-xs font-black uppercase tracking-[0.18em] ${toneClasses[campaign.statusTone]}`}>
             {campaign.statusLabel}
           </span>

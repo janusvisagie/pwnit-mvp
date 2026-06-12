@@ -190,6 +190,7 @@ export async function createDraftCampaign(
     countdownMinutes?: number;
     purchaseGraceHours?: number;
     shortDesc?: string;
+    imageUrl?: string;
   },
 ) {
   const title = String(input.title ?? "").trim();
@@ -213,6 +214,7 @@ export async function createDraftCampaign(
         fundingWindowHours: 168,
         state: "DRAFT",
         shortDesc: input.shortDesc?.trim() || null,
+        imageUrl: input.imageUrl?.trim() || null,
         gameKey: `pwnit2:custom-${suffix}`,
         sortOrder: 99,
       } as any,
@@ -240,7 +242,7 @@ export async function createDraftCampaign(
 
 export async function updateDraftCampaign(
   meta: AdminMeta,
-  input: { roundId: string; title?: string; prizeValueZAR?: number; playCostCredits?: number; activationGoalEntries?: number },
+  input: { roundId: string; title?: string; prizeValueZAR?: number; playCostCredits?: number; activationGoalEntries?: number; imageUrl?: string },
 ) {
   return prisma.$transaction(async (tx) => {
     const round = await tx.itemRound.findUnique({ where: { id: input.roundId }, include: { item: true } });
@@ -253,6 +255,7 @@ export async function updateDraftCampaign(
     if (input.prizeValueZAR !== undefined) data.prizeValueZAR = Math.max(1, Math.floor(Number(input.prizeValueZAR)));
     if (input.playCostCredits !== undefined) data.playCostCredits = Math.max(1, Math.floor(Number(input.playCostCredits)));
     if (input.activationGoalEntries !== undefined) data.activationGoalEntries = Math.max(1, Math.floor(Number(input.activationGoalEntries)));
+    if (input.imageUrl !== undefined) data.imageUrl = String(input.imageUrl).trim() || null;
 
     const item = await tx.item.update({ where: { id: round.itemId }, data });
     await tx.itemRound.update({

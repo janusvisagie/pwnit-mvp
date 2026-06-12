@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import Pwnit2CampaignCard from "@/components/Pwnit2CampaignCard";
+import Pwnit2WinnersStrip from "@/components/Pwnit2WinnersStrip";
 import WelcomeModal from "@/components/WelcomeModal";
 import {
   pwnit2DemoCampaign,
@@ -89,6 +90,14 @@ export default function Pwnit2Home() {
             <div className="space-y-4 bg-[#f3faf7] p-6 sm:p-8 lg:p-10">
               <p className="text-xs font-black uppercase tracking-[0.22em] text-emerald-700">Featured prize</p>
               <div className="rounded-[1.75rem] border border-[#cdebe0] bg-white p-5 shadow-sm">
+                {heroCampaign.imageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={heroCampaign.imageUrl}
+                    alt={`${heroCampaign.title} voucher`}
+                    className="mb-4 w-full rounded-2xl border border-[#cdebe0] shadow-sm"
+                  />
+                ) : null}
                 <div className="flex items-center justify-between gap-4">
                   <div>
                     <h2 className="text-2xl font-black text-slate-950">{heroCampaign.title}</h2>
@@ -161,6 +170,19 @@ export default function Pwnit2Home() {
                 </div>
               )}
             </div>
+          </div>
+
+          <Pwnit2WinnersStrip />
+
+          <div className="rounded-[2rem] border border-[#e6ded9] bg-white p-5 shadow-sm sm:p-6">
+            <p className="text-xs font-black uppercase tracking-[0.2em] text-emerald-700">Invite a friend</p>
+            <h3 className="mt-1 text-xl font-black text-slate-950">Better with rivals</h3>
+            <p className="mt-1 text-sm font-semibold leading-6 text-slate-700">
+              Bring a friend to chase the leaderboard with you. Referral rewards land in your account automatically.
+            </p>
+            <Link href="/referrals" className="mt-3 inline-flex rounded-full bg-[#0f172a] px-5 py-2.5 text-sm font-black text-white transition hover:-translate-y-0.5 hover:bg-[#172554]">
+              Invite a friend
+            </Link>
           </div>
 
           <div className="rounded-[2rem] border border-[#e6ded9] bg-white p-5 shadow-sm sm:p-6">

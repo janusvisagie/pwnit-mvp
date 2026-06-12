@@ -87,3 +87,16 @@ body {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* ── PwnIt design tokens (Tailwind v4 @theme) ─────────────────────────────────
+   Generates utilities: text-brand / bg-brand, bg-canvas, bg-card, text-ink,
+   border-line, text-go / bg-go. Brand red is for identity + hype moments only —
+   never destructive actions (rose stays for danger, amber for warnings). */
+@theme {
+  --color-brand: #ff0033;
+  --color-canvas: #fffaf8;
+  --color-card: #fffaf3;
+  --color-ink: #0f172a;
+  --color-line: #e6ded9;
+  --color-go: #059669;
+}

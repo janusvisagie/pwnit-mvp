@@ -137,6 +137,7 @@ export default function AdminPwnit2Board() {
         prizeValueZAR: Number(form.get("value") ?? 0),
         playCostCredits: Number(form.get("playCost") ?? 5),
         activationGoalEntries: Number(form.get("entries") ?? 20),
+        imageUrl: String(form.get("imageUrl") ?? ""),
       });
       setNotice("Draft campaign created.");
       await loadCampaigns();
@@ -182,6 +183,7 @@ export default function AdminPwnit2Board() {
               <input name="value" type="number" placeholder="Value (R)" required className="rounded-xl border border-[#e6ded9] px-3 py-2 text-sm" />
               <input name="playCost" type="number" placeholder="Play cost" defaultValue={5} className="rounded-xl border border-[#e6ded9] px-3 py-2 text-sm" />
               <input name="entries" type="number" placeholder="Activation entries" defaultValue={20} className="rounded-xl border border-[#e6ded9] px-3 py-2 text-sm" />
+              <input name="imageUrl" placeholder="Image URL (optional, e.g. /vouchers/hero.svg)" className="rounded-xl border border-[#e6ded9] px-3 py-2 text-sm sm:col-span-5" />
               <button disabled={busy} className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-black text-white sm:col-span-5">
                 Create draft
               </button>

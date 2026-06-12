@@ -31,6 +31,7 @@ export type Pwnit2CampaignSnapshot = {
   statusTone: Pwnit2StatusTone;
   baseValueLabel: string;
   currentValueLabel: string;
+  imageUrl?: string | null;
   activationPct: number;
   activationPoints: number;
   activationTargetPoints: number;
@@ -73,6 +74,7 @@ export const pwnit2DemoCampaign: Pwnit2CampaignSnapshot = {
   statusLabel: "Funding",
   statusTone: "funding",
   baseValueLabel: "R1000",
+  imageUrl: "/vouchers/hero.svg",
   currentValueLabel: "R1000",
   activationPct: 0,
   activationPoints: 0,
