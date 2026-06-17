@@ -12,7 +12,7 @@ import {
   SESSION_COOKIE,
 } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { validatePassword, verifyPassword } from "@/lib/passwords";
+import { hashPassword, needsRehash, validatePassword, verifyPassword } from "@/lib/passwords";
 import { validateTurnstileToken } from "@/lib/turnstile";
 
 const loginSelect = {
@@ -55,6 +55,20 @@ export async function POST(request: Request) {
 
   if (!user || user.isGuest || !user.passwordHash || !verifyPassword(passwordCheck.password, user.passwordHash)) {
     return NextResponse.json({ ok: false, error: "Incorrect email or password." }, { status: 401 });
+  }
+
+  // Transparent upgrade: if this user's stored hash is the legacy format or
+  // below the current scrypt cost, re-hash now that we hold the plaintext.
+  // Non-fatal — a failed write must never block a valid login.
+  if (needsRehash(user.passwordHash)) {
+    try {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { passwordHash: hashPassword(passwordCheck.password) },
+      });
+    } catch {
+      // ignore; login proceeds on the existing (valid) hash
+    }
   }
 
   const response = NextResponse.json({ ok: true, nextPath });
