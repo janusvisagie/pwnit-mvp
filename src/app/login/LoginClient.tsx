@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from "next/link";
@@ -22,6 +21,7 @@ export default function LoginClient({
   const [mode, setMode] = useState<Mode>(initialMode);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
@@ -130,14 +130,25 @@ export default function LoginClient({
 
         <label className="block text-sm font-semibold text-slate-800">
           Password
-          <input
-            type="password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            className="mt-2 w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-900"
-            placeholder={mode === "register" ? "At least 8 characters" : "Your password"}
-            autoComplete={mode === "register" ? "new-password" : "current-password"}
-          />
+          <div className="relative mt-2">
+            <input
+              type={showPassword ? "text" : "password"}
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              className="w-full rounded-2xl border border-slate-300 px-4 py-3 pr-16 text-sm text-slate-900 outline-none transition focus:border-slate-900"
+              placeholder={mode === "register" ? "At least 8 characters" : "Your password"}
+              autoComplete={mode === "register" ? "new-password" : "current-password"}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((value) => !value)}
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              aria-pressed={showPassword}
+              className="absolute inset-y-0 right-0 my-2 mr-2 rounded-xl px-3 text-xs font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
+            >
+              {showPassword ? "Hide" : "Show"}
+            </button>
+          </div>
         </label>
 
         {mode === "register" ? (

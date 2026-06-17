@@ -1,4 +1,3 @@
-
 export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
@@ -13,7 +12,7 @@ import {
   SESSION_COOKIE,
 } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { hashPassword, validatePassword } from "@/lib/passwords";
+import { hashPassword, isPasswordPwned, validatePassword } from "@/lib/passwords";
 import { validateTurnstileToken } from "@/lib/turnstile";
 
 export async function POST(request: Request) {
@@ -39,6 +38,19 @@ export async function POST(request: Request) {
 
   if (!passwordCheck.ok) {
     return NextResponse.json({ ok: false, error: passwordCheck.error }, { status: 400 });
+  }
+
+  // Reject passwords known to have appeared in public breaches. Fails open
+  // (allows the password) if HIBP is unreachable, so signup never hard-breaks
+  // on a third-party outage.
+  if (await isPasswordPwned(passwordCheck.password)) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "This password has appeared in known data breaches. Please choose a different one.",
+      },
+      { status: 400 },
+    );
   }
 
   const actor = await getCurrentActor();
