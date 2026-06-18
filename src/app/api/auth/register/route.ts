@@ -12,6 +12,8 @@ import {
   SESSION_COOKIE,
 } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { sendVerificationEmail } from "@/lib/email";
+import { issueVerificationCode } from "@/lib/emailVerification";
 import { hashPassword, isPasswordPwned, validatePassword } from "@/lib/passwords";
 import { validateTurnstileToken } from "@/lib/turnstile";
 
@@ -62,6 +64,8 @@ export async function POST(request: Request) {
   });
 
   let userId: string;
+  let shouldSendVerification = false;
+
   if (!actor.isGuest && !actor.isDemoUser) {
     if (actor.user.email !== email) {
       return NextResponse.json(
@@ -78,11 +82,13 @@ export async function POST(request: Request) {
       data: {
         passwordHash,
         passwordSetAt: now,
-        emailVerifiedAt: actor.user.emailVerifiedAt ?? now,
+        // Keep an existing verification; do NOT auto-verify if not yet verified.
+        emailVerifiedAt: actor.user.emailVerifiedAt ?? undefined,
       },
       select: { id: true },
     });
     userId = updated.id;
+    shouldSendVerification = !actor.user.emailVerifiedAt;
   } else if (existing && existing.id !== actor.user.id) {
     return NextResponse.json(
       {
@@ -99,11 +105,11 @@ export async function POST(request: Request) {
         isGuest: false,
         passwordHash,
         passwordSetAt: now,
-        emailVerifiedAt: now,
       } as any,
       select: { id: true },
     });
     userId = updated.id;
+    shouldSendVerification = true;
   } else {
     const created = await prisma.user.create({
       data: {
@@ -111,13 +117,25 @@ export async function POST(request: Request) {
         isGuest: false,
         passwordHash,
         passwordSetAt: now,
-        emailVerifiedAt: now,
         freeCreditsBalance: 0,
         paidCreditsBalance: 0,
       } as any,
       select: { id: true },
     });
     userId = created.id;
+    shouldSendVerification = true;
+  }
+
+  // New / upgraded accounts start unverified; email them a code. Non-fatal —
+  // the account exists either way and the user can request a code from the
+  // verify page.
+  if (shouldSendVerification) {
+    try {
+      const code = await issueVerificationCode(email);
+      if (code) await sendVerificationEmail(email, code);
+    } catch {
+      // ignore; verification can be requested later
+    }
   }
 
   const response = NextResponse.json({ ok: true, nextPath });
