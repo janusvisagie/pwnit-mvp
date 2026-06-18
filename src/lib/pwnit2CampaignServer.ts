@@ -180,6 +180,7 @@ async function ensurePwnit2Item(cfg: CampaignConfig) {
     gameKey: cfg.gameKey,
     isHero: cfg.slug === "hero",
     shortDesc: cfg.shortDesc,
+    imageUrl: cfg.imageUrl,
   };
 
   if (existing) {
