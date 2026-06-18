@@ -43,7 +43,7 @@
     </g>
 
     <!-- headline -->
-    <text x="44" y="240" fill="#0f172a" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif" font-size="96" font-weight="900" letter-spacing="2">EVERYDAY</text>
+    <text x="44" y="240" fill="#0f172a" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif" font-size="96" font-weight="900" letter-spacing="2">AIRTIME</text>
     <text x="44" y="330" fill="#059669" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif" font-size="74" font-weight="900" letter-spacing="6">VOUCHER</text>
 
     <!-- footer line -->
