@@ -6,7 +6,7 @@ import { requireAdmin } from "@/lib/admin";
 import { getCurrentActor } from "@/lib/auth";
 import {
   createDraftCampaign,
-  startNextRound,,
+  startNextRound,
   transitionRound,
   updateDraftCampaign,
   updateSnapshotNotes,
