@@ -538,7 +538,7 @@ export async function getCurrentUserSummary() {
     isLocalDev: actor.isLocalDev,
     demoUserKey: actor.demoUserKey,
     email: actor.isGuest ? null : user.email,
-    emailVerified: !actor.isGuest,
+    emailVerified: !actor.isGuest && Boolean(actor.user.emailVerifiedAt),
     actorLabel: actor.isGuest ? "Playing as Guest" : user.alias || user.email,
     alias: user.alias ?? null,
     freeCreditsBalance: Number(user.freeCreditsBalance ?? 0),
@@ -554,6 +554,16 @@ export async function requireVerifiedAccount() {
       ok: false as const,
       status: 401,
       error: "Please sign in or create an account to continue.",
+      actor,
+    };
+  }
+
+  if (!actor.user.emailVerifiedAt) {
+    return {
+      ok: false as const,
+      status: 403,
+      error: "Please verify your email address to continue.",
+      needsVerification: true as const,
       actor,
     };
   }

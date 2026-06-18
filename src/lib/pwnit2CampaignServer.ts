@@ -538,6 +538,16 @@ export async function getPwnit2PurchaseView(slug?: string) {
 export async function confirmPwnit2Purchase(slug?: string) {
   const resolved = slug ?? "hero";
   const actor = await getCurrentActor();
+
+  if (actor.isGuest || !actor.user?.emailVerifiedAt) {
+    return {
+      ok: false as const,
+      status: 403,
+      error: "Please verify your email address before buying a voucher.",
+      needsVerification: true as const,
+    };
+  }
+
   const { cfg, item, round } = await getContext(resolved);
 
   const activated = isActivatedState(round.state);
