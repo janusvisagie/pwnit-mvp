@@ -6,6 +6,7 @@ import { requireAdmin } from "@/lib/admin";
 import { getCurrentActor } from "@/lib/auth";
 import {
   createDraftCampaign,
+  startNextRound,,
   transitionRound,
   updateDraftCampaign,
   updateSnapshotNotes,
@@ -33,6 +34,9 @@ export async function POST(req: Request) {
     }
     if (action === "snapshot_notes") {
       return NextResponse.json(await updateSnapshotNotes(meta, body));
+    }
+    if (action === "start_next_round") {
+      return NextResponse.json(await startNextRound(meta, { roundId: String(body?.roundId ?? "") }));
     }
     const result = await transitionRound(meta, {
       roundId: String(body?.roundId ?? ""),

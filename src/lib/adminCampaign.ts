@@ -564,7 +564,43 @@ export async function transitionRound(
 }
 
 // ───────────────────────────── Adjustments ─────────────────────────────
+export async function startNextRound(meta: AdminMeta, input: { roundId: string }) {
+  return prisma.$transaction(async (tx) => {
+    const round = await tx.itemRound.findUnique({ where: { id: input.roundId }, include: { item: true } });
+    if (!round) throw new Error("round_not_found");
+    const item = round.item;
 
+    // Must be the latest round for this item, and PUBLISHED (a winner was announced).
+    const latest = await tx.itemRound.findFirst({
+      where: { itemId: item.id },
+      orderBy: { sequence: "desc" },
+      select: { id: true, sequence: true },
+    });
+    if (!latest || latest.id !== round.id) throw new Error("not_latest_round");
+    if (round.state !== "PUBLISHED") throw new Error("requires_published");
+
+    const now = new Date();
+    const nextSequence = Number(round.sequence) + 1;
+    const fresh = await tx.itemRound.create({
+      data: {
+        itemId: item.id,
+        sequence: nextSequence,
+        state: "BUILDING",
+        fundingStartsAt: now,
+        fundingEndsAt: new Date(now.getTime() + (item.fundingWindowHours ?? 168) * 3600_000),
+        activationTargetCredits: activationTargetCreditsForItem(item as any),
+        purchaseGraceEndsAt: new Date(now.getTime() + (item.purchaseGraceHours ?? 24) * 3600_000),
+      } as any,
+    });
+    await tx.item.update({ where: { id: item.id }, data: { state: "OPEN", opensAt: now, closesAt: null } });
+
+    await writeAudit(tx, meta, "NEXT_ROUND_STARTED", "ItemRound", fresh.id, {
+      before: { fromRoundId: round.id, fromSequence: round.sequence },
+      after: { roundId: fresh.id, sequence: nextSequence },
+    });
+    return { ok: true, roundId: fresh.id, sequence: nextSequence };
+  });
+}
 export async function adjustUserCredits(meta: AdminMeta, input: { user: string; deltaCredits: number; reason?: string }) {
   const why = reqReason(input.reason);
   const delta = Math.trunc(Number(input.deltaCredits || 0));

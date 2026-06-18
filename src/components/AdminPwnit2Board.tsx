@@ -39,6 +39,7 @@ const ACTION_LABELS: Record<string, string> = {
   expire: "Expire (expire discounts)",
   archive: "Archive (snapshot + freeze)",
   cancel: "Cancel (refund)",
+  start_next_round: "Start next round",
 };
 
 function actionsForRound(r: Round): string[] {
@@ -51,6 +52,7 @@ function actionsForRound(r: Round): string[] {
   if (r.allowedTargets.includes("EXPIRED")) out.push("expire");
   if (r.archivable) out.push("archive");
   if (r.cancellable) out.push("cancel");
+  if (r.state === "PUBLISHED") out.push("start_next_round");
   return out;
 }
 
