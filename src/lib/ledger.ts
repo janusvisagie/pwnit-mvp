@@ -32,6 +32,7 @@ export const CREDIT_MOVEMENT_KINDS = [
   "MIGRATION_INITIAL_BALANCE",
   "RUNNER_UP_BONUS",
   "FAILED_ROUND_REFUND",
+  "SUBSCRIPTION_GRANT",
 ] as const;
 
 export type CreditLedgerInput = {

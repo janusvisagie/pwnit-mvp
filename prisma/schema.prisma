@@ -34,6 +34,7 @@ model User {
   surveyResponses       SurveyResponse[]
   attemptSessions       AttemptSession[]
   discountLedgers       DiscountLedger[]
+  subscriptions         Subscription[]
 }
 
 model Item {
@@ -374,4 +375,26 @@ model CampaignArchiveSnapshot {
 
   @@index([itemId])
   @@index([roundId])
+}
+
+model Subscription {
+  id                 String    @id @default(cuid())
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  userId             String
+  user               User      @relation(fields: [userId], references: [id])
+  planKey            String    @default("standard")
+  status             String    @default("ACTIVE")   // ACTIVE | CANCELLED
+  feeZAR             Int
+  creditsPerCycle    Int
+  currentPeriodStart DateTime  @default(now())
+  currentPeriodEnd   DateTime
+  lastGrantedAt      DateTime?
+  grantsCount        Int       @default(0)
+  cancelledAt        DateTime?
+  provider           String?   // null in Phase 1
+  providerRef        String?   // external sub id (Phase 2)
+
+  @@index([userId])
+  @@index([status])
 }

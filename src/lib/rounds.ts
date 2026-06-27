@@ -52,7 +52,10 @@ export function effectiveActivationCredits(round: {
   freeCreditsCollected?: number | null;
   verifiedSubscriberCreditsCollected?: number | null;
 }) {
-  return playerActivityCredits(round) + verifiedSubscriberCredits(round);
+  // BACKED credits only: paid plays (incl. credit-pack subscription credits, which are paid)
+  // plus verified-subscriber credits. Free credits (daily/survey/referral) let people play and
+  // appear on the leaderboard but do NOT count toward activation, so the prize stays backed by revenue.
+  return Math.max(0, Number(round.paidCreditsCollected ?? 0)) + verifiedSubscriberCredits(round);
 }
 
 export async function getCurrentRound(itemId: string) {
